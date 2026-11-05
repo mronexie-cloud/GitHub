@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>五子棋</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Noto+Sans+SC:wght@400;500&display=swap">
+<style>
+/* Layout: single centered column — title, status line, square wooden board, control row */
+:root{
+  --bg:#eef0ea; --fg:#22261f; --muted:#6c7366; --line:#d5d9cf;
+  --accent:#8a3b22; --surface:#f8f9f5;
+  --wood:#e3b878; --wood-dk:#c8955a; --grid:#5a3c1c;
+  --display:"Noto Serif SC","Songti SC",serif;
+  --body:"Noto Sans SC","PingFang SC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#191b17; --fg:#e8e9e3; --muted:#9a9f93; --line:#33372f; --accent:#e08a66; --surface:#22251f; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#191b17; --fg:#e8e9e3; --muted:#9a9f93; --line:#33372f; --accent:#e08a66; --surface:#22251f; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:900;font-size:1.9rem;margin:0;letter-spacing:.06em}
+h1 span{color:var(--accent)}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;color:var(--muted);font:500 .85rem var(--body);padding:6px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.status{display:flex;align-items:center;gap:10px;font-size:.98rem;min-height:28px}
+.dot{width:18px;height:18px;border-radius:50%;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.dot.b{background:radial-gradient(circle at 35% 30%,#666,#111 60%)}
+.dot.w{background:radial-gradient(circle at 35% 30%,#fff,#d8d6cf 70%)}
+.status .moves{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:.85rem}
+.board{position:relative;width:100%;aspect-ratio:1;max-width:100%;border-radius:6px;
+  background:linear-gradient(135deg,var(--wood),var(--wood-dk));box-shadow:0 10px 30px -12px rgba(60,30,0,.55),inset 0 0 0 1px rgba(0,0,0,.15)}
+canvas{width:100%;height:100%;display:block;touch-action:manipulation;cursor:pointer}
+.banner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.banner div{font-family:var(--display);font-weight:900;font-size:2.2rem;padding:12px 28px;border-radius:8px;
+  background:rgba(25,18,10,.82);color:#f4e4c8;letter-spacing:.15em;animation:pop .35s ease-out}
+@keyframes pop{from{transform:scale(.8);opacity:0}}
+@media (prefers-reduced-motion:reduce){.banner div{animation:none}}
+.controls{display:flex;gap:10px;flex-wrap:wrap}
+.controls button{flex:1;min-width:100px;font:500 .95rem var(--body);padding:11px 14px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.controls button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.controls button:disabled{opacity:.45;cursor:default}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{color:var(--muted);font-size:.82rem;margin:0}
+body{margin:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+body{padding-top:max(20px,env(safe-area-inset-top,0px));padding-bottom:max(20px,env(safe-area-inset-bottom,0px))}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>五子<span>棋</span></h1>
+    <div class="seg" role="group" aria-label="对战模式">
+      <button id="m-ai" aria-pressed="true">人机</button>
+      <button id="m-pvp" aria-pressed="false">双人</button>
+    </div>
+  </header>
+  <div class="status"><span class="dot b" id="dot"></span><span id="msg">黑棋先行，点击棋盘落子</span><span class="moves" id="moves">第 0 手</span></div>
+  <div class="board"><canvas id="cv"></canvas><div class="banner" id="banner" hidden><div id="bannerText"></div></div></div>
+  <div class="controls">
+    <button id="undo">悔棋</button>
+    <button id="restart" class="primary">重新开始</button>
+  </div>
+  <p class="note">15×15 标准棋盘 · 横、竖、斜任意方向连成五子即胜 · 人机模式你执黑先手</p>
+</div>
+
+<script>
+const N=15, cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let board, history, turn, over, mode='ai', thinking=false, winLine=null;
+const $=id=>document.getElementById(id);
+
+function reset(){
+  board=Array.from({length:N},()=>Array(N).fill(0));
+  history=[]; turn=1; over=false; winLine=null; thinking=false;
+  $('banner').hidden=true; save(); update(); draw();
+}
+
+// ---------- drawing ----------
+let S, pad, cell;
+function resize(){
+  const r=cv.getBoundingClientRect(), d=window.devicePixelRatio||1;
+  S=r.width; cv.width=S*d; cv.height=S*d; ctx.setTransform(d,0,0,d,0,0);
+  cell=S/(N+1); pad=cell; draw();
+}
+function draw(){
+  if(!board||!S)return;
+  ctx.clearRect(0,0,S,S);
+  ctx.strokeStyle='#5a3c1c'; ctx.lineWidth=1;
+  for(let i=0;i<N;i++){
+    ctx.beginPath(); ctx.moveTo(pad,pad+i*cell); ctx.lineTo(pad+(N-1)*cell,pad+i*cell); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad+i*cell,pad); ctx.lineTo(pad+i*cell,pad+(N-1)*cell); ctx.stroke();
+  }
+  ctx.lineWidth=2; ctx.strokeRect(pad,pad,(N-1)*cell,(N-1)*cell);
+  ctx.fillStyle='#5a3c1c';
+  [[3,3],[3,11],[11,3],[11,11],[7,7]].forEach(([x,y])=>{ctx.beginPath();ctx.arc(pad+x*cell,pad+y*cell,cell*.12,0,7);ctx.fill();});
+  const rad=cell*.44;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const v=board[y][x]; if(!v)continue;
+    const cx=pad+x*cell, cy=pad+y*cell;
+    ctx.save(); ctx.shadowColor='rgba(0,0,0,.35)'; ctx.shadowBlur=cell*.15; ctx.shadowOffsetY=cell*.06;
+    const g=ctx.createRadialGradient(cx-rad*.35,cy-rad*.35,rad*.1,cx,cy,rad);
+    if(v===1){g.addColorStop(0,'#6a6a6a');g.addColorStop(1,'#0e0e0e');}
+    else{g.addColorStop(0,'#ffffff');g.addColorStop(1,'#cfccc3');}
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,rad,0,7); ctx.fill(); ctx.restore();
+  }
+  const last=history[history.length-1];
+  if(last){ctx.fillStyle='#d2462a';ctx.beginPath();ctx.arc(pad+last.x*cell,pad+last.y*cell,cell*.11,0,7);ctx.fill();}
+  if(winLine){
+    ctx.strokeStyle='rgba(210,70,42,.85)'; ctx.lineWidth=cell*.12; ctx.lineCap='round';
+    const a=winLine[0], b=winLine[winLine.length-1];
+    ctx.beginPath(); ctx.moveTo(pad+a[0]*cell,pad+a[1]*cell); ctx.lineTo(pad+b[0]*cell,pad+b[1]*cell); ctx.stroke();
+  }
+}
+
+// ---------- rules ----------
+const DIRS=[[1,0],[0,1],[1,1],[1,-1]];
+const inB=(x,y)=>x>=0&&y>=0&&x<N&&y<N;
+function checkWin(x,y,p){
+  for(const[dx,dy]of DIRS){
+    const line=[[x,y]];
+    for(let s=1;inB(x+dx*s,y+dy*s)&&board[y+dy*s][x+dx*s]===p;s++)line.push([x+dx*s,y+dy*s]);
+    for(let s=1;inB(x-dx*s,y-dy*s)&&board[y-dy*s][x-dx*s]===p;s++)line.unshift([x-dx*s,y-dy*s]);
+    if(line.length>=5)return line;
+  }
+  return null;
+}
+const buzz=ms=>{try{window.Android&&Android.vibrate(ms);}catch(e){}};
+function save(){try{localStorage.setItem('gomoku',JSON.stringify({history,mode}));}catch(e){}}
+function place(x,y){
+  board[y][x]=turn; history.push({x,y,p:turn}); buzz(12);
+  const w=checkWin(x,y,turn);
+  if(w){over=true;winLine=w;showWin(turn);buzz(150);}
+  else if(history.length===N*N){over=true;showBanner('平局');}
+  else turn=3-turn;
+  save(); update(); draw();
+}
+function showWin(p){
+  const name=p===1?'黑棋':'白棋';
+  showBanner(mode==='ai'?(p===1?'你赢了':'电脑胜'):name+'胜');
+}
+function showBanner(t){$('bannerText').textContent=t;$('banner').hidden=false;}
+
+// ---------- AI: pattern scoring ----------
+function lineScore(count,open){
+  if(count>=5)return 1e7;
+  if(open===0)return 0;
+  const t={4:[0,1e5,1e6],3:[0,1e3,1e4],2:[0,100,500],1:[0,10,30]};
+  return (t[count]||[0,0,0])[open];
+}
+function evalPoint(x,y,p){
+  let total=0, fours=0, threes=0;
+  for(const[dx,dy]of DIRS){
+    let c=1, open=0, s;
+    for(s=1;inB(x+dx*s,y+dy*s)&&board[y+dy*s][x+dx*s]===p;s++)c++;
+    if(inB(x+dx*s,y+dy*s)&&board[y+dy*s][x+dx*s]===0)open++;
+    for(s=1;inB(x-dx*s,y-dy*s)&&board[y-dy*s][x-dx*s]===p;s++)c++;
+    if(inB(x-dx*s,y-dy*s)&&board[y-dy*s][x-dx*s]===0)open++;
+    const sc=lineScore(c,open); total+=sc;
+    if(c===4&&open>=1)fours++; if(c===3&&open===2)threes++;
+  }
+  if(fours>=2||(fours&&threes))total+=5e5;   // 双四 / 四三
+  else if(threes>=2)total+=5e4;              // 双活三
+  return total;
+}
+function aiMove(){
+  if(!history.length)return[7,7];
+  let best=-1, cand=[];
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    if(board[y][x])continue;
+    let near=false;
+    for(let dy=-2;dy<=2&&!near;dy++)for(let dx=-2;dx<=2;dx++)
+      if(inB(x+dx,y+dy)&&board[y+dy][x+dx]){near=true;break;}
+    if(!near)continue;
+    const atk=evalPoint(x,y,2), def=evalPoint(x,y,1);
+    const s=atk*1.1+def + (7-Math.max(Math.abs(x-7),Math.abs(y-7)));
+    if(s>best){best=s;cand=[[x,y]];}else if(s===best)cand.push([x,y]);
+  }
+  return cand[Math.floor(Math.random()*cand.length)];
+}
+
+// ---------- input ----------
+cv.addEventListener('click',e=>{
+  if(over||thinking)return;
+  if(mode==='ai'&&turn!==1)return;
+  const r=cv.getBoundingClientRect();
+  const x=Math.round((e.clientX-r.left-pad)/cell), y=Math.round((e.clientY-r.top-pad)/cell);
+  if(!inB(x,y)||board[y][x])return;
+  place(x,y);
+  if(mode==='ai'&&!over){
+    thinking=true; update();
+    setTimeout(()=>{const[ax,ay]=aiMove();thinking=false;place(ax,ay);},280);
+  }
+});
+function update(){
+  $('dot').className='dot '+(turn===1?'b':'w');
+  $('moves').textContent='第 '+history.length+' 手';
+  let m;
+  if(over) m='对局结束，点「重新开始」再来一局';
+  else if(thinking) m='电脑思考中…';
+  else if(mode==='ai') m=turn===1?'轮到你（黑棋）':'电脑执白';
+  else m=(turn===1?'黑棋':'白棋')+'落子';
+  $('msg').textContent=m;
+  $('undo').disabled=!history.length||thinking;
+}
+$('undo').onclick=()=>{
+  if(thinking)return;
+  const n=mode==='ai'?(history.length>=2&&history[history.length-1].p===2?2:1):1;
+  for(let i=0;i<n&&history.length;i++){const h=history.pop();board[h.y][h.x]=0;turn=h.p;}
+  over=false;winLine=null;$('banner').hidden=true;save();update();draw();
+};
+$('restart').onclick=reset;
+function setMode(m){mode=m;$('m-ai').setAttribute('aria-pressed',m==='ai');$('m-pvp').setAttribute('aria-pressed',m==='pvp');reset();}
+$('m-ai').onclick=()=>setMode('ai'); $('m-pvp').onclick=()=>setMode('pvp');
+
+window.onAndroidBack=()=>false;
+function restore(d){
+  try{
+    if(!d)return;
+    mode=d.mode==='pvp'?'pvp':'ai';
+    $('m-ai').setAttribute('aria-pressed',mode==='ai');$('m-pvp').setAttribute('aria-pressed',mode==='pvp');
+    for(const h of d.history){ if(over)break; turn=h.p; board[h.y][h.x]=h.p; history.push(h);
+      const w=checkWin(h.x,h.y,h.p); if(w){over=true;winLine=w;showWin(h.p);} else turn=3-h.p; }
+    if(mode==='ai'&&turn===2&&!over){const[ax,ay]=aiMove();place(ax,ay);}
+    save(); update(); draw();
+  }catch(e){}
+}
+new ResizeObserver(resize).observe(cv);
+let saved=null; try{saved=JSON.parse(localStorage.getItem('gomoku')||'null');}catch(e){}
+reset(); restore(saved); resize();
+</script>
+</body>
+</html>
