@@ -8,6 +8,8 @@
 | 象棋 | `xiangqi/` | [xiangqi.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/xiangqi.apk) |
 | 三国身份局 | `sanguo/` | [sanguo.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/sanguo.apk) |
 
+**苹果手机版：** 用 Safari 打开 https://mronexie-cloud.github.io/GitHub/ ，选游戏后通过"分享 → 添加到主屏幕"安装。苹果版文件在 `ios/` 目录，和安卓版互不影响。
+
 每次推送到 main 分支，GitHub Actions 都会自动编译这三个 APK，并更新上面的下载链接。
 
 象棋 App 支持完整走法规则、人机对战（电脑会往后计算 4 步）和双人对战，被将军时手机会震动，同样会自动保存棋局。

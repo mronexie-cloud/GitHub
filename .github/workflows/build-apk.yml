@@ -4,6 +4,8 @@ on:
   push:
     paths-ignore:
       - "tts/**"
+      - "ios/**"
+      - ".github/workflows/pages.yml"
       - ".github/workflows/tts.yml"
   workflow_dispatch:
 
