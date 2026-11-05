@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -22,3 +25,11 @@ jobs:
         with:
           name: gomoku-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish APK as release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk gomoku.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest gomoku.apk --title "五子棋 App" --notes "手机上点 gomoku.apk 下载安装。由 GitHub Actions 自动编译。" --latest
