@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="二人麻将">
+<meta name="theme-color" content="#10261F">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>联机二人麻将</title>
+<style>
+/* Layout: one column table — top bar (room, scores) / opponent row / discards river / my melds / my hand / action bar. Single committed dark jade-table look with ivory tiles. */
+:root{
+  --felt:#1f4a42; --felt-dk:#10261f; --panel:rgba(6,20,16,.5); --line:rgba(226,201,140,.28);
+  --ivory:#f5efdf; --ivory-dk:#ddd2b6; --tile-edge:#2f7a5c; --ink:#1d1a15;
+  --red:#c2321f; --green:#1f7a45; --blue:#245c9e; --gold:#e2c98c; --text:#eef2ec; --muted:#9fb7ad; --accent:#d9442f;
+  --body:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --tile-font:"Songti SC","STSong","Noto Serif SC","SimSun",serif;
+  --tw-base:min(44px,calc((min(100vw,620px) - 66px)/14.4));
+  --tw:var(--tw-base);
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--felt-dk) radial-gradient(ellipse at 50% 40%,var(--felt),var(--felt-dk) 78%) fixed;color:var(--text);font-family:var(--body);font-size:14px;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+  padding:max(12px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:620px;margin:0 auto}
+.col{display:flex;flex-direction:column;gap:10px}
+button{font-family:var(--body);cursor:pointer;-webkit-user-select:none;user-select:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* lobby */
+.title{display:flex;align-items:center;gap:14px;margin-top:10px}
+.title .tile{--tw:48px}
+h1{margin:0;font-family:var(--tile-font);font-weight:900;font-size:2rem;letter-spacing:.06em}
+h1 em{font-style:normal;color:var(--accent)}
+.sub{margin:0;color:var(--muted);line-height:1.6}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.card h2{margin:0;font-size:1rem}
+label{font-size:.82rem;color:var(--muted)}
+input{width:100%;font:500 1.05rem var(--body);padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);-webkit-user-select:text;user-select:text}
+input.code{font-size:1.4rem;letter-spacing:.3em;text-align:center;font-variant-numeric:tabular-nums}
+.btn{padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);font-size:1rem;font-weight:600}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1d1a15}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:120px}
+.err{color:#ff9a86;font-size:.88rem;min-height:1.2em;margin:0}
+.rules{font-size:.82rem;color:var(--muted);line-height:1.7}
+.rules b{color:var(--text)}
+.bigcode{font:800 2.6rem var(--body);letter-spacing:.25em;text-align:center;color:var(--gold);font-variant-numeric:tabular-nums;-webkit-user-select:all;user-select:all}
+.dots::after{content:"";animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+
+/* table */
+.top{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.top .room{font-variant-numeric:tabular-nums}
+.net{width:8px;height:8px;border-radius:50%;background:#7a8;display:inline-block}
+.net.ok{background:#4fd57f}.net.bad{background:#e05a40}
+.top .spacer{flex:1}
+.top .leave{padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--muted);font-size:.78rem}
+.seat{display:flex;align-items:center;gap:10px;background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;min-height:52px}
+.seat.turn{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.seat .who{display:flex;flex-direction:column;gap:2px;min-width:64px}
+.seat .nm{font-weight:700;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.seat .sc{font-size:.78rem;color:var(--gold);font-variant-numeric:tabular-nums}
+.dealer{font-size:.66rem;font-weight:800;color:#1d1a15;background:var(--gold);border-radius:3px;padding:0 4px;margin-left:4px;vertical-align:1px}
+.seat .stuff{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end}
+.backs{display:flex;gap:1px}
+.melds{display:flex;flex-wrap:wrap;gap:6px}
+.meld{display:flex;gap:1px}
+.sm{--tw:calc(var(--tw-base) * .6)}
+.xs{--tw:min(26px,calc((min(100vw,620px) - 60px)/16))}
+
+.river{display:flex;flex-direction:column;gap:6px;background:rgba(0,0,0,.18);border-radius:12px;padding:8px}
+.discards{display:flex;flex-wrap:wrap;gap:2px;min-height:calc(var(--tw)*1.36)}
+.mid{display:flex;align-items:center;justify-content:center;gap:12px;color:var(--muted);font-size:.85rem;padding:2px 0}
+.mid b{color:var(--text);font-variant-numeric:tabular-nums}
+.status{font-weight:700;color:var(--gold)}
+
+.mine{display:flex;flex-direction:column;gap:8px}
+.mymelds{display:flex;flex-wrap:wrap;gap:6px;min-height:4px}
+.hand{display:flex;align-items:flex-end;gap:2px;padding-top:12px;min-height:calc(var(--tw)*1.36 + 12px)}
+.hand .gap{width:calc(var(--tw)*.35)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;min-height:46px}
+.acts button{flex:1;min-width:72px;padding:11px 8px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.28);color:var(--text);font-size:1.02rem;font-weight:700}
+.acts .hu{background:var(--accent);border-color:var(--accent);color:#fff}
+.acts .pg{background:var(--gold);border-color:var(--gold);color:#1d1a15}
+.tip{font-size:.84rem;color:var(--muted);min-height:1.3em;text-align:center}
+
+/* tiles */
+.tile{position:relative;flex:none;width:var(--tw);height:calc(var(--tw)*1.36);border-radius:calc(var(--tw)*.14);
+  background:linear-gradient(180deg,var(--ivory),var(--ivory-dk));color:var(--ink);
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.08),0 calc(var(--tw)*.07) 0 var(--tile-edge),0 calc(var(--tw)*.07 + 2px) 4px rgba(0,0,0,.4);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;font-family:var(--tile-font);font-weight:900;
+  transition:transform .12s ease}
+.tile b{font-size:calc(var(--tw)*.52)}
+.tile i{font-style:normal;font-size:calc(var(--tw)*.4);margin-top:calc(var(--tw)*.06)}
+.tile.h b{font-size:calc(var(--tw)*.66)}
+.tile.m i{color:var(--red)}.tile.s i{color:var(--green)}.tile.p i{color:var(--blue)}
+.tile.zh b{color:var(--red)}.tile.fa b{color:var(--green)}
+.tile.bai::after{content:"";position:absolute;inset:22% 22%;border:calc(var(--tw)*.07) solid var(--blue);border-radius:2px}
+.tile.back{background:linear-gradient(180deg,#3d9a74,#24694e);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),0 2px 3px rgba(0,0,0,.35)}
+.tile.last{box-shadow:inset 0 -3px 0 rgba(0,0,0,.08),0 calc(var(--tw)*.07) 0 var(--tile-edge),0 0 0 2px var(--accent),0 0 12px var(--accent)}
+.hand .tile{cursor:pointer}
+.hand .tile.sel{transform:translateY(-10px)}
+.hand .tile.dim{filter:brightness(.82)}
+.hand .tile.new{margin-left:calc(var(--tw)*.3)}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}}
+
+/* result */
+.over{position:fixed;inset:0;background:rgba(4,12,9,.82);display:flex;align-items:center;justify-content:center;z-index:30;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.over .box{background:var(--felt);border:1px solid var(--gold);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:440px;max-height:100%;overflow-y:auto}
+.over h2{margin:0;text-align:center;font-family:var(--tile-font);font-size:2.2rem;color:var(--gold)}
+.over .fans{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.over .fan{font-size:.82rem;padding:3px 9px;border-radius:999px;background:rgba(226,201,140,.16);color:var(--ivory)}
+.over .total{text-align:center;font-size:1.05rem}
+.over .total b{color:var(--gold);font-size:1.3rem}
+.over .hands{display:flex;flex-direction:column;gap:8px}
+.over .hands .lbl{font-size:.8rem;color:var(--muted);margin-bottom:4px}
+.over .hands .line{display:flex;flex-wrap:wrap;gap:1px;align-items:flex-end}
+.over .hands .line .melds{margin-left:6px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 90px);transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:9px 16px;border-radius:999px;font-size:.9rem;z-index:40;pointer-events:none;white-space:nowrap}
+.callout{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);font-family:var(--tile-font);font-weight:900;font-size:4rem;color:#fff;z-index:35;pointer-events:none;
+  text-shadow:0 0 10px var(--accent),0 0 28px var(--accent),0 4px 0 rgba(0,0,0,.5);animation:call .9s ease-out forwards}
+@keyframes call{0%{opacity:0;transform:translate(-50%,-50%) scale(2.2)}25%{opacity:1;transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+@media (prefers-reduced-motion:reduce){.callout{animation:none;opacity:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- LOBBY -->
+<section id="lobby" class="col">
+  <div class="title">
+    <span class="tile m"><b>八</b><i>万</i></span>
+    <div><h1>二人<em>麻将</em></h1><p class="sub">联网对战 · 手机之间输入房间号即可开打</p></div>
+  </div>
+  <div class="card">
+    <label for="nameIn">你的昵称</label>
+    <input id="nameIn" maxlength="8" placeholder="输入昵称" autocomplete="off">
+  </div>
+  <div class="card" id="resumeCard" hidden>
+    <h2>上次的房间</h2>
+    <button class="btn gold" id="resumeBtn"></button>
+  </div>
+  <div class="card">
+    <h2>联网对战</h2>
+    <button class="btn go" id="createBtn">创建房间</button>
+    <div class="row">
+      <input id="codeIn" class="code" inputmode="numeric" maxlength="6" placeholder="房间号" autocomplete="off">
+      <button class="btn" id="joinBtn">加入房间</button>
+    </div>
+    <p class="err" id="lobbyErr"></p>
+  </div>
+  <div class="card">
+    <h2>单机练习</h2>
+    <button class="btn" id="soloBtn">和电脑打一局</button>
+  </div>
+  <div class="card rules">
+    <div><b>牌：</b>万、条、筒、风、箭共 136 张，每人 13 张，庄家先摸。</div>
+    <div><b>动作：</b>可以碰、明杠、暗杠、加杠，不能吃。胡牌须为 4 组刻子或顺子加 1 对将，或七对。</div>
+    <div><b>计分：</b>平胡 1 · 自摸 +1 · 门清 +1 · 每杠 +1 · 杠上开花 +1 · 海底捞月 +1 · 碰碰胡 +2 · 七对 +2 · 混一色 +2 · 清一色 +4 · 字一色 +6。输家付分，胡牌者下局坐庄。</div>
+    <div><b>操作：</b>点一张牌把它抬起，再点一次打出。</div>
+  </div>
+</section>
+
+<!-- WAITING (host) / JOINING (guest) -->
+<section id="wait" class="col" hidden>
+  <div class="card" style="align-items:center;text-align:center;margin-top:24px">
+    <h2 id="waitTitle">房间已创建</h2>
+    <div class="bigcode" id="waitCode">------</div>
+    <p class="sub" id="waitSub">把房间号发给好友，对方输入后自动开局</p>
+    <div class="row" style="width:100%"><button class="btn gold" id="copyBtn">复制房间号</button><button class="btn" id="cancelBtn">取消</button></div>
+    <p class="sub"><span id="waitStatus" class="dots">连接服务器</span></p>
+  </div>
+</section>
+
+<!-- TABLE -->
+<section id="table" class="col" hidden>
+  <div class="top"><span class="net" id="netDot"></span><span id="roomLbl" class="room"></span><span class="spacer"></span><span id="roundLbl"></span><button class="leave" id="leaveBtn">离开</button></div>
+  <div class="seat" id="oppSeat"></div>
+  <div class="river">
+    <div class="discards xs" id="oppRiver"></div>
+    <div class="mid"><span>剩余 <b id="wallLbl">0</b> 张</span><span class="status" id="statusLbl"></span></div>
+    <div class="discards xs" id="myRiver"></div>
+  </div>
+  <div class="mine">
+    <div class="seat" id="mySeat"></div>
+    <div class="hand" id="hand"></div>
+    <div class="tip" id="tip"></div>
+    <div class="acts" id="acts"></div>
+  </div>
+</section>
+</div>
+
+<div class="over" id="over" hidden><div class="box" id="overBox"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}},del(k){try{localStorage.removeItem(k);}catch(e){}}};
+const rid=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>'abcdefghijkmnpqrstuvwxyz23456789'[b&31]).join('');
+const myId=store.get('mj-id',null)||(()=>{const v=rid(12);store.set('mj-id',v);return v;})();
+
+/* =============== TILES =============== */
+// 0-8 万, 9-17 条, 18-26 筒, 27-30 东南西北, 31 中, 32 发, 33 白
+const NUM='一二三四五六七八九', HON='东南西北中发白';
+const suitOf=t=>t<27?Math.floor(t/9):3;
+function tileHTML(t,cls=''){
+  if(t<0)return `<span class="tile back ${cls}"></span>`;
+  if(t<27){const s=suitOf(t);return `<span class="tile ${'msp'[s]} ${cls}" data-t="${t}"><b>${NUM[t%9]}</b><i>${'万条筒'[s]}</i></span>`;}
+  const h=HON[t-27];
+  const k=t===31?'zh':t===32?'fa':t===33?'bai':'';
+  return `<span class="tile h ${k} ${cls}" data-t="${t}"><b>${t===33?'':h}</b></span>`;
+}
+const tileName=t=>t<27?NUM[t%9]+'万条筒'[suitOf(t)]:(t===33?'白板':HON[t-27]+(t<31?'风':''));
+
+/* =============== RULES ENGINE (pure) =============== */
+function counts(arr){const c=new Array(34).fill(0);for(const t of arr)c[t]++;return c;}
+function meldsOK(c){
+  let i=0;while(i<34&&!c[i])i++;
+  if(i===34)return true;
+  if(c[i]>=3){c[i]-=3;const ok=meldsOK(c);c[i]+=3;if(ok)return true;}
+  if(i<27&&i%9<=6&&c[i+1]&&c[i+2]){c[i]--;c[i+1]--;c[i+2]--;const ok=meldsOK(c);c[i]++;c[i+1]++;c[i+2]++;if(ok)return true;}
+  return false;
+}
+function isSevenPairs(hand){if(hand.length!==14)return false;return counts(hand).every(n=>n%2===0);}
+function isStandard(hand){
+  if(hand.length%3!==2)return false;
+  const c=counts(hand);
+  for(let i=0;i<34;i++)if(c[i]>=2){c[i]-=2;const ok=meldsOK(c);c[i]+=2;if(ok)return true;}
+  return false;
+}
+const canWin=hand=>isSevenPairs(hand)||isStandard(hand);
+function isAllPungs(hand){
+  const c=counts(hand);let pair=0;
+  for(const n of c){if(n===2)pair++;else if(n!==0&&n!==3)return false;}
+  return pair===1;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+function removeN(hand,t,n){for(let k=0;k<n;k++){const i=hand.indexOf(t);if(i<0)throw new Error('tile missing');hand.splice(i,1);}}
+
+function newGame(names){
+  return{v:1,names:names.slice(),scores:[0,0],dealer:0,round:0,ready:[true,true],phase:'idle',seq:0,hands:[[],[]],melds:[[],[]],discards:[[],[]],wall:[]};
+}
+function startRound(G){
+  G.round++;G.wall=shuffle([...Array(136).keys()].map(i=>i>>2));
+  G.hands=[[],[]];G.melds=[[],[]];G.discards=[[],[]];G.result=null;G.ready=[false,false];
+  for(let k=0;k<13;k++){G.hands[0].push(G.wall.pop());G.hands[1].push(G.wall.pop());}
+  G.turn=G.dealer;G.last=null;G.event=null;
+  draw(G,false);
+}
+function draw(G,afterGang){
+  if(!G.wall.length){endRound(G,null,{});return;}
+  const t=G.wall.pop();G.hands[G.turn].push(t);G.drawn=t;G.afterGang=afterGang;G.phase='discard';
+}
+function opts(G,p){
+  const o={};
+  if(G.phase==='discard'&&G.turn===p){
+    const h=G.hands[p];o.discard=true;
+    if(canWin(h))o.zimo=true;
+    if(G.wall.length){
+      const c=counts(h);
+      o.angang=[];for(let i=0;i<34;i++)if(c[i]===4)o.angang.push(i);
+      o.jiagang=G.melds[p].filter(m=>m.type==='peng'&&c[m.t]>0).map(m=>m.t);
+      if(!o.angang.length)delete o.angang;
+      if(!o.jiagang.length)delete o.jiagang;
+    }
+  }else if(G.phase==='respond'&&G.turn===p){
+    const t=G.last.t,h=G.hands[p],n=h.filter(x=>x===t).length;
+    if(canWin(h.concat(t)))o.hu=true;
+    if(n>=2)o.peng=true;
+    if(n===3&&G.wall.length)o.gang=true;
+    o.pass=true;
+  }else if(G.phase==='over'&&!G.ready[p])o.next=true;
+  return o;
+}
+// returns error string or null
+function act(G,p,a){
+  const o=opts(G,p);
+  if(a.type!=='next')G.event=null;
+  switch(a.type){
+    case 'discard':{
+      if(!o.discard)return '还没轮到你出牌';
+      const h=G.hands[p];if(!h.includes(a.t))return '没有这张牌';
+      removeN(h,a.t,1);G.discards[p].push(a.t);G.last={p,t:a.t};G.drawn=null;G.event={k:'discard',p,t:a.t};
+      G.turn=1-p;G.phase='respond';
+      const r=opts(G,1-p);
+      if(!(r.hu||r.peng||r.gang)){G.phase='draw';draw(G,false);}
+      break;}
+    case 'zimo':
+      if(!o.zimo)return '不能自摸';
+      endRound(G,p,{zimo:true});break;
+    case 'angang':
+      if(!o.angang||!o.angang.includes(a.t))return '不能暗杠';
+      removeN(G.hands[p],a.t,4);G.melds[p].push({type:'agang',t:a.t});G.event={k:'gang',p};draw(G,true);break;
+    case 'jiagang':{
+      if(!o.jiagang||!o.jiagang.includes(a.t))return '不能加杠';
+      removeN(G.hands[p],a.t,1);G.melds[p].find(m=>m.type==='peng'&&m.t===a.t).type='jgang';G.event={k:'gang',p};draw(G,true);break;}
+    case 'hu':
+      if(!o.hu)return '不能胡';
+      G.hands[p].push(G.last.t);G.discards[G.last.p].pop();endRound(G,p,{from:G.last.p});break;
+    case 'peng':
+      if(!o.peng)return '不能碰';
+      removeN(G.hands[p],G.last.t,2);G.discards[G.last.p].pop();G.melds[p].push({type:'peng',t:G.last.t});
+      G.event={k:'peng',p};G.last=null;G.phase='discard';G.drawn=null;G.afterGang=false;break;
+    case 'gang':
+      if(!o.gang)return '不能杠';
+      removeN(G.hands[p],G.last.t,3);G.discards[G.last.p].pop();G.melds[p].push({type:'mgang',t:G.last.t});
+      G.event={k:'gang',p};G.last=null;draw(G,true);break;
+    case 'pass':
+      if(!o.pass)return '无需操作';
+      G.phase='draw';draw(G,false);break;
+    case 'next':
+      if(!o.next)return null;
+      G.ready[p]=true;
+      if(G.ready[0]&&G.ready[1])startRound(G);
+      break;
+    default:return '未知操作';
+  }
+  G.seq++;return null;
+}
+function scoreHand(G,p,info){
+  const hand=G.hands[p],melds=G.melds[p],fans=[];
+  const seven=melds.length===0&&isSevenPairs(hand)&&!isStandard(hand);
+  fans.push(['平胡',1]);
+  if(seven)fans.push(['七对',2]);
+  else if(isAllPungs(hand))fans.push(['碰碰胡',2]);
+  const all=hand.concat(...melds.map(m=>[m.t,m.t,m.t]));
+  const suits=new Set(all.filter(t=>t<27).map(suitOf)),hon=all.some(t=>t>=27);
+  if(!suits.size)fans.push(['字一色',6]);
+  else if(suits.size===1)fans.push(hon?['混一色',2]:['清一色',4]);
+  if(info.zimo)fans.push(['自摸',1]);
+  if(!melds.some(m=>m.type!=='agang'))fans.push(['门清',1]);
+  const g=melds.filter(m=>m.type!=='peng').length;if(g)fans.push([`杠 ×${g}`,g]);
+  if(info.zimo&&G.afterGang)fans.push(['杠上开花',1]);
+  if(info.zimo&&!G.wall.length)fans.push(['海底捞月',1]);
+  return{fans,total:fans.reduce((s,f)=>s+f[1],0)};
+}
+function endRound(G,winner,info){
+  G.phase='over';G.ready=[false,false];
+  const res={winner,zimo:!!info.zimo,from:info.from==null?null:info.from};
+  if(winner!=null){
+    const s=scoreHand(G,winner,info);res.fans=s.fans;res.total=s.total;
+    G.scores[winner]+=s.total;G.scores[1-winner]-=s.total;G.dealer=winner;
+    G.event={k:info.zimo?'zimo':'hu',p:winner};
+  }else G.event={k:'draw'};
+  res.hands=[G.hands[0].slice(),G.hands[1].slice()];
+  G.result=res;
+}
+// what player p is allowed to see
+function viewFor(G,p){
+  const q=1-p,sort=a=>a.slice().sort((x,y)=>x-y);
+  let hand=sort(G.hands[p]),newT=null;
+  if(G.phase==='discard'&&G.turn===p&&G.drawn!=null){const i=hand.indexOf(G.drawn);hand.splice(i,1);newT=G.drawn;}
+  const over=G.phase==='over';
+  const hideMeld=m=>m.type==='agang'&&!over?{type:'agang',t:-1}:m;
+  return{
+    seq:G.seq,round:G.round,phase:G.phase,myTurn:G.turn===p,
+    hand,newT,oppCount:G.hands[q].length,
+    myMelds:G.melds[p],oppMelds:G.melds[q].map(hideMeld),
+    myRiver:G.discards[p],oppRiver:G.discards[q],
+    last:G.last?{mine:G.last.p===p,t:G.last.t}:null,
+    wall:G.wall.length,scores:[G.scores[p],G.scores[q]],names:[G.names[p],G.names[q]],
+    dealerMine:G.dealer===p,opts:opts(G,p),
+    event:G.event?{...G.event,mine:G.event.p===p}:null,
+    result:G.result?{...G.result,mine:G.result.winner==null?null:G.result.winner===p,fromMine:G.result.from==null?null:G.result.from===p,
+      hands:[sort(G.result.hands[p]),sort(G.result.hands[q])],melds:[G.melds[p],G.melds[q]]}:null,
+    oppReady:G.ready[q],guestId:G.guestId||null
+  };
+}
+
+/* =============== SIMPLE AI =============== */
+function aiDiscard(hand){
+  const c=counts(hand);let best=null,bs=1e9;
+  for(const t of new Set(hand)){
+    let s=c[t]>=3?30:c[t]===2?14:0;
+    if(t<27){const r=t%9;
+      for(const d of[-2,-1,1,2]){const u=t+d;if(r+d>=0&&r+d<=8&&c[u])s+=Math.abs(d)===1?6:3;}
+      if(r===0||r===8)s-=1;
+    }else s-=2;
+    s+=Math.random()*.5;
+    if(s<bs){bs=s;best=t;}
+  }
+  return best;
+}
+function aiMove(G,p){
+  const o=opts(G,p);
+  if(o.hu)return{type:'hu'};
+  if(o.zimo)return{type:'zimo'};
+  if(o.next)return{type:'next'};
+  if(o.angang)return{type:'angang',t:o.angang[0]};
+  if(o.jiagang)return{type:'jiagang',t:o.jiagang[0]};
+  if(o.gang)return{type:'gang'};
+  if(o.peng)return(G.last.t>=27||Math.random()<.55)?{type:'peng'}:{type:'pass'};
+  if(o.pass)return{type:'pass'};
+  if(o.discard)return{type:'discard',t:aiDiscard(G.hands[p])};
+  return null;
+}
+
+/* =============== MINIMAL MQTT 3.1.1 OVER WEBSOCKET =============== */
+const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
+const enc=new TextEncoder(),dec=new TextDecoder();
+function mqStr(s){const b=enc.encode(s);return[b.length>>8,b.length&255,...b];}
+function mqPacket(head,body){const len=[];let n=body.length;do{let d=n%128;n=Math.floor(n/128);if(n)d|=128;len.push(d);}while(n);return new Uint8Array([head,...len,...body]);}
+class Mqtt{
+  constructor(url,onMsg,onState){this.url=url;this.onMsg=onMsg;this.onState=onState;this.subs=new Set();this.buf=new Uint8Array(0);this.pid=1;this.closed=false;this.up=false;this.tries=0;}
+  connect(){
+    return new Promise((res,rej)=>{
+      let done=false;const fin=(ok,e)=>{if(done)return;done=true;clearTimeout(to);ok?res():rej(e);};
+      const to=setTimeout(()=>{fin(false,new Error('timeout'));try{this.ws&&this.ws.close();}catch(e){}},8000);
+      this._open(()=>fin(true),e=>fin(false,e));
+    });
+  }
+  _open(onUp,onFail){
+    let ws;try{ws=new WebSocket(this.url,['mqtt']);}catch(e){onFail&&onFail(e);return;}
+    this.ws=ws;ws.binaryType='arraybuffer';this.buf=new Uint8Array(0);
+    ws.onopen=()=>{
+      const id='zmj_'+rid(10);
+      ws.send(mqPacket(0x10,[...mqStr('MQTT'),4,0x02,0,30,...mqStr(id)]));
+    };
+    ws.onmessage=e=>{
+      const d=new Uint8Array(e.data),b=new Uint8Array(this.buf.length+d.length);b.set(this.buf);b.set(d,this.buf.length);this.buf=b;
+      for(;;){
+        if(this.buf.length<2)break;
+        let mul=1,len=0,i=1,byte;
+        do{if(i>=this.buf.length)return;byte=this.buf[i++];len+=(byte&127)*mul;mul*=128;}while(byte&128);
+        if(this.buf.length<i+len)break;
+        const head=this.buf[0],body=this.buf.subarray(i,i+len);this.buf=this.buf.slice(i+len);
+        this._packet(head,body,onUp,onFail);
+      }
+    };
+    ws.onclose=ws.onerror=()=>{
+      if(this.ws!==ws)return;
+      const was=this.up;this.up=false;clearInterval(this.ping);
+      if(!was&&onFail){onFail(new Error('closed'));onFail=null;onUp=null;}
+      if(was)this.onState&&this.onState(false);
+      this.ws=null;
+      if(!this.closed&&was!==null){const wait=Math.min(8000,1000*(++this.tries));setTimeout(()=>{if(!this.closed&&!this.ws)this._open(null,null);},wait);}
+    };
+  }
+  _packet(head,body,onUp,onFail){
+    const type=head>>4;
+    if(type===2){ // CONNACK
+      if(body[1]!==0){onFail&&onFail(new Error('refused'));return;}
+      this.up=true;this.tries=0;clearInterval(this.ping);
+      this.ping=setInterval(()=>this._send(new Uint8Array([0xC0,0])),20000);
+      for(const t of this.subs)this._sub(t);
+      this.onState&&this.onState(true);onUp&&onUp();
+    }else if(type===3){ // PUBLISH
+      const qos=(head>>1)&3,tl=(body[0]<<8)|body[1];let p=2+tl;
+      const topic=dec.decode(body.subarray(2,p));
+      if(qos>0){const id=[body[p],body[p+1]];p+=2;if(qos===1)this._send(new Uint8Array([0x40,2,...id]));}
+      const payload=dec.decode(body.subarray(p));
+      if(payload)try{this.onMsg(topic,JSON.parse(payload));}catch(e){}
+    }
+  }
+  _send(u8){try{if(this.ws&&this.ws.readyState===1)this.ws.send(u8);}catch(e){}}
+  _sub(topic){const id=this.pid++&0xffff||1;this._send(mqPacket(0x82,[id>>8,id&255,...mqStr(topic),0]));}
+  subscribe(topic){this.subs.add(topic);if(this.up)this._sub(topic);}
+  publish(topic,obj,retain=false){const body=[...mqStr(topic),...enc.encode(obj==null?'':JSON.stringify(obj))];this._send(mqPacket(0x30|(retain?1:0),body));}
+  close(){this.closed=true;clearInterval(this.ping);try{if(this.ws){this._send(new Uint8Array([0xE0,0]));this.ws.close();}}catch(e){}this.ws=null;}
+}
+
+/* =============== APP / SESSION =============== */
+let S=null;          // session: {mode:'solo'|'host'|'guest', code, G (solo/host), view, net, ...}
+let selT=null,lastSeqSeen=-1,lastEventSeq=-1;
+const TOPIC=code=>'zlc-mj2/'+code;
+
+function show(id){for(const s of['lobby','wait','table'])$(s).hidden=s!==id;$('over').hidden=true;window.scrollTo(0,0);}
+function toast(msg,ms=1800){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,ms);}
+function callout(text){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const d=document.createElement('div');d.className='callout';d.textContent=text;document.body.appendChild(d);setTimeout(()=>d.remove(),950);}
+const myName=()=>($('nameIn').value.trim()||'玩家').slice(0,8);
+
+// ---------- solo ----------
+function startSolo(){
+  endSession();
+  const G=newGame([myName(),'电脑']);startRound(G);
+  S={mode:'solo',G};lastSeqSeen=-1;
+  show('table');refresh();
+}
+function soloBot(){
+  if(!S||S.mode!=='solo')return;
+  clearTimeout(S.botT);
+  const m=aiMove(S.G,1);
+  if(!m||(m.type==='next'&&S.G.ready[0]===false))return;
+  S.botT=setTimeout(()=>{if(!S||S.mode!=='solo')return;act(S.G,1,m);refresh();},m.type==='discard'?650:500);
+}
+
+// ---------- host ----------
+async function connectAny(preferred){
+  const order=preferred==null?[0,1,2]:[preferred];
+  for(const i of order){
+    const c=new Mqtt(BROKERS[i],onNetMsg,onNetState);
+    try{await c.connect();return{c,line:i};}catch(e){c.close();}
+  }
+  return null;
+}
+async function createRoom(){
+  endSession();
+  S={mode:'host',name:myName(),connecting:true};
+  show('wait');$('waitTitle').textContent='房间已创建';$('waitCode').textContent='------';$('waitSub').textContent='把房间号发给好友，对方输入后自动开局';$('waitStatus').textContent='连接服务器';$('waitStatus').className='dots';
+  const sess=S;const r=await connectAny(null);
+  if(S!==sess)return r&&r.c.close();
+  if(!r){$('waitStatus').className='';$('waitStatus').textContent='连接服务器失败，请检查网络后重试';return;}
+  const code=String(r.line+1)+String(Math.floor(Math.random()*1e5)).padStart(5,'0');
+  Object.assign(S,{net:r.c,code,connecting:false,G:newGame([S.name,'等待加入']),guestSeen:0});
+  S.net.subscribe(TOPIC(code)+'/g');
+  S.net.publish(TOPIC(code)+'/h',null,true); // clear stale retained state
+  $('waitCode').textContent=code;$('waitStatus').textContent='等待好友加入';
+  saveSession();
+  S.hb=setInterval(hostHeartbeat,4000);
+}
+function hostBroadcast(){
+  if(!S||S.mode!=='host'||!S.G.guestId)return;
+  S.net.publish(TOPIC(S.code)+'/h',{t:'state',v:viewFor(S.G,1)},true);
+}
+function hostHeartbeat(){
+  if(!S||S.mode!=='host')return;
+  if(S.G.guestId)S.net.publish(TOPIC(S.code)+'/h',{t:'ping',to:S.G.guestId});
+  updateNet();
+}
+function hostOnMsg(m){
+  const G=S.G;
+  if(m.t==='join'){
+    if(G.guestId&&G.guestId!==m.id&&Date.now()-S.guestSeen<20000){S.net.publish(TOPIC(S.code)+'/h',{t:'full',to:m.id});return;}
+    const fresh=!G.guestId;
+    G.guestId=m.id;G.names[1]=(m.name||'好友').slice(0,8);S.guestSeen=Date.now();
+    if(fresh||G.phase==='idle'){G.dealer=0;startRound(G);G.seq++;toast(`${G.names[1]} 加入了房间`);}
+    show('table');hostBroadcast();refresh();
+  }else if(m.id!==G.guestId)return;
+  else if(m.t==='act'){
+    S.guestSeen=Date.now();
+    const err=act(G,1,m.a);
+    if(err)S.net.publish(TOPIC(S.code)+'/h',{t:'err',to:m.id,msg:err});
+    hostBroadcast();refresh();
+  }else if(m.t==='ping'){S.guestSeen=Date.now();updateNet();}
+  else if(m.t==='bye'){S.guestSeen=0;toast('对方离开了房间',3000);updateNet();}
+}
+
+// ---------- guest ----------
+async function joinRoom(code){
+  code=(code||'').replace(/\D/g,'');
+  if(!/^[1-3]\d{5}$/.test(code)){$('lobbyErr').textContent='房间号是 6 位数字，请检查后重试';return;}
+  endSession();
+  S={mode:'guest',code,name:myName(),welcomed:false};
+  show('wait');$('waitTitle').textContent='正在加入房间';$('waitCode').textContent=code;$('waitSub').textContent='连上后会自动开局';$('waitStatus').textContent='连接服务器';$('waitStatus').className='dots';
+  const sess=S;const r=await connectAny(+code[0]-1);
+  if(S!==sess)return r&&r.c.close();
+  if(!r){$('waitStatus').className='';$('waitStatus').textContent='连接服务器失败，请检查网络后重试';return;}
+  S.net=r.c;S.net.subscribe(TOPIC(code)+'/h');
+  $('waitStatus').textContent='等待房主回应';
+  saveSession();
+  const hello=()=>{if(S===sess)S.net.publish(TOPIC(code)+'/g',{t:'join',id:myId,name:S.name});};
+  hello();S.joinT=setInterval(()=>{if(!S||S!==sess){clearInterval(sess.joinT);return;}if(!S.welcomed||Date.now()-S.hostSeen>12000)hello();},3000);
+  S.hb=setInterval(()=>{if(S===sess&&S.welcomed){S.net.publish(TOPIC(code)+'/g',{t:'ping',id:myId});updateNet();}},4000);
+}
+function guestOnMsg(m){
+  if(m.to&&m.to!==myId)return;
+  if(m.t==='state'){
+    if(m.v.guestId!==myId)return;
+    S.hostSeen=Date.now();
+    if(S.view&&m.v.seq<S.view.seq)return;
+    if(!S.welcomed){S.welcomed=true;show('table');}
+    S.view=m.v;refresh();
+  }else if(m.t==='ping'){S.hostSeen=Date.now();updateNet();}
+  else if(m.t==='full'){$('waitStatus').className='';$('waitStatus').textContent='这个房间已经满了';}
+  else if(m.t==='err')toast(m.msg);
+  else if(m.t==='bye'){toast('房主关闭了房间',3500);store.del('mj-sess');setTimeout(()=>{endSession();show('lobby');renderLobby();},1200);}
+}
+
+// ---------- shared ----------
+function onNetMsg(topic,m){
+  if(!S||!m)return;
+  if(S.mode==='host'&&topic===TOPIC(S.code)+'/g')hostOnMsg(m);
+  else if(S.mode==='guest'&&topic===TOPIC(S.code)+'/h')guestOnMsg(m);
+}
+function onNetState(up){if(S)S.netUp=up;updateNet();if(up&&S&&S.mode==='host')hostBroadcast();}
+function updateNet(){
+  const d=$('netDot');if(!d||!S)return;
+  if(S.mode==='solo'){d.className='net ok';return;}
+  const up=S.net&&S.net.up, peer=S.mode==='host'?Date.now()-S.guestSeen<15000:Date.now()-(S.hostSeen||0)<15000;
+  d.className='net '+(up&&peer?'ok':'bad');
+  d.title=!up?'服务器连接中断，正在重连':!peer?'对方可能掉线了':'连接正常';
+}
+function sendAct(a){
+  if(!S)return;
+  if(S.mode==='guest'){S.net.publish(TOPIC(S.code)+'/g',{t:'act',id:myId,a});return;}
+  const err=act(S.G,0,a);if(err)toast(err);
+  if(S.mode==='host')hostBroadcast();
+  refresh();
+}
+function currentView(){
+  if(!S)return null;
+  if(S.mode==='guest')return S.view;
+  return viewFor(S.G,0);
+}
+function saveSession(){
+  if(!S||S.mode==='solo')return;
+  store.set('mj-sess',{mode:S.mode,code:S.code,name:S.name,G:S.mode==='host'?S.G:null,at:Date.now()});
+}
+function endSession(){
+  if(!S)return;
+  clearInterval(S.hb);clearInterval(S.joinT);clearTimeout(S.botT);
+  if(S.net){
+    if(S.mode==='host'){S.net.publish(TOPIC(S.code)+'/h',{t:'bye'});S.net.publish(TOPIC(S.code)+'/h',null,true);}
+    else S.net.publish(TOPIC(S.code)+'/g',{t:'bye',id:myId});
+    const n=S.net;setTimeout(()=>n.close(),300);
+  }
+  S=null;
+}
+async function resume(){
+  const s=store.get('mj-sess',null);if(!s)return;
+  if(s.mode==='guest'){$('nameIn').value=s.name||'';joinRoom(s.code);return;}
+  endSession();
+  S={mode:'host',name:s.name,code:s.code,G:s.G,guestSeen:0};
+  show(s.G.guestId?'table':'wait');
+  if(!s.G.guestId){$('waitTitle').textContent='房间已创建';$('waitCode').textContent=s.code;$('waitStatus').textContent='连接服务器';$('waitStatus').className='dots';}
+  const sess=S;const r=await connectAny(+s.code[0]-1);
+  if(S!==sess)return r&&r.c.close();
+  if(!r){toast('连接服务器失败，请检查网络',3000);return;}
+  S.net=r.c;S.net.subscribe(TOPIC(S.code)+'/g');
+  if(!s.G.guestId)$('waitStatus').textContent='等待好友加入';
+  S.hb=setInterval(hostHeartbeat,4000);hostBroadcast();refresh();
+}
+
+/* =============== RENDER =============== */
+function meldHTML(m,cls){
+  const t=m.t;
+  if(m.type==='peng')return `<span class="meld">${tileHTML(t,cls).repeat(3)}</span>`;
+  if(m.type==='agang')return `<span class="meld">${tileHTML(-1,cls)}${tileHTML(t,cls)}${tileHTML(t,cls)}${tileHTML(-1,cls)}</span>`;
+  return `<span class="meld">${tileHTML(t,cls).repeat(4)}</span>`;
+}
+function seatHTML(name,score,dealer,stuff){
+  return `<div class="who"><span class="nm">${esc(name)}${dealer?'<span class="dealer">庄</span>':''}</span><span class="sc">${score>0?'+':''}${score} 分</span></div><div class="stuff">${stuff}</div>`;
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function refresh(){
+  const v=currentView();if(!v)return;
+  if(S.mode==='host')saveSession();
+  if(v.phase==='idle'){return;}
+  // event callouts
+  if(v.event&&v.seq!==lastEventSeq&&lastSeqSeen!==-1){
+    const k=v.event.k;
+    if(k==='peng')callout('碰');else if(k==='gang')callout('杠');
+    else if(k==='hu')callout('胡');else if(k==='zimo')callout('自摸');
+    if(k==='discard'||k==='peng'||k==='gang')click(k==='discard'?1:2);
+  }
+  lastEventSeq=v.seq;
+  if(v.seq!==lastSeqSeen)selT=null;
+  lastSeqSeen=v.seq;
+  $('roomLbl').textContent=S.mode==='solo'?'单机练习':`房间 ${S.code}`;
+  $('roundLbl').textContent=`第 ${v.round} 局`;
+  updateNet();
+  // opponent
+  const opp=$('oppSeat');
+  opp.className='seat'+(!v.myTurn&&v.phase!=='over'?' turn':'');
+  opp.innerHTML=seatHTML(v.names[1],v.scores[1],!v.dealerMine,
+    `<span class="backs sm">${tileHTML(-1).repeat(v.oppCount)}</span><span class="melds sm">${v.oppMelds.map(m=>meldHTML(m,'')).join('')}</span>`);
+  const me=$('mySeat');
+  me.className='seat'+(v.myTurn&&v.phase!=='over'?' turn':'');
+  me.innerHTML=seatHTML(v.names[0]+'（你）',v.scores[0],v.dealerMine,`<span class="melds sm">${v.myMelds.map(m=>meldHTML(m,'')).join('')}</span>`);
+  // rivers
+  const riv=(arr,mine)=>arr.map((t,i)=>tileHTML(t,v.last&&v.last.mine===mine&&i===arr.length-1&&v.phase==='respond'?'last':'')).join('');
+  $('oppRiver').innerHTML=riv(v.oppRiver,false);
+  $('myRiver').innerHTML=riv(v.myRiver,true);
+  $('wallLbl').textContent=v.wall;
+  const o=v.opts||{};
+  let st='';
+  if(v.phase==='over')st='本局结束';
+  else if(v.myTurn&&v.phase==='discard')st='轮到你出牌';
+  else if(v.myTurn&&v.phase==='respond')st='对方打出 '+tileName(v.last.t);
+  else st='等待对方…';
+  $('statusLbl').textContent=st;
+  // hand
+  const canDiscard=!!o.discard;
+  let h=v.hand.map(t=>tileHTML(t,(canDiscard?'':'dim')+(selT===t?' sel':''))).join('');
+  if(v.newT!=null)h+=tileHTML(v.newT,'new'+(selT===v.newT?' sel':''));
+  $('hand').innerHTML=h;
+  // mark only one selected copy
+  if(selT!=null){const sels=[...$('hand').querySelectorAll('.tile.sel')];sels.slice(0,-1).forEach(e=>e.classList.remove('sel'));}
+  // actions
+  const a=[];
+  if(o.hu)a.push('<button class="hu" data-a="hu">胡</button>');
+  if(o.zimo)a.push('<button class="hu" data-a="zimo">自摸</button>');
+  if(o.gang)a.push('<button class="pg" data-a="gang">杠</button>');
+  if(o.peng)a.push('<button class="pg" data-a="peng">碰</button>');
+  (o.angang||[]).forEach(t=>a.push(`<button class="pg" data-a="angang" data-t="${t}">暗杠 ${tileName(t)}</button>`));
+  (o.jiagang||[]).forEach(t=>a.push(`<button class="pg" data-a="jiagang" data-t="${t}">加杠 ${tileName(t)}</button>`));
+  if(o.pass)a.push('<button data-a="pass">过</button>');
+  if(canDiscard&&selT!=null)a.push(`<button class="hu" data-a="discard" data-t="${selT}">打出 ${tileName(selT)}</button>`);
+  $('acts').innerHTML=a.join('');
+  $('tip').textContent=canDiscard?(selT==null?'点一张牌抬起，再点一次打出':''):(o.pass?'可以选择碰、杠、胡，或者点"过"':'');
+  // result
+  if(v.phase==='over'&&v.result)renderResult(v);else $('over').hidden=true;
+  if(S.mode==='solo')soloBot();
+}
+function renderResult(v){
+  const r=v.result;
+  let title,line;
+  if(r.winner==null){title='流局';line='牌摸完了，本局没有人胡';}
+  else{
+    title=r.mine?(r.zimo?'自摸胡牌':'胡牌'):'对方胡了';
+    line=r.mine?`你赢得 <b>${r.total}</b> 分`:`你输掉 <b>${r.total}</b> 分`;
+  }
+  const handLine=(arr,melds)=>`<div class="line sm">${arr.map(t=>tileHTML(t)).join('')}<span class="melds">${melds.map(m=>meldHTML(m,'')).join('')}</span></div>`;
+  const o=v.opts||{};
+  const btn=o.next?'<button class="btn go" data-a="next">下一局</button>':`<button class="btn" disabled>${v.oppReady?'正在开局…':'等待对方准备…'}</button>`;
+  $('overBox').innerHTML=`<h2>${title}</h2>
+    ${r.fans?`<div class="fans">${r.fans.map(f=>`<span class="fan">${f[0]} ${f[1]}</span>`).join('')}</div>`:''}
+    <div class="total">${line}</div>
+    <div class="total" style="font-size:.85rem;color:var(--muted)">比分：你 ${v.scores[0]} · ${esc(v.names[1])} ${v.scores[1]}</div>
+    <div class="hands"><div><div class="lbl">你的牌</div>${handLine(r.hands[0],r.melds[0])}</div><div><div class="lbl">${esc(v.names[1])} 的牌</div>${handLine(r.hands[1],r.melds[1])}</div></div>
+    <div class="row">${btn}<button class="btn" data-a="leave">离开</button></div>`;
+  $('over').hidden=false;
+}
+
+/* =============== SOUND (tiny synthesized clicks) =============== */
+let actx=null;
+function unlock(){try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}catch(e){}}
+['pointerdown','touchend','click'].forEach(ev=>document.addEventListener(ev,unlock,{passive:true}));
+function click(n){
+  if(!actx)return;
+  try{for(let k=0;k<n;k++){const t=actx.currentTime+k*.07,o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.setValueAtTime(1800,t);o.frequency.exponentialRampToValueAtTime(600,t+.06);g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.09);o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.1);}}catch(e){}
+  try{if(window.Android)Android.vibrate(15);}catch(e){}
+}
+
+/* =============== EVENTS =============== */
+$('hand').addEventListener('click',e=>{
+  const el=e.target.closest('.tile');if(!el)return;
+  const v=currentView();if(!v||!v.opts||!v.opts.discard)return;
+  const t=+el.dataset.t;
+  if(selT===t){selT=null;sendAct({type:'discard',t});return;}
+  selT=t;refresh();
+});
+function onAction(e){
+  const b=e.target.closest('button[data-a]');if(!b)return;
+  const a=b.dataset.a;
+  if(a==='leave'){leaveTable();return;}
+  const m={type:a};if(b.dataset.t!=null)m.t=+b.dataset.t;
+  if(a==='discard')selT=null;
+  sendAct(m);
+}
+$('acts').addEventListener('click',onAction);
+$('overBox').addEventListener('click',onAction);
+function leaveTable(){
+  if(S&&S.mode!=='solo')store.del('mj-sess');
+  endSession();show('lobby');renderLobby();
+}
+$('leaveBtn').onclick=leaveTable;
+$('cancelBtn').onclick=leaveTable;
+$('createBtn').onclick=()=>{store.set('mj-name',myName());createRoom();};
+$('joinBtn').onclick=()=>{$('lobbyErr').textContent='';store.set('mj-name',myName());joinRoom($('codeIn').value);};
+$('codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinBtn').click();});
+$('soloBtn').onclick=()=>{store.set('mj-name',myName());startSolo();};
+$('resumeBtn').onclick=resume;
+$('copyBtn').onclick=async()=>{
+  const code=$('waitCode').textContent;
+  try{await navigator.clipboard.writeText(code);toast('已复制房间号');}
+  catch(e){const r=document.createRange();r.selectNodeContents($('waitCode'));const s=getSelection();s.removeAllRanges();s.addRange(r);toast('长按房间号即可复制');}
+};
+window.onAndroidBack=()=>{if(!$('lobby').hidden)return false;leaveTable();return true;};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&S.net&&!S.net.up&&!S.net.ws)S.net._open(null,null);});
+
+function renderLobby(){
+  const s=store.get('mj-sess',null);
+  const fresh=s&&Date.now()-s.at<6*3600e3;
+  $('resumeCard').hidden=!fresh;
+  if(fresh)$('resumeBtn').textContent=`回到房间 ${s.code}（${s.mode==='host'?'房主':'加入者'}）`;
+}
+$('nameIn').value=store.get('mj-name','');
+renderLobby();
+</script>
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+</body>
+</html>

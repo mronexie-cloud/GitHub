@@ -1,0 +1,38 @@
+name: Online mahjong test
+
+on:
+  push:
+    paths:
+      - "mahjong/**"
+      - "tests/**"
+      - ".github/workflows/e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm i --no-save playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: Two players online
+        id: play
+        run: node tests/mj-e2e.js mahjong/src/main/assets/index.html shots 2>&1 | tee e2e.log
+      - name: Publish screenshots
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp e2e.log shots/ || true
+          cd shots && zip -q ../e2e.zip * || true
+          cd ..
+          gh release delete e2e --yes --cleanup-tag || true
+          gh release create e2e e2e.zip --title "联机测试截图" --notes "自动联机测试的截图和日志" --latest=false --prerelease

@@ -1,16 +1,17 @@
-# 游戏安卓 App：五子棋 + 象棋 + 三国身份局
+# 游戏 App：二人麻将 + 五子棋 + 象棋 + 三国身份局
 
-这个仓库里有三个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
+这个仓库里有四个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
 
 | App | 模块目录 | 下载 |
 | --- | --- | --- |
 | 五子棋 | `app/` | [gomoku.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/gomoku.apk) |
 | 象棋 | `xiangqi/` | [xiangqi.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/xiangqi.apk) |
 | 三国身份局 | `sanguo/` | [sanguo.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/sanguo.apk) |
+| 二人麻将（联网） | `mahjong/` | [mahjong.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/mahjong.apk) |
 
 **苹果手机版：** 用 Safari 打开 https://mronexie-cloud.github.io/GitHub/ ，选游戏后通过"分享 → 添加到主屏幕"安装。苹果版文件在 `ios/` 目录，和安卓版互不影响。
 
-每次推送到 main 分支，GitHub Actions 都会自动编译这三个 APK，并更新上面的下载链接。
+每次推送到 main 分支，GitHub Actions 都会自动编译这些 APK，并更新上面的下载链接。
 
 象棋 App 支持完整走法规则、人机对战（电脑会往后计算 4 步）和双人对战，被将军时手机会震动，同样会自动保存棋局。
 
@@ -56,3 +57,7 @@
 
 - 生成的是 debug 版 APK，自己安装、分享给朋友都没问题。
 - 如果要上架应用商店，需要另外生成签名的 release 版本。
+
+## 二人麻将联网说明
+
+房主点"创建房间"得到 6 位房间号，好友输入房间号加入。消息通过公共 MQTT 服务器中转（房间号第一位表示线路：1 = broker.emqx.io，2 = broker.hivemq.com，3 = test.mosquitto.org），不需要自己搭服务器。房主的手机负责发牌和判定规则，所以房主离开房间后本局结束。`tests/mj-e2e.js` 会在 GitHub Actions 里用两个浏览器自动测试联机。
