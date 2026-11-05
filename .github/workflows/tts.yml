@@ -1,0 +1,36 @@
+name: Build card voices
+
+on:
+  push:
+    paths:
+      - "tts/**"
+      - ".github/workflows/tts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Synthesize phrases
+        run: |
+          pip install edge-tts
+          mkdir -p out
+          while IFS='|' read -r key text; do
+            [ -z "$key" ] && continue
+            edge-tts --voice zh-CN-YunjianNeural --rate=+15% --text "$text" --write-media "out/$key.mp3"
+          done < tts/phrases.txt
+          ls -la out
+          cd out && zip -q ../voices.zip *.mp3
+      - name: Publish voices
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete voices --yes --cleanup-tag || true
+          gh release create voices voices.zip --title "Card voices" --notes "Synthesized card-name callouts" --latest=false
