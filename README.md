@@ -1,15 +1,18 @@
-# 棋类安卓 App：五子棋 + 象棋
+# 游戏安卓 App：五子棋 + 象棋 + 三国身份局
 
-这个仓库里有两个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
+这个仓库里有三个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
 
 | App | 模块目录 | 下载 |
 | --- | --- | --- |
 | 五子棋 | `app/` | [gomoku.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/gomoku.apk) |
 | 象棋 | `xiangqi/` | [xiangqi.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/xiangqi.apk) |
+| 三国身份局 | `sanguo/` | [sanguo.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/sanguo.apk) |
 
-每次推送到 main 分支，GitHub Actions 都会自动编译这两个 APK，并更新上面的下载链接。
+每次推送到 main 分支，GitHub Actions 都会自动编译这三个 APK，并更新上面的下载链接。
 
 象棋 App 支持完整走法规则、人机对战（电脑会往后计算 4 步）和双人对战，被将军时手机会震动，同样会自动保存棋局。
+
+三国身份局是单机五人局（你 + 4 名电脑），开局可以挑选身份和武将，出牌时有特效和牌名语音。牌名语音由 `tts/` 目录里的工作流用中文神经网络语音合成，已经嵌在游戏页面里。
 
 五子棋 App 相比网页版多了几项功能：
 
