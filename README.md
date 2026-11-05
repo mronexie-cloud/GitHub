@@ -1,8 +1,17 @@
-# 五子棋 安卓 App
+# 棋类安卓 App：五子棋 + 象棋
 
-这是一个原生安卓工程，用一个全屏 WebView 加载五子棋游戏，不需要联网也能玩。
+这个仓库里有两个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
 
-和网页版相比，App 版多了几项功能：
+| App | 模块目录 | 下载 |
+| --- | --- | --- |
+| 五子棋 | `app/` | [gomoku.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/gomoku.apk) |
+| 象棋 | `xiangqi/` | [xiangqi.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/xiangqi.apk) |
+
+每次推送到 main 分支，GitHub Actions 都会自动编译这两个 APK，并更新上面的下载链接。
+
+象棋 App 支持完整走法规则、人机对战（电脑会往后计算 4 步）和双人对战，被将军时手机会震动，同样会自动保存棋局。
+
+五子棋 App 相比网页版多了几项功能：
 
 - 桌面图标，竖屏全屏运行
 - 落子时轻微震动，分出胜负时长震一下
@@ -32,7 +41,7 @@
 
 ## 修改游戏
 
-游戏本体只有一个文件：`app/src/main/assets/index.html`。改完重新打包就能生效。
+五子棋本体是 `app/src/main/assets/index.html`，象棋是 `xiangqi/src/main/assets/index.html`。改完重新打包就能生效。
 
 - 应用名称：`app/src/main/res/values/strings.xml`
 - 应用图标：`app/src/main/res/mipmap-*/ic_launcher.png`

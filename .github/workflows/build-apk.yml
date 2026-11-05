@@ -23,13 +23,16 @@ jobs:
           ./gradlew assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: gomoku-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            xiangqi/build/outputs/apk/debug/xiangqi-debug.apk
       - name: Publish APK as release
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk gomoku.apk
+          cp xiangqi/build/outputs/apk/debug/xiangqi-debug.apk xiangqi.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest gomoku.apk --title "五子棋 App" --notes "手机上点 gomoku.apk 下载安装。由 GitHub Actions 自动编译。" --latest
+          gh release create latest gomoku.apk xiangqi.apk --title "棋类 App" --notes "gomoku.apk 是五子棋，xiangqi.apk 是象棋。手机上点文件名即可下载安装，由 GitHub Actions 自动编译。" --latest
