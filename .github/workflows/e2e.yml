@@ -25,7 +25,9 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Two players online
         id: play
-        run: node tests/mj-e2e.js mahjong/src/main/assets/index.html shots 2>&1 | tee e2e.log
+        run: |
+          set -o pipefail
+          node tests/mj-e2e.js mahjong/src/main/assets/index.html shots 2>&1 | tee e2e.log
       - name: Publish screenshots
         if: always()
         env:

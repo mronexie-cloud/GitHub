@@ -436,7 +436,7 @@ class Mqtt{
       if(this.ws!==ws)return;
       const was=this.up;this.up=false;clearInterval(this.ping);
       if(!was&&onFail){onFail(new Error('closed'));onFail=null;onUp=null;}
-      if(was)this.onState&&this.onState(false);
+      if(was)try{this.onState&&this.onState(false);}catch(e){}
       this.ws=null;
       if(!this.closed&&was!==null){const wait=Math.min(8000,1000*(++this.tries));setTimeout(()=>{if(!this.closed&&!this.ws)this._open(null,null);},wait);}
     };
@@ -448,13 +448,14 @@ class Mqtt{
       this.up=true;this.tries=0;clearInterval(this.ping);
       this.ping=setInterval(()=>this._send(new Uint8Array([0xC0,0])),20000);
       for(const t of this.subs)this._sub(t);
-      this.onState&&this.onState(true);onUp&&onUp();
+      onUp&&onUp();
+      try{this.onState&&this.onState(true);}catch(e){}
     }else if(type===3){ // PUBLISH
       const qos=(head>>1)&3,tl=(body[0]<<8)|body[1];let p=2+tl;
       const topic=dec.decode(body.subarray(2,p));
       if(qos>0){const id=[body[p],body[p+1]];p+=2;if(qos===1)this._send(new Uint8Array([0x40,2,...id]));}
       const payload=dec.decode(body.subarray(p));
-      if(payload)try{this.onMsg(topic,JSON.parse(payload));}catch(e){}
+      if(payload){let m;try{m=JSON.parse(payload);}catch(e){return;}try{this.onMsg(topic,m);}catch(e){console.error(e);}}
     }
   }
   _send(u8){try{if(this.ws&&this.ws.readyState===1)this.ws.send(u8);}catch(e){}}
@@ -514,7 +515,7 @@ async function createRoom(){
   S.hb=setInterval(hostHeartbeat,4000);
 }
 function hostBroadcast(){
-  if(!S||S.mode!=='host'||!S.G.guestId)return;
+  if(!S||S.mode!=='host'||!S.G||!S.G.guestId||!S.net)return;
   S.net.publish(TOPIC(S.code)+'/h',{t:'state',v:viewFor(S.G,1)},true);
 }
 function hostHeartbeat(){
@@ -577,7 +578,7 @@ function onNetMsg(topic,m){
   if(S.mode==='host'&&topic===TOPIC(S.code)+'/g')hostOnMsg(m);
   else if(S.mode==='guest'&&topic===TOPIC(S.code)+'/h')guestOnMsg(m);
 }
-function onNetState(up){if(S)S.netUp=up;updateNet();if(up&&S&&S.mode==='host')hostBroadcast();}
+function onNetState(up){if(!S)return;S.netUp=up;updateNet();if(up&&S.mode==='host')hostBroadcast();}
 function updateNet(){
   const d=$('netDot');if(!d||!S)return;
   if(S.mode==='solo'){d.className='net ok';return;}
