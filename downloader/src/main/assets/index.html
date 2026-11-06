@@ -167,6 +167,7 @@ const TT={
   close:['关闭','Close'],
   note:['请只下载你有权保存的内容，尊重原作者的版权。','Only download content you have the right to save, and respect creators’ copyright.'],
   noFile:['下载完成但没有找到文件','Finished but no file was produced'],
+  fetchCookie:['正在打开 {p} 获取 Cookie，几秒后自动重试…','Opening {p} to get cookies, retrying in a few seconds…'],
 };
 const t=k=>(TT[k]||[k,k])[ZH?0:1];
 const PLAT={douyin:'抖音',tiktok:'TikTok',xhs:ZH?'小红书':'Xiaohongshu',x:'X',youtube:'YouTube',ig:'Instagram',bili:ZH?'哔哩哔哩':'Bilibili',fb:'Facebook',other:ZH?'其他网站':'Other'};
@@ -197,10 +198,14 @@ window.onEngine=(st,ver)=>{
 if(A){try{const e=JSON.parse(A.engine());window.onEngine(e.state,e.version);}catch(e){}}
 
 // ---------- analyze ----------
-let curReq=null,result=null,quality='best',autoMode=false,lastText='',retryPlatform=null;
+let curReq=null,result=null,quality='best',autoMode=false,lastText='',retryPlatform=null,retryAuto=false;
+// platforms where simply opening the website once gives the cookies the engine needs
+const AUTO_COOKIE=['douyin','tiktok','xhs','youtube','bili'];
+let autoTried={};
 function analyze(text,auto){
   text=(text||$('input').value).trim();
   if(!text){$('input').focus();return;}
+  if(text!==lastText)autoTried={};
   lastText=text;autoMode=!!auto;$('clip').hidden=true;
   curReq='r'+Date.now();result=null;
   const c=$('resCard');c.hidden=false;
@@ -209,6 +214,11 @@ function analyze(text,auto){
 }
 window.onAnalyze=(id,r)=>{
   if(id!==curReq)return;
+  if(!r.ok&&r.needCookies&&AUTO_COOKIE.includes(r.platform)&&!autoTried[r.platform]&&A){
+    autoTried[r.platform]=true;retryPlatform=r.platform;retryAuto=autoMode;
+    $('resCard').innerHTML=`<div class="busy"><span class="spin"></span>${esc(t('fetchCookie').replace('{p}',PLAT[r.platform]))}</div>`;
+    A.login(r.platform,true);return;
+  }
   result=r;quality='best';renderResult();
   if(autoMode&&r.ok){startDownload();autoMode=false;}
 };
@@ -243,7 +253,7 @@ $('resCard').addEventListener('click',e=>{
 });
 window.onLogin=p=>{
   renderLogins();
-  if(retryPlatform&&p===retryPlatform&&lastText){retryPlatform=null;analyze(lastText);}
+  if(retryPlatform&&p===retryPlatform&&lastText){retryPlatform=null;analyze(lastText,retryAuto);retryAuto=false;}
 };
 
 // ---------- tasks ----------

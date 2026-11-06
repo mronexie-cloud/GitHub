@@ -15,7 +15,7 @@ run() {
   name=$1; url=$2; want=$3
   adb shell am start -n com.zlc.vdl/.MainActivity -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'$url'" --ez autostart true
   start=$(date +%s); n=0
-  for i in $(seq 1 48); do
+  for i in $(seq 1 30); do
     sleep 5
     n=$(count)
     [ "$n" -ge "$want" ] && break
@@ -27,6 +27,10 @@ run instagram "https://www.instagram.com/reel/Chunk8-jurw/" 1
 run x "https://twitter.com/captainamerica/status/719944021058060289" 2
 run facebook "https://www.facebook.com/watch/?v=647537299265662" 3
 run douyin "7.89 复制打开抖音，看看 https://www.douyin.com/video/6961737553342991651 复制此链接" 4
+n=$(count); run youtube "https://www.youtube.com/watch?v=jNQXAC9IVRw" $((n+1))
+n=$(count); run bilibili "https://www.bilibili.com/video/BV1bK411W797" $((n+1))
+n=$(count); run tiktok "https://www.tiktok.com/@barudakhb_/video/6984138651336838402" $((n+1))
+n=$(count); run xiaohongshu "https://www.xiaohongshu.com/explore/6411cf99000000001300b6d9" $((n+1))
 adb shell content query --uri content://media/external/video/media --projection _display_name:_size:relative_path > $OUT/gallery.txt 2>&1
 adb logcat -d > $OUT/logcat.txt
 grep -E "FATAL EXCEPTION|AndroidRuntime|com.zlc.vdl" $OUT/logcat.txt | head -60 > $OUT/crash.txt

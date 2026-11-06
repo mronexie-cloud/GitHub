@@ -67,6 +67,7 @@ public class LoginActivity extends Activity {
         root.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(root);
         web.loadUrl(home);
+        if (auto) web.postDelayed(this::close, 15000); // never get stuck if the page keeps loading
     }
 
     private void close() {

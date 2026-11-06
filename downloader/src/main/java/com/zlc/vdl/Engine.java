@@ -238,7 +238,8 @@ public class Engine {
         String low = ytErr == null ? "" : ytErr.toLowerCase();
         boolean cookies = low.contains("cookie") || low.contains("sign in") || low.contains("log in") || low.contains("login")
                 || low.contains("412") || low.contains("not a bot") || low.contains("rate-limit") || low.contains("private");
-        e.put("needCookies", cookies && !platform.equals("other"));
+        boolean visitHelps = platform.equals("douyin") || platform.equals("tiktok") || platform.equals("xhs") || platform.equals("youtube") || platform.equals("bili");
+        e.put("needCookies", (cookies || visitHelps) && !platform.equals("other"));
         e.put("url", url);
         return e;
     }
