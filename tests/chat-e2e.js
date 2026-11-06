@@ -135,6 +135,8 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
     log('A received video clip in', Date.now() - tClip, 'ms');
     const dur = await A.evaluate(() => new Promise(res => { const v = document.querySelector('.msg:not(.me) video.media'); if (v.readyState >= 1) return res(v.duration); v.onloadedmetadata = () => res(v.duration); v.onerror = () => res('error'); setTimeout(() => res('timeout'), 8000); }));
     log('received clip duration:', dur); check(typeof dur === 'number' && dur > 2, 'received video plays');
+    const fit = await A.evaluate(async () => { const v = document.querySelector('.msg:not(.me) video.media'); try { await v.requestFullscreen(); } catch (e) { return 'no fullscreen: ' + e.message; } await new Promise(r => setTimeout(r, 400)); const f = getComputedStyle(v).objectFit; await document.exitFullscreen(); return f; });
+    log('full-screen video fit:', fit); check(fit === 'contain', 'full-screen video shows the whole picture');
     const big = await B.evaluate(async () => { const n = 6 * 1048576, a = new Uint8Array(n); for (let i = 0; i < n; i += 65536) crypto.getRandomValues(a.subarray(i, Math.min(n, i + 65536))); const t0 = Date.now(); await sendMedia(new File([a], 'big.webm', { type: 'video/webm' }), 'vid'); return Date.now() - t0; });
     log('B finished sending a 6 MB video in', big, 'ms');
     const tBig = Date.now();
