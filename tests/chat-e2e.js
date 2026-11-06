@@ -122,6 +122,32 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
     check(await A.isVisible('#chat'), 'still in room after cancelling');
     check(await A.evaluate(() => HIST_KEEP) === 500, 'keeps 500 messages');
     check(await A.evaluate(() => window.onAndroidBack()) === 'bg', 'Android back keeps the room open');
+    // ---- photos and videos ----
+    const tPhoto = Date.now();
+    await A.setInputFiles('#pickImg', 'tests/fixtures/photo.png');
+    for (const [k, p] of [['B', B], ['D', D]]) {
+      await p.waitForFunction(() => document.querySelectorAll('.msg:not(.me) img.media').length >= 1, null, { timeout: 60000 });
+      log(k, 'received photo in', Date.now() - tPhoto, 'ms');
+    }
+    const tClip = Date.now();
+    await C.setInputFiles('#pickVid', 'tests/fixtures/clip.webm');
+    await A.waitForFunction(() => document.querySelectorAll('.msg:not(.me) video.media').length >= 1, null, { timeout: 60000 });
+    log('A received video clip in', Date.now() - tClip, 'ms');
+    const dur = await A.evaluate(() => new Promise(res => { const v = document.querySelector('.msg:not(.me) video.media'); if (v.readyState >= 1) return res(v.duration); v.onloadedmetadata = () => res(v.duration); v.onerror = () => res('error'); setTimeout(() => res('timeout'), 8000); }));
+    log('received clip duration:', dur); check(typeof dur === 'number' && dur > 2, 'received video plays');
+    const big = await B.evaluate(async () => { const n = 6 * 1048576, a = new Uint8Array(n); for (let i = 0; i < n; i += 65536) crypto.getRandomValues(a.subarray(i, Math.min(n, i + 65536))); const t0 = Date.now(); await sendMedia(new File([a], 'big.webm', { type: 'video/webm' }), 'vid'); return Date.now() - t0; });
+    log('B finished sending a 6 MB video in', big, 'ms');
+    const tBig = Date.now();
+    try {
+      await E.waitForFunction(() => document.querySelectorAll('.msg:not(.me) video.media').length >= 2, null, { timeout: 180000 });
+      log('E got the 6 MB video', Date.now() - tBig, 'ms after B finished sending');
+    } catch (e) { check(false, '6 MB video received'); log('E state', await E.evaluate(() => JSON.stringify([...MS.values()].map(s => ({ st: s.status, got: s.got, n: s.n }))))); }
+    const G = await open('G', 'Lena', 'de', 'de-DE');
+    const tG = Date.now();
+    try {
+      await G.waitForFunction(() => document.querySelectorAll('img.media').length >= 1, null, { timeout: 60000 });
+      log('G (late joiner) loaded the earlier photo in', Date.now() - tG, 'ms');
+    } catch (e) { check(false, 'late joiner loads earlier photo'); }
     // a message A sent must show as delivered (not "sending") on A's own screen
     const pend = await A.$$eval('.msg.me .time', e => e.map(x => x.textContent));
     log('A own message status:', JSON.stringify(pend)); check(pend.every(t => !/发送中|Sending/.test(t)), 'own message delivered');

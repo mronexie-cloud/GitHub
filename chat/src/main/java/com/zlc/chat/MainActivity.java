@@ -19,6 +19,10 @@ import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.view.View;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.widget.FrameLayout;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -36,6 +40,10 @@ public class MainActivity extends Activity {
     static final String CH_MSG_SILENT = "messages_silent";
     private WebView web;
     private int notifSeq = 0;
+    private static final int PICK_FILE = 42;
+    private ValueCallback<Uri[]> fileCallback;
+    private View fullView;
+    private WebChromeClient.CustomViewCallback fullCallback;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -48,6 +56,37 @@ public class MainActivity extends Activity {
         s.setTextZoom(100);
         s.setMediaPlaybackRequiresUserGesture(false);
         web.setWebViewClient(new WebViewClient());
+        web.setWebChromeClient(new WebChromeClient() {
+            // lets <input type="file"> open the phone's photo / video picker
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileCallback != null) fileCallback.onReceiveValue(null);
+                fileCallback = callback;
+                try {
+                    Intent i = params.createIntent();
+                    if (params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    startActivityForResult(i, PICK_FILE);
+                } catch (Exception e) {
+                    fileCallback = null;
+                    return false;
+                }
+                return true;
+            }
+
+            // full-screen video playback
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                if (fullView != null) { callback.onCustomViewHidden(); return; }
+                fullView = view;
+                fullCallback = callback;
+                ((FrameLayout) getWindow().getDecorView()).addView(view, new FrameLayout.LayoutParams(-1, -1));
+            }
+
+            @Override
+            public void onHideCustomView() {
+                exitFullscreen();
+            }
+        });
         web.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new Bridge(this), "Android");
         setContentView(web);
@@ -74,6 +113,32 @@ public class MainActivity extends Activity {
         NotificationChannel keep = new NotificationChannel(KeepAliveService.CHANNEL, "保持在线 Stay online", NotificationManager.IMPORTANCE_LOW);
         keep.setShowBadge(false);
         nm.createNotificationChannel(keep);
+    }
+
+    private void exitFullscreen() {
+        if (fullView == null) return;
+        ((FrameLayout) getWindow().getDecorView()).removeView(fullView);
+        fullView = null;
+        if (fullCallback != null) fullCallback.onCustomViewHidden();
+        fullCallback = null;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != PICK_FILE || fileCallback == null) return;
+        Uri[] result = null;
+        if (resultCode == RESULT_OK && data != null) {
+            if (data.getClipData() != null) {
+                int n = data.getClipData().getItemCount();
+                result = new Uri[n];
+                for (int i = 0; i < n; i++) result[i] = data.getClipData().getItemAt(i).getUri();
+            } else if (data.getData() != null) {
+                result = new Uri[]{data.getData()};
+            }
+        }
+        fileCallback.onReceiveValue(result);
+        fileCallback = null;
     }
 
     @Override
@@ -104,6 +169,7 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (fullView != null) { exitFullscreen(); return; }
         web.evaluateJavascript("window.onAndroidBack ? window.onAndroidBack() : false", v -> {
             if ("true".equals(v)) return;
             if ("\"bg\"".equals(v)) { moveTaskToBack(true); return; }

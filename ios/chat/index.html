@@ -127,6 +127,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .row2{display:flex;gap:8px}.row2>*{flex:1}
 .ghost{padding:12px;border-radius:11px;border:1px solid var(--line);background:none;font-weight:600}
 .danger{color:var(--warn)}
+.compose{position:relative}
+.attach{width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--accent);display:grid;place-items:center;flex:none;padding:0}
+.attach svg{width:28px;height:28px}
+.amenu{position:absolute;bottom:calc(100% + 6px);inset-inline-start:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;flex-direction:column;padding:6px;z-index:5;min-width:150px}
+.amenu button{display:flex;align-items:center;gap:12px;padding:11px 14px;border:0;background:none;font-weight:600;border-radius:9px;text-align:start;color:var(--ink)}
+.amenu button svg{width:22px;height:22px;color:var(--accent);flex:none}
+.bub.mb{padding:4px;overflow:hidden}
+.media{display:block;width:min(240px,62vw);max-width:100%;height:auto;max-height:340px;border-radius:12px;background:#000;object-fit:cover}
+img.media{cursor:zoom-in}
+.mph{position:relative;display:grid;place-items:center;width:min(240px,62vw);max-width:100%;max-height:340px;min-height:120px;border:0;border-radius:12px;background:#2a3330;overflow:hidden;padding:0;color:#fff}
+.mph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(6px) brightness(.7);transform:scale(1.15)}
+.mph span{position:relative;font-size:.85rem;font-weight:700;background:rgba(0,0,0,.5);padding:7px 13px;border-radius:999px}
+.mprog{font-size:.76rem;padding:5px 8px 3px;opacity:.9}
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:50;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);background:rgba(20,28,25,.9);color:#fff;padding:8px 14px;border-radius:999px;font-size:.86rem;z-index:40;pointer-events:none;max-width:88%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion:reduce){.switch::after{transition:none}}
 </style>
@@ -155,6 +170,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </header>
   <div class="list" id="list"></div>
   <div class="compose">
+    <button class="attach" id="attachBtn" aria-label="photo or video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v9M7.5 12h9"/></svg></button>
+    <div class="amenu" id="attachMenu" hidden>
+      <button id="pickImgBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5.5-5 4 3.5 2.5-2 4 3.5"/></svg><span id="t_photo"></span></button>
+      <button id="pickVidBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3z"/></svg><span id="t_video"></span></button>
+    </div>
+    <input type="file" id="pickImg" accept="image/*" multiple hidden>
+    <input type="file" id="pickVid" accept="video/*" hidden>
     <textarea id="textIn" dir="auto" rows="1" maxlength="1000" enterkeyhint="send"></textarea>
     <button class="send" id="sendBtn" aria-label="send" disabled><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.4-7.5c.8-.4.8-1.5 0-1.8L3.4 3.6c-.7-.3-1.4.3-1.3 1l1 6.1 9.4 1.3-9.4 1.3-1 6.1c-.1.7.6 1.3 1.3 1z"/></svg></button>
   </div>
@@ -182,6 +204,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <button class="ghost" data-close id="t_close2"></button>
 </div></div>
 <div class="toast" id="toast" hidden></div>
+<div class="viewer" id="viewer" hidden><img id="viewerImg" alt=""></div>
 
 <script>
 'use strict';
@@ -364,6 +387,28 @@ const MORETXT={
   de:['Ton für neue Nachrichten','Im Raum „{n}“','Nachrichten werden im Hintergrund empfangen. Zum Öffnen tippen.','Hintergrundbetrieb erlauben','Manche Handys beenden Apps im Hintergrund. Wenn bei ausgeschaltetem Bildschirm keine Nachrichten mehr ankommen, erlaube dieser App den Hintergrundbetrieb.','Diesen Raum verlassen? Du erhältst dann keine Nachrichten mehr aus ihm.','Abbrechen'],
   pt:['Som de novas mensagens','Na sala “{n}”','Recebendo mensagens em segundo plano. Toque para abrir.','Permitir segundo plano','Alguns celulares fecham apps em segundo plano. Se as mensagens pararem de chegar com a tela desligada, permita que este app funcione em segundo plano.','Sair desta sala? Você deixará de receber as mensagens dela.','Cancelar']};
 for(const[k,v]of Object.entries(MORETXT))if(TXT[k])Object.assign(TXT[k],{sound:v[0],bgTitle:v[1],bgText:v[2],battery:v[3],battTip:v[4],leaveQ:v[5],cancel:v[6]});
+// photo / video labels
+const MEDIATXT={
+  'zh-CN':['照片','视频','发送中 {n}%','接收中 {n}%','点击加载','加载中…','加载失败，点击重试','视频太大，最大 {n} MB，请剪短后再发'],
+  'zh-TW':['照片','影片','傳送中 {n}%','接收中 {n}%','點擊載入','載入中…','載入失敗，點擊重試','影片太大，最大 {n} MB，請剪短後再傳'],
+  en:['Photo','Video','Sending {n}%','Receiving {n}%','Tap to load','Loading…','Failed to load, tap to retry','Video too large (max {n} MB). Trim it and try again.'],
+  ms:['Foto','Video','Menghantar {n}%','Menerima {n}%','Ketik untuk muat','Memuatkan…','Gagal dimuatkan, ketik untuk cuba lagi','Video terlalu besar (maks {n} MB). Pendekkan dan cuba lagi.'],
+  id:['Foto','Video','Mengirim {n}%','Menerima {n}%','Ketuk untuk memuat','Memuat…','Gagal memuat, ketuk untuk coba lagi','Video terlalu besar (maks {n} MB). Potong lalu coba lagi.'],
+  ta:['புகைப்படம்','வீடியோ','அனுப்புகிறது {n}%','பெறுகிறது {n}%','ஏற்ற தட்டவும்','ஏற்றுகிறது…','ஏற்ற முடியவில்லை, மீண்டும் முயல தட்டவும்','வீடியோ மிகப் பெரியது (அதிகபட்சம் {n} MB). சுருக்கி மீண்டும் அனுப்பவும்.'],
+  th:['รูปภาพ','วิดีโอ','กำลังส่ง {n}%','กำลังรับ {n}%','แตะเพื่อโหลด','กำลังโหลด…','โหลดไม่สำเร็จ แตะเพื่อลองอีกครั้ง','วิดีโอใหญ่เกินไป (สูงสุด {n} MB) โปรดตัดให้สั้นลงแล้วลองอีกครั้ง'],
+  vi:['Ảnh','Video','Đang gửi {n}%','Đang nhận {n}%','Chạm để tải','Đang tải…','Tải thất bại, chạm để thử lại','Video quá lớn (tối đa {n} MB). Hãy cắt ngắn rồi gửi lại.'],
+  tl:['Larawan','Video','Ipinapadala {n}%','Tinatanggap {n}%','I-tap para i-load','Nilo-load…','Hindi na-load, i-tap para subukan muli','Masyadong malaki ang video (max {n} MB). Paikliin at subukan muli.'],
+  ja:['写真','動画','送信中 {n}%','受信中 {n}%','タップして読み込む','読み込み中…','読み込みに失敗しました。タップして再試行','動画が大きすぎます（最大 {n} MB）。短くしてから送ってください。'],
+  ko:['사진','동영상','보내는 중 {n}%','받는 중 {n}%','탭하여 불러오기','불러오는 중…','불러오지 못했습니다. 탭하여 다시 시도','동영상이 너무 큽니다(최대 {n}MB). 잘라서 다시 보내 주세요.'],
+  hi:['फ़ोटो','वीडियो','भेजा जा रहा है {n}%','मिल रहा है {n}%','लोड करने के लिए टैप करें','लोड हो रहा है…','लोड नहीं हुआ, फिर से कोशिश के लिए टैप करें','वीडियो बहुत बड़ा है (अधिकतम {n} MB)। छोटा करके फिर भेजें।'],
+  ne:['फोटो','भिडियो','पठाउँदै {n}%','प्राप्त गर्दै {n}%','लोड गर्न थिच्नुहोस्','लोड हुँदैछ…','लोड भएन, फेरि प्रयास गर्न थिच्नुहोस्','भिडियो धेरै ठूलो छ (बढीमा {n} MB)। छोटो बनाएर फेरि पठाउनुहोस्।'],
+  ar:['صورة','فيديو','جارٍ الإرسال {n}%','جارٍ الاستلام {n}%','انقر للتحميل','جارٍ التحميل…','تعذّر التحميل، انقر لإعادة المحاولة','الفيديو كبير جدًا (الحد الأقصى {n} ميغابايت). قصّه ثم أعد الإرسال.'],
+  ru:['Фото','Видео','Отправка {n}%','Получение {n}%','Нажмите, чтобы загрузить','Загрузка…','Не удалось загрузить, нажмите, чтобы повторить','Видео слишком большое (максимум {n} МБ). Обрежьте его и отправьте снова.'],
+  es:['Foto','Vídeo','Enviando {n} %','Recibiendo {n} %','Toca para cargar','Cargando…','No se pudo cargar, toca para reintentar','El vídeo es demasiado grande (máx. {n} MB). Recórtalo y vuelve a intentarlo.'],
+  fr:['Photo','Vidéo','Envoi {n} %','Réception {n} %','Touchez pour charger','Chargement…','Échec du chargement, touchez pour réessayer','Vidéo trop lourde (max. {n} Mo). Raccourcissez-la puis réessayez.'],
+  de:['Foto','Video','Wird gesendet {n} %','Wird empfangen {n} %','Zum Laden tippen','Wird geladen…','Laden fehlgeschlagen, tippen zum Wiederholen','Video zu groß (max. {n} MB). Bitte kürzen und erneut senden.'],
+  pt:['Foto','Vídeo','Enviando {n}%','Recebendo {n}%','Toque para carregar','Carregando…','Falha ao carregar, toque para tentar de novo','Vídeo grande demais (máx. {n} MB). Corte e tente de novo.']};
+for(const[k,v]of Object.entries(MEDIATXT))if(TXT[k])Object.assign(TXT[k],{photo:v[0],video:v[1],sendingPct:v[2],recvPct:v[3],tapLoad:v[4],loading:v[5],mediaFail:v[6],tooBig:v[7]});
 let myLang=store.get('chat-lang',null)||guessLang();
 const T=()=>Object.assign({},TXT.en,TXT[myLang]||{});
 const fmt=(s,n)=>String(s).replace('{n}',n);
@@ -564,6 +609,7 @@ class Net{
   publish(t,o,r){this.cs.forEach(c=>c.publish(t,o,r));}
   close(){this.cs.forEach(c=>c.close());}
   kick(){this.cs.forEach(c=>{if(!c.up&&!c.ws&&!c.closed)c._open(null,null);});}
+  async drain(){for(let k=0;k<400;k++){if(this.cs.every(c=>!c.ws||c.ws.bufferedAmount<768*1024))return;await sleep(25);}}
 }
 
 /* ================= ROOM SESSION ================= */
@@ -582,7 +628,7 @@ async function enterRoom(room,nick){
   render(true);updateHeader();
   const sess=R;
   R.net=new Net((t,m)=>{if(R===sess)onNet(t,m);},()=>{if(R===sess){updateHeader();if(R.net.up)hello();}});
-  R.net.subscribe(R.topic+'/m');R.net.subscribe(R.topic+'/h');R.net.subscribe(R.topic+'/p');
+  R.net.subscribe(R.topic+'/m');R.net.subscribe(R.topic+'/h');R.net.subscribe(R.topic+'/p');R.net.subscribe(R.topic+'/f');
   R.net.start().catch(()=>{});
   R.hb=setInterval(()=>{if(R===sess){presence('here');pruneMembers();}},20000);
   R.tick=setInterval(()=>{if(R===sess)updateHeader();},5000);
@@ -605,6 +651,7 @@ function hello(){presence('hi');}
 async function presence(t){if(!R)return;const sess=R;const env=await seal({t,id:myId,name:R.nick,lang:myLang});if(R===sess)R.net.publish(R.topic+'/p',env);}
 function pruneMembers(){if(!R)return;const now=Date.now();for(const[id,m]of R.members)if(now-m.seen>55000)R.members.delete(id);updateHeader();}
 async function onNet(topic,env){
+  if(topic===R.topic+'/f'){onFile(env);return;}
   const sess=R;const obj=await unseal(env);if(!obj||R!==sess)return;
   const kind=topic.slice(R.topic.length+1);
   if(kind==='p'){
@@ -622,14 +669,23 @@ async function onNet(topic,env){
     if(Array.isArray(obj.msgs)){R.histIds=new Set(obj.msgs.map(m=>m&&m.id));addMsgs(obj.msgs,false);}
   }
 }
-function validMsg(m){return m&&typeof m.id==='string'&&typeof m.text==='string'&&typeof m.ts==='number'&&m.text.length<=1000;}
+function cleanMedia(md){
+  if(!md||typeof md!=='object')return null;
+  if(md.kind!=='img'&&md.kind!=='vid')return null;
+  if(typeof md.mid!=='string'||!/^[a-z0-9]{8,40}$/.test(md.mid)||typeof md.iv!=='string'||md.iv.length>40)return null;
+  const n=+md.n;if(!(n>=1&&n<=2000))return null;
+  const thumb=typeof md.thumb==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(md.thumb)&&md.thumb.length<30000?md.thumb:'';
+  const mime=typeof md.mime==='string'&&/^(image|video)\/[\w.+-]{1,40}$/.test(md.mime)?md.mime:(md.kind==='img'?'image/jpeg':'video/mp4');
+  return{kind:md.kind,mid:md.mid,iv:md.iv,n,mime,size:+md.size||0,w:+md.w||0,h:+md.h||0,dur:+md.dur||0,thumb};
+}
+function validMsg(m){return m&&typeof m.id==='string'&&typeof m.text==='string'&&typeof m.ts==='number'&&m.text.length<=1000&&(m.text.length>0||!!cleanMedia(m.media));}
 function addMsgs(list,live){
   let added=0,newest=null;
   for(const m of list){
     if(!validMsg(m))continue;
     if(R.pending.has(m.id)){R.pending.delete(m.id);patchMsg(m.id);continue;}
     if(R.seen.has(m.id))continue;
-    R.seen.add(m.id);R.msgs.push({id:m.id,uid:String(m.uid||''),name:String(m.name||'?').slice(0,16),lang:String(m.lang||''),text:m.text,ts:m.ts});added++;newest=m;
+    R.seen.add(m.id);const md=cleanMedia(m.media);R.msgs.push(Object.assign({id:m.id,uid:String(m.uid||''),name:String(m.name||'?').slice(0,16),lang:String(m.lang||''),text:m.text,ts:m.ts},md?{media:md}:{}));added++;newest=m;
   }
   if(!added)return;
   R.msgs.sort((a,b)=>a.ts-b.ts);
@@ -652,10 +708,173 @@ async function sendText(text){
 
 async function publishHist(){
   if(!R)return;const sess=R;
-  const msgs=R.msgs.slice(-HIST_SHARE).map(({id,uid,name,lang,text,ts})=>({id,uid,name,lang,text,ts}));
+  const msgs=R.msgs.slice(-HIST_SHARE).map(({id,uid,name,lang,text,ts,media})=>media?{id,uid,name,lang,text,ts,media}:{id,uid,name,lang,text,ts});
   const env=await seal({msgs});if(R!==sess)return;
   R.histIds=new Set(msgs.map(m=>m.id));
   R.net.publish(R.topic+'/h',env,true);
+}
+
+/* ================= PHOTOS & VIDEOS ================= */
+// Files are encrypted with the room key, split into chunks and sent over the same servers as messages.
+// Anyone in the room who already has a file can resend chunks to people who are missing them.
+const CHUNK=48*1024,MAX_VIDEO_MB=25,IMG_MAX=1600;
+const MS=new Map(); // mid -> state
+const getMS=mid=>{let s=MS.get(mid);if(!s){s={status:'idle'};MS.set(mid,s);}return s;};
+function idbOpen(){
+  if(!idbOpen.p)idbOpen.p=new Promise((res,rej)=>{try{const r=indexedDB.open('yiliao-media',1);r.onupgradeneeded=()=>r.result.createObjectStore('m',{keyPath:'mid'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});
+  return idbOpen.p;
+}
+async function idbGet(mid){try{const db=await idbOpen();return await new Promise(res=>{const q=db.transaction('m').objectStore('m').get(mid);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);});}catch(e){return null;}}
+async function idbPut(rec){try{const db=await idbOpen();await new Promise(res=>{const tx=db.transaction('m','readwrite');tx.objectStore('m').put(rec);tx.oncomplete=res;tx.onerror=res;tx.onabort=res;});}catch(e){}}
+const findMediaMsg=mid=>R&&R.msgs.find(x=>x.media&&x.media.mid===mid);
+function patchMedia(mid){const m=findMediaMsg(mid);if(m)patchMsg(m.id);}
+function throttlePatch(mid){const st=getMS(mid);if(st.pt)return;st.pt=setTimeout(()=>{st.pt=null;patchMedia(mid);},250);}
+function mediaHTML(m){
+  const md=m.media,st=MS.get(md.mid)||{},t=T();
+  const ar=md.w&&md.h?`aspect-ratio:${md.w}/${md.h}`:'aspect-ratio:4/3';
+  const dur=md.dur?` ${Math.floor(md.dur/60)}:${String(Math.round(md.dur%60)).padStart(2,'0')}`:'';
+  if(st.status==='ok'&&st.url){
+    const prog=st.sending!=null&&st.sending<100?`<div class="mprog">${fmt(t.sendingPct,st.sending)}</div>`:'';
+    if(md.kind==='img')return `<img class="media" src="${st.url}" data-view="${md.mid}" style="${ar}" alt="">${prog}`;
+    return `<video class="media" src="${st.url}" controls playsinline preload="metadata"${md.thumb?` poster="${md.thumb}"`:''} style="${ar}"></video>${prog}`;
+  }
+  let label;
+  if(st.status==='recv')label=fmt(t.recvPct,Math.min(99,Math.round((st.got||0)/(st.n||md.n)*100)));
+  else if(st.status==='want'||st.loading)label=t.loading;
+  else if(st.status==='fail')label=t.mediaFail;
+  else label=t.tapLoad;
+  return `<button class="mph" data-load="${md.mid}" style="${ar}">${md.thumb?`<img src="${md.thumb}" alt="">`:''}<span>${md.kind==='vid'?'▶':''}${dur?esc(dur)+' · ':md.kind==='vid'?' ':''}${esc(label)}</span></button>`;
+}
+async function openRec(md,cipherBlob){
+  const st=getMS(md.mid);
+  try{
+    const ct=new Uint8Array(await cipherBlob.arrayBuffer());
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(md.iv)},R.key,ct);
+    if(st.url)URL.revokeObjectURL(st.url);
+    st.url=URL.createObjectURL(new Blob([pt],{type:md.mime}));st.status='ok';
+  }catch(e){st.status='fail';}
+  patchMedia(md.mid);
+}
+async function finishMedia(mid){
+  const st=getMS(mid),m=findMediaMsg(mid);
+  if(!m||!st.parts||st.got!==st.n||st.finishing)return;
+  st.finishing=true;
+  const cipher=new Blob(st.parts);st.parts=null;
+  await idbPut({mid,cipher,n:st.n});
+  await openRec(m.media,cipher);st.finishing=false;
+}
+async function ensureMedia(m,force){
+  const md=m.media,st=getMS(md.mid);
+  if(st.parts&&st.got===st.n){finishMedia(md.mid);return;}
+  if(st.status==='ok'||st.status==='recv'||st.status==='want'||st.loading)return;
+  if(st.status==='fail'&&!force)return;
+  st.loading=true;
+  const rec=await idbGet(md.mid);
+  st.loading=false;
+  if(rec&&rec.cipher){await openRec(md,rec.cipher);return;}
+  if(st.parts&&st.got===st.n){finishMedia(md.mid);return;}
+  requestMedia(md.mid,[]);
+}
+function requestMedia(mid,miss){
+  if(!R)return;const st=getMS(mid);
+  st.status=st.parts?'recv':'want';st.asked=(st.asked||0)+1;st.lastAsk=Date.now();
+  R.net.publish(R.topic+'/f',{t:'need',mid,miss});
+  patchMedia(mid);
+}
+function autoMedia(){
+  if(!R)return;
+  R.msgs.filter(m=>m.media).slice(-20).forEach(m=>ensureMedia(m,false));
+}
+setInterval(()=>{ // ask again for missing pieces, give up after a few tries
+  if(!R)return;
+  for(const[mid,st]of MS){
+    if(st.status!=='want'&&st.status!=='recv')continue;
+    const quiet=Date.now()-Math.max(st.last||0,st.lastAsk||0);
+    if(quiet<7000)continue;
+    if((st.asked||0)>=4){st.status='fail';patchMedia(mid);continue;}
+    const miss=[];if(st.parts)for(let i=0;i<st.n&&miss.length<400;i++)if(!st.parts[i])miss.push(i);
+    requestMedia(mid,miss);
+  }
+},3000);
+function onFile(c){
+  if(!R||!c||typeof c.mid!=='string')return;
+  if(c.t==='c'){
+    const st=getMS(c.mid);st.served=Date.now();
+    if(st.status==='ok'||st.finishing)return;
+    const n=+c.n,i=+c.i;if(!(n>=1&&n<=2000&&i>=0&&i<n)||typeof c.d!=='string')return;
+    if(!st.parts||st.n!==n){st.parts=new Array(n);st.n=n;st.got=0;}
+    if(!st.parts[i]){st.parts[i]=unb64(c.d);st.got++;}
+    st.last=Date.now();st.status='recv';
+    if(st.got===st.n)finishMedia(c.mid);else throttlePatch(c.mid);
+  }else if(c.t==='need')serveMedia(c);
+}
+async function serveMedia(c){
+  const rec=await idbGet(c.mid);if(!rec||!rec.cipher||!R)return;
+  const st=getMS(c.mid),asked=Date.now();
+  await sleep(300+Math.random()*1500);
+  if(!R||(st.served||0)>asked)return; // someone else is already sending it
+  const ct=new Uint8Array(await rec.cipher.arrayBuffer());
+  const miss=Array.isArray(c.miss)?c.miss.filter(i=>Number.isInteger(i)):[];
+  await sendChunks(c.mid,ct,miss);
+}
+async function sendChunks(mid,ct,only,onProg){
+  const n=Math.ceil(ct.length/CHUNK),list=only&&only.length?only.filter(i=>i>=0&&i<n):[...Array(n).keys()];
+  const sess=R;let k=0;
+  for(const i of list){
+    if(R!==sess)return;
+    await R.net.drain();
+    R.net.publish(R.topic+'/f',{t:'c',mid,i,n,d:b64(ct.subarray(i*CHUNK,(i+1)*CHUNK))});
+    k++;onProg&&onProg(k/list.length);
+  }
+}
+function loadImage(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>res({img:i,u});i.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('image'));};i.src=u;});}
+function thumbOf(src,w,h,size){const tw=size,th=Math.max(1,Math.round(size*h/w)),c=document.createElement('canvas');c.width=tw;c.height=th;c.getContext('2d').drawImage(src,0,0,tw,th);return c.toDataURL('image/jpeg',.55);}
+async function prepImage(file){
+  const {img,u}=await loadImage(file);
+  try{
+    const w=img.naturalWidth,h=img.naturalHeight,thumb=thumbOf(img,w,h,48);
+    if(file.type==='image/gif'&&file.size<3e6)return{blob:file,mime:'image/gif',w,h,thumb};
+    const sc=Math.min(1,IMG_MAX/Math.max(w,h)),W=Math.round(w*sc),H=Math.round(h*sc);
+    const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').drawImage(img,0,0,W,H);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.82));
+    return{blob:blob&&blob.size<file.size?blob:file,mime:blob&&blob.size<file.size?'image/jpeg':(file.type||'image/jpeg'),w:W,h:H,thumb};
+  }finally{URL.revokeObjectURL(u);}
+}
+function prepVideo(file){
+  return new Promise(res=>{
+    const v=document.createElement('video'),u=URL.createObjectURL(file);let done=false;
+    const fin=thumb=>{if(done)return;done=true;const o={w:v.videoWidth||0,h:v.videoHeight||0,dur:isFinite(v.duration)?v.duration:0,thumb:thumb||''};URL.revokeObjectURL(u);res(o);};
+    v.muted=true;v.playsInline=true;v.preload='auto';
+    v.onloadeddata=()=>{try{v.currentTime=Math.min(.1,(v.duration||1)/2);}catch(e){fin('');}};
+    v.onseeked=()=>{let t='';try{if(v.videoWidth)t=thumbOf(v,v.videoWidth,v.videoHeight,120);}catch(e){}fin(t);};
+    v.onerror=()=>fin('');setTimeout(()=>fin(''),6000);v.src=u;
+  });
+}
+async function sendMedia(file,kind){
+  if(!R||!file)return;const t=T();
+  if(kind==='vid'&&file.size>MAX_VIDEO_MB*1048576){toast(fmt(t.tooBig,MAX_VIDEO_MB));return;}
+  const sess=R;let blob=file,meta;
+  try{
+    if(kind==='img'){const r=await prepImage(file);blob=r.blob;meta={kind,mime:r.mime,w:r.w,h:r.h,dur:0,thumb:r.thumb};}
+    else{const r=await prepVideo(file);meta={kind,mime:file.type||'video/mp4',w:r.w,h:r.h,dur:r.dur,thumb:r.thumb};}
+  }catch(e){toast(t.mediaFail);return;}
+  if(R!==sess)return;
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},R.key,await blob.arrayBuffer()));
+  if(R!==sess)return;
+  const mid=rid(16),n=Math.ceil(ct.length/CHUNK);
+  Object.assign(meta,{mid,iv:b64(iv),n,size:ct.length});
+  await idbPut({mid,cipher:new Blob([ct]),n});
+  const st=getMS(mid);st.url=URL.createObjectURL(blob);st.status='ok';st.sending=0;
+  const m={id:rid(16),uid:myId,name:R.nick,lang:myLang,text:'',ts:Date.now(),media:meta};
+  R.seen.add(m.id);R.pending.add(m.id);R.msgs.push(m);store.set('chat-h-'+R.topic,R.msgs.slice(-HIST_KEEP));
+  render(true);
+  R.net.publish(R.topic+'/m',await seal(m));
+  await publishHist();
+  let last=0;
+  await sendChunks(mid,ct,null,f=>{const p=Math.round(f*100);if(p-last>=4||p===100){last=p;st.sending=p;patchMsg(m.id);}});
+  st.sending=null;patchMsg(m.id);
+  setTimeout(()=>{if(R===sess&&R.pending.has(m.id)){R.pending.delete(m.id);patchMsg(m.id);}},4000);
 }
 
 /* ================= RENDER ================= */
@@ -669,6 +888,7 @@ function fmtDay(ts){
 }
 function bubbleInner(m){
   const mine=m.uid===myId,t=T();
+  if(m.media)return mediaHTML(m);
   if(!needsTr(m))return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
   const k=m.id+'|'+myLang,tr=TR[k];
   if(mine){ // my own words stay on top; the translation into my current language goes underneath
@@ -690,22 +910,30 @@ function msgHTML(m,prev){
   return `<div class="msg${mine?' me':''}${cont?' cont':''}" data-id="${m.id}">
     <div class="av" style="background:${colorFor(m.uid||m.name)}">${esc((m.name||'?').trim().charAt(0).toUpperCase())}</div>
     <div class="col"><div class="meta"><span>${esc(m.name)}</span>${m.lang&&!mine?`<span class="ln">${esc(LNAME[m.lang]||m.lang)}</span>`:''}</div>
-    <div class="bub">${bubbleInner(m)}</div><span class="time">${pend?T().sending+' · ':''}${fmtTime(m.ts)}</span></div></div>`;
+    <div class="bub${m.media?' mb':''}">${bubbleInner(m)}</div><span class="time">${pend?T().sending+' · ':''}${fmtTime(m.ts)}</span></div></div>`;
 }
+const bubbleCache=new Map();
 function render(forceBottom){
   if(!R)return;
   const L=$('list'),nearBottom=L.scrollHeight-L.scrollTop-L.clientHeight<120;
   if(!R.msgs.length){L.innerHTML=`<div class="empty">${esc(T().empty).replace(/\n/g,'<br>')}</div>`;return;}
+  const ids=R.msgs.map(m=>m.id),old=R.rendered||[];
+  const appendOnly=old.length&&ids.length>old.length&&old.every((id,i)=>ids[i]===id)&&L.querySelector('.msg');
   let h='',prev=null,lastDay='';
-  R.msgs.forEach(m=>{const day=fmtDay(m.ts);if(day!==lastDay){h+=`<div class="day">${day}</div>`;lastDay=day;prev=null;}h+=msgHTML(m,prev);prev=m;});
-  L.innerHTML=h;
+  const start=appendOnly?old.length:0;
+  if(appendOnly){prev=R.msgs[start-1];lastDay=fmtDay(prev.ts);}
+  for(let i=start;i<R.msgs.length;i++){const m=R.msgs[i],day=fmtDay(m.ts);if(day!==lastDay){h+=`<div class="day">${day}</div>`;lastDay=day;prev=null;}h+=msgHTML(m,prev);prev=m;}
+  if(appendOnly)L.insertAdjacentHTML('beforeend',h);else{L.innerHTML=h;bubbleCache.clear();}
+  R.rendered=ids;
+  autoMedia();
   if(forceBottom||nearBottom)L.scrollTop=L.scrollHeight;
   autoTranslate();
 }
 function patchMsg(id){
   if(!R)return;const m=R.msgs.find(x=>x.id===id);const el=document.querySelector(`.msg[data-id="${id}"]`);if(!m||!el)return;
   const L=$('list'),nearBottom=L.scrollHeight-L.scrollTop-L.clientHeight<120;
-  el.querySelector('.bub').innerHTML=bubbleInner(m);
+  const html=bubbleInner(m);
+  if(bubbleCache.get(id)!==html){el.querySelector('.bub').innerHTML=html;bubbleCache.set(id,html);}
   el.querySelector('.time').textContent=(R.pending.has(m.id)?T().sending+' · ':'')+fmtTime(m.ts);
   if(nearBottom)L.scrollTop=L.scrollHeight;
 }
@@ -732,7 +960,7 @@ const appHidden=()=>document.hidden||window.__appVisible===false;
 async function alertNew(m){
   const soundOn=store.get('chat-sound',true);
   if(appHidden()&&window.Android&&typeof Android.notify==='function'){
-    let body=m.text;
+    let body=m.media?'['+(m.media.kind==='img'?T().photo:T().video)+']':m.text;
     if(needsTr(m)&&store.get('chat-auto',true)){
       queueTranslate(m,true);
       for(let i=0;i<25;i++){const tr=TR[m.id+'|'+myLang];if(tr&&tr.s!=='busy')break;await sleep(200);}
@@ -761,7 +989,7 @@ function applyUIText(){
   $('t_room').textContent=t.room;$('roomIn').placeholder=t.roomPh;$('joinBtn').textContent=t.join;
   $('notes').innerHTML=t.notes.map(n=>`<div>${n}</div>`).join('');
   $('t_settings').textContent=t.settings;$('t_mylang').textContent=t.mylang;$('t_auto').textContent=t.auto;$('t_trnote').textContent=t.trnote;
-  $('leaveBtn').textContent=t.leave;$('leaveYes').textContent=t.leave;$('leaveNo').textContent=t.cancel;$('t_leaveQ').textContent=t.leaveQ;$('t_sound').textContent=t.sound;$('battBtn').textContent=t.battery;$('t_battTip').textContent=t.battTip;$('t_font').textContent=t.font;$('t_fontAuto').textContent=t.fontAuto;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
+  $('leaveBtn').textContent=t.leave;$('t_photo').textContent=t.photo;$('t_video').textContent=t.video;$('leaveYes').textContent=t.leave;$('leaveNo').textContent=t.cancel;$('t_leaveQ').textContent=t.leaveQ;$('t_sound').textContent=t.sound;$('battBtn').textContent=t.battery;$('t_battTip').textContent=t.battTip;$('t_font').textContent=t.font;$('t_fontAuto').textContent=t.fontAuto;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
   renderRecent();
 }
 function renderRecent(){
@@ -797,7 +1025,19 @@ function grow(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight+
 ta.addEventListener('input',grow);
 ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('sendBtn').click();}});
 $('sendBtn').onclick=()=>{const v=ta.value;if(!v.trim())return;ta.value='';grow();sendText(v);ta.focus();};
-$('list').addEventListener('click',e=>{const b=e.target.closest('[data-tr]');if(!b||!R)return;const m=R.msgs.find(x=>x.id===b.dataset.tr);if(m){delete TR[m.id+'|'+myLang];queueTranslate(m,true);patchMsg(m.id);}});
+$('attachBtn').onclick=e=>{e.stopPropagation();$('attachMenu').hidden=!$('attachMenu').hidden;};
+document.addEventListener('click',e=>{if(!$('attachMenu').hidden&&!e.target.closest('#attachMenu'))$('attachMenu').hidden=true;});
+$('pickImgBtn').onclick=()=>{$('attachMenu').hidden=true;$('pickImg').click();};
+$('pickVidBtn').onclick=()=>{$('attachMenu').hidden=true;$('pickVid').click();};
+$('pickImg').onchange=async e=>{const files=[...e.target.files];e.target.value='';for(const f of files.slice(0,9))await sendMedia(f,'img');};
+$('pickVid').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await sendMedia(f,'vid');};
+// keep the newest message in view when a photo or video finishes loading
+$('list').addEventListener('scroll',()=>{const L=$('list');if(R)R.atBottom=L.scrollHeight-L.scrollTop-L.clientHeight<160;},{passive:true});
+['load','loadedmetadata'].forEach(ev=>$('list').addEventListener(ev,()=>{const L=$('list');if(R&&R.atBottom!==false)L.scrollTop=L.scrollHeight;},true));
+$('viewer').onclick=()=>{$('viewer').hidden=true;$('viewerImg').src='';};
+$('list').addEventListener('click',e=>{
+  const v=e.target.closest('[data-view]');if(v){$('viewerImg').src=v.src;$('viewer').hidden=false;return;}
+  const ld=e.target.closest('[data-load]');if(ld&&R){const m=findMediaMsg(ld.dataset.load);if(m){const st=getMS(m.media.mid);if(st.status!=='recv'&&st.status!=='want'){st.status='idle';st.asked=0;ensureMedia(m,true);}}return;}const b=e.target.closest('[data-tr]');if(!b||!R)return;const m=R.msgs.find(x=>x.id===b.dataset.tr);if(m){delete TR[m.id+'|'+myLang];queueTranslate(m,true);patchMsg(m.id);}});
 function closeSheets(){$('memSheet').hidden=true;$('setSheet').hidden=true;$('leaveAsk').hidden=true;$('leaveBtn').hidden=false;}
 document.querySelectorAll('.scrim').forEach(s=>s.addEventListener('click',e=>{if(e.target===s||e.target.closest('[data-close]'))closeSheets();}));
 $('titleBtn').onclick=()=>{$('memSheet').hidden=false;renderMembers();};
@@ -812,7 +1052,7 @@ $('leaveYes').onclick=exitToLobby;
 $('soundSw').onclick=()=>{const v=!store.get('chat-sound',true);store.set('chat-sound',v);$('soundSw').setAttribute('aria-checked',v);};
 $('battBtn').onclick=()=>{try{Android.askBattery();}catch(e){}};
 // Back on Android: close a sheet, otherwise send the app to the background and stay in the room.
-window.onAndroidBack=()=>{if(!$('memSheet').hidden||!$('setSheet').hidden){closeSheets();return true;}if(!$('chat').hidden)return 'bg';return false;};
+window.onAndroidBack=()=>{if(!$('viewer').hidden){$('viewer').hidden=true;return true;}if(!$('attachMenu').hidden){$('attachMenu').hidden=true;return true;}if(!$('memSheet').hidden||!$('setSheet').hidden){closeSheets();return true;}if(!$('chat').hidden)return 'bg';return false;};
 function onAppVisible(){if(R){R.net.kick();hello();const L=$('list');L.scrollTop=L.scrollHeight;}}
 window.onAppVisible=onAppVisible;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)onAppVisible();});
