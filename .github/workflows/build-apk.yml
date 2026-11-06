@@ -8,6 +8,7 @@ on:
       - ".github/workflows/pages.yml"
       - "tests/**"
       - ".github/workflows/probe.yml"
+      - ".github/workflows/probe-turn.yml"
       - ".github/workflows/e2e.yml"
       - ".github/workflows/chat-e2e.yml"
       - ".github/workflows/tts.yml"

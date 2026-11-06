@@ -1,0 +1,30 @@
+name: Probe call servers
+
+on:
+  push:
+    paths:
+      - "tests/probe-turn.js"
+      - ".github/workflows/probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: |
+          npm i --no-save playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - run: node tests/probe-turn.js 2>&1 | tee turn.log
+      - if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete probe-turn --yes --cleanup-tag || true
+          gh release create probe-turn turn.log --title "probe" --notes "file host probe" --latest=false --prerelease
