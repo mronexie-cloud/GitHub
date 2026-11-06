@@ -1,0 +1,28 @@
+name: Probe video platforms
+
+on:
+  push:
+    paths:
+      - "tests/probe-platforms.py"
+      - ".github/workflows/probe-platforms.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -U "yt-dlp[default]"
+      - run: python tests/probe-platforms.py 2>&1 | tee platforms.log
+      - if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete probe-platforms --yes --cleanup-tag || true
+          gh release create probe-platforms platforms.log --title "probe" --notes "platform probe" --latest=false --prerelease
