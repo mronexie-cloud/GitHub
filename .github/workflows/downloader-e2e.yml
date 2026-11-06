@@ -1,0 +1,51 @@
+name: Downloader emulator test
+
+on:
+  push:
+    paths:
+      - "downloader/**"
+      - "tests/dl-emulator.sh"
+      - ".github/workflows/downloader-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          chmod +x gradlew
+          ./gradlew :downloader:assembleDebug --no-daemon
+      - name: Run in emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash tests/dl-emulator.sh
+      - name: Publish results
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dl-e2e && cd dl-e2e && zip -q ../dl-e2e.zip * || true
+          cd ..
+          gh release delete dl-e2e --yes --cleanup-tag || true
+          gh release create dl-e2e dl-e2e.zip --title "下载器模拟器测试" --notes "emulator run" --latest=false --prerelease

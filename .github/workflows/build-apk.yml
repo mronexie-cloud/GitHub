@@ -10,6 +10,7 @@ on:
       - ".github/workflows/probe.yml"
       - ".github/workflows/probe-turn.yml"
       - ".github/workflows/probe-platforms.yml"
+      - ".github/workflows/downloader-e2e.yml"
       - ".github/workflows/e2e.yml"
       - ".github/workflows/chat-e2e.yml"
       - ".github/workflows/tts.yml"
@@ -31,7 +32,16 @@ jobs:
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
+      - name: Publish build log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tail -c 200000 build.log > build-tail.log || true
+          gh release delete build-log --yes --cleanup-tag || true
+          gh release create build-log build-tail.log --title "build log" --notes "last failed build" --latest=false --prerelease
       - uses: actions/upload-artifact@v4
         with:
           name: apks
@@ -41,6 +51,7 @@ jobs:
             sanguo/build/outputs/apk/debug/sanguo-debug.apk
             mahjong/build/outputs/apk/debug/mahjong-debug.apk
             chat/build/outputs/apk/debug/chat-debug.apk
+            downloader/build/outputs/apk/debug/*.apk
       - name: Publish APK as release
         if: github.ref == 'refs/heads/main'
         env:
@@ -51,5 +62,7 @@ jobs:
           cp sanguo/build/outputs/apk/debug/sanguo-debug.apk sanguo.apk
           cp mahjong/build/outputs/apk/debug/mahjong-debug.apk mahjong.apk
           cp chat/build/outputs/apk/debug/chat-debug.apk chat.apk
+          cp downloader/build/outputs/apk/debug/downloader-arm64-v8a-debug.apk downloader-arm64.apk
+          cp downloader/build/outputs/apk/debug/downloader-armeabi-v7a-debug.apk downloader-armv7.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest "chat.apk#译聊（多人聊天自动翻译）.apk" "mahjong.apk#二人麻将（联网对战）.apk" "gomoku.apk#五子棋.apk" "xiangqi.apk#象棋.apk" "sanguo.apk#三国身份局.apk" --title "安卓 App 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest
+          gh release create latest "downloader-arm64.apk#万能下载（视频下载器，多数手机选这个）.apk" "downloader-armv7.apk#万能下载（老款 32 位手机）.apk" "chat.apk#译聊（多人聊天自动翻译）.apk" "mahjong.apk#二人麻将（联网对战）.apk" "gomoku.apk#五子棋.apk" "xiangqi.apk#象棋.apk" "sanguo.apk#三国身份局.apk" --title "安卓 App 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest

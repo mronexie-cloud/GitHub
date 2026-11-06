@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>万能下载</title>
+<style>
+/* Layout: navy header band / link input card / result card / download list; settings as a bottom sheet. */
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --ink:#151a2d; --muted:#626a80; --line:#dde1ea;
+  --navy:#1d2b6b; --accent:#2f5bea; --accent-ink:#ffffff; --ok:#1f9d61; --warn:#c2412d; --chip:#eef1f8;
+  --body:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --shadow:0 1px 3px rgba(20,30,70,.07);
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f1220; --surface:#181c2e; --ink:#e7eaf5; --muted:#99a1b8; --line:#2a3048;
+  --navy:#141b45; --accent:#6d8cff; --accent-ink:#0b1030; --ok:#4fd08f; --warn:#ff8a73; --chip:#22283f; --shadow:none; color-scheme:dark}}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.head{background:var(--navy);color:#fff;padding:max(14px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 54px max(16px,env(safe-area-inset-left,0px))}
+.head .row{display:flex;align-items:center;gap:12px;max-width:640px;margin:0 auto}
+.logo{width:40px;height:40px;border-radius:12px;background:#fff;color:var(--navy);display:grid;place-items:center;flex:none}
+.logo svg{width:24px;height:24px}
+.head h1{margin:0;font-size:1.3rem;letter-spacing:.02em}
+.head p{margin:2px 0 0;font-size:.8rem;opacity:.75}
+.head .sp{flex:1}
+.gear{width:40px;height:40px;border-radius:10px;border:0;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center}
+.gear svg{width:22px;height:22px}
+
+.main{max-width:640px;margin:-40px auto 0;display:flex;flex-direction:column;gap:14px;
+  padding:0 max(14px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+textarea{width:100%;min-height:84px;resize:none;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--bg);line-height:1.45;font-size:.95rem}
+.btns{display:flex;gap:10px}
+.btn{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn svg{width:18px;height:18px}
+.btn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.5}
+.plats{display:flex;flex-wrap:wrap;gap:6px}
+.plats span{font-size:.75rem;color:var(--muted);background:var(--chip);border-radius:999px;padding:3px 9px}
+.engine{font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.engine i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.engine i.ok{background:var(--ok)}.engine i.busy{background:#e3a008}.engine i.bad{background:var(--warn)}
+
+.clip{display:flex;align-items:center;gap:10px;background:var(--chip);border:1px dashed var(--accent);border-radius:12px;padding:10px 12px}
+.clip span{flex:1;min-width:0;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip button{border:0;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:6px 12px;font-weight:700;font-size:.82rem}
+
+.res{display:flex;gap:12px}
+.thumb{width:120px;flex:none;aspect-ratio:16/10;border-radius:10px;background:var(--chip) center/cover no-repeat;position:relative;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb b{position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.7);color:#fff;font-size:.7rem;padding:1px 5px;border-radius:4px;font-variant-numeric:tabular-nums}
+.res .info{min-width:0;display:flex;flex-direction:column;gap:4px}
+.res .t{font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.res .m{font-size:.8rem;color:var(--muted)}
+.lbl{font-size:.8rem;color:var(--muted);font-weight:600}
+.qs{display:flex;flex-wrap:wrap;gap:8px}
+.q{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-weight:600;font-size:.88rem}
+.q[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.err{color:var(--warn);font-size:.9rem;line-height:1.55;margin:0;word-break:break-word}
+.hint{font-size:.84rem;color:var(--muted);line-height:1.6;margin:0}
+.busy{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.9rem}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:3s}}
+
+h2{margin:6px 2px 0;font-size:.95rem;color:var(--muted);font-weight:700}
+.tasks{display:flex;flex-direction:column;gap:10px}
+.task{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;gap:10px;box-shadow:var(--shadow)}
+.task .thumb{width:78px}
+.task .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.task .t{font-weight:600;font-size:.9rem;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task .s{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;word-break:break-word}
+.task .s.done{color:var(--ok)}.task .s.failed{color:var(--warn)}
+.bar{height:5px;border-radius:3px;background:var(--chip);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.acts button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:4px 10px;font-size:.78rem;font-weight:600}
+.acts .pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.empty{color:var(--muted);font-size:.85rem;text-align:center;padding:18px 0}
+.note{font-size:.76rem;color:var(--muted);line-height:1.6;text-align:center;margin:4px 8px 0}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;max-height:86%;overflow-y:auto;display:flex;flex-direction:column;gap:14px;
+  padding:16px max(18px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))}
+.sheet h3{margin:0;font-size:1.05rem}
+.prow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.prow b{flex:1;font-size:.95rem}
+.prow small{font-size:.75rem;color:var(--muted)}
+.prow small.login{color:var(--ok)}
+.prow button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:.8rem;font-weight:600}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:rgba(15,20,40,.92);color:#fff;padding:9px 16px;border-radius:999px;font-size:.86rem;z-index:40;max-width:88%;text-align:center}
+</style>
+</head>
+<body>
+<header class="head"><div class="row">
+  <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></div>
+  <div><h1 id="t_title"></h1><p id="t_sub"></p></div>
+  <span class="sp"></span>
+  <button class="gear" id="setBtn" aria-label="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+</div></header>
+
+<main class="main">
+  <div class="clip" id="clip" hidden><span id="clipText"></span><button id="clipGo"></button></div>
+
+  <section class="card">
+    <textarea id="input" placeholder=""></textarea>
+    <div class="btns">
+      <button class="btn" id="pasteBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/></svg><span id="t_paste"></span></button>
+      <button class="btn go" id="goBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><span id="t_go"></span></button>
+    </div>
+    <div class="plats" id="plats"></div>
+    <div class="engine"><i id="engDot"></i><span id="engTxt"></span></div>
+  </section>
+
+  <section class="card" id="resCard" hidden></section>
+
+  <h2 id="t_list"></h2>
+  <div class="tasks" id="tasks"></div>
+  <p class="note" id="t_note"></p>
+</main>
+
+<div class="scrim" id="setSheet" hidden><div class="sheet">
+  <h3 id="t_settings"></h3>
+  <div class="prow"><b id="t_engine"></b><small id="engVer"></small><button id="updBtn"></button></div>
+  <div class="lbl" id="t_accounts"></div>
+  <p class="hint" id="t_accHint"></p>
+  <div id="plist"></div>
+  <p class="hint" id="t_where"></p>
+  <button class="btn" data-close id="t_close"></button>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const A=window.Android||null;
+const ZH=(navigator.language||'zh').toLowerCase().startsWith('zh');
+const TT={
+  title:['万能下载','Video Saver'],
+  sub:['粘贴或分享链接，一键保存到相册','Paste or share a link, save it to your gallery'],
+  ph:['粘贴分享链接或整段分享文字\n例如：在抖音点“分享 → 复制链接”','Paste a share link or the whole share text'],
+  paste:['粘贴','Paste'],go:['解析','Analyze'],list:['下载记录','Downloads'],
+  clipGo:['解析','Analyze'],clipFound:['检测到链接：','Link found: '],
+  starting:['解析引擎启动中（首次约 10 秒）…','Starting engine (first time ~10 s)…'],updating:['正在更新解析引擎…','Updating engine…'],
+  ready:['解析引擎就绪','Engine ready'],engErr:['解析引擎启动失败','Engine failed to start'],
+  analyzing:['正在解析…','Analyzing…'],noLink:['没找到链接。请粘贴分享链接，或从视频 App 里“分享”到万能下载。','No link found. Paste a share link, or share from the video app to this app.'],
+  fail:['解析失败','Could not read this link'],quality:['画质','Quality'],best:['最高画质','Best'],audio:['仅音频 MP3','Audio MP3'],original:['原画','Original'],
+  download:['下载','Download'],queued:['排队中','Queued'],running:['下载中','Downloading'],saving:['正在保存到相册…','Saving to gallery…'],
+  done:['已保存到相册','Saved to gallery'],failed:['下载失败','Failed'],canceled:['已取消','Canceled'],
+  open:['打开','Open'],share:['分享','Share'],cancel:['取消','Cancel'],remove:['删除记录','Remove'],retry:['重试','Retry'],
+  left:['剩余','left'],empty:['还没有下载。粘贴链接开始吧。','No downloads yet.'],
+  needCookie:['这个平台需要先在 App 里打开一次它的网页（有些内容还要登录），拿到 Cookie 后才能解析。','This platform needs cookies: open its website inside the app (sign in if needed), then try again.'],
+  getCookie:['打开 {p} 获取 Cookie','Open {p} to get cookies'],
+  settings:['设置','Settings'],engine:['解析引擎 yt-dlp','Engine (yt-dlp)'],update:['检查更新','Update'],
+  accounts:['平台 Cookie / 登录','Platform cookies / sign-in'],
+  accHint:['遇到“需要 Cookie / 登录 / 确认不是机器人”时，在这里打开对应平台的网页，可以直接点“完成”，也可以登录后再点“完成”。登录后能下载更多内容（比如私密或高清）。Cookie 只保存在你的手机上。','When a platform asks for cookies or sign-in, open it here and tap Done (sign in first for more content). Cookies stay on your phone.'],
+  st_login:['已登录','Signed in'],st_visit:['已有 Cookie','Has cookies'],st_none:['未设置','Not set'],
+  openWeb:['打开','Open'],clear:['清除','Clear'],
+  where:['视频保存在相册的 Movies/万能下载，音频在 Music/万能下载。','Videos are saved to Movies/万能下载, audio to Music/万能下载.'],
+  close:['关闭','Close'],
+  note:['请只下载你有权保存的内容，尊重原作者的版权。','Only download content you have the right to save, and respect creators’ copyright.'],
+  noFile:['下载完成但没有找到文件','Finished but no file was produced'],
+};
+const t=k=>(TT[k]||[k,k])[ZH?0:1];
+const PLAT={douyin:'抖音',tiktok:'TikTok',xhs:ZH?'小红书':'Xiaohongshu',x:'X',youtube:'YouTube',ig:'Instagram',bili:ZH?'哔哩哔哩':'Bilibili',fb:'Facebook',other:ZH?'其他网站':'Other'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const e=$('toast');e.textContent=m;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2400);}
+const fmtDur=s=>{s=Math.round(s||0);if(!s)return'';const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');};
+const fmtSize=b=>!b?'':b>1048576?(b/1048576).toFixed(1)+' MB':Math.round(b/1024)+' KB';
+
+// ---------- static text ----------
+$('t_title').textContent=t('title');$('t_sub').textContent=t('sub');$('input').placeholder=t('ph');
+$('t_paste').textContent=t('paste');$('t_go').textContent=t('go');$('t_list').textContent=t('list');$('clipGo').textContent=t('clipGo');
+$('t_settings').textContent=t('settings');$('t_engine').textContent=t('engine');$('updBtn').textContent=t('update');
+$('t_accounts').textContent=t('accounts');$('t_accHint').textContent=t('accHint');$('t_where').textContent=t('where');
+$('t_close').textContent=t('close');$('t_note').textContent=t('note');
+$('plats').innerHTML=['douyin','tiktok','xhs','x','youtube','ig','bili','fb'].map(p=>`<span>${PLAT[p]}</span>`).join('');
+
+// ---------- engine state ----------
+let engineState='init';
+window.onEngine=(st,ver)=>{
+  engineState=st;
+  const d=$('engDot'),x=$('engTxt');
+  if(st==='ready'){d.className='ok';x.textContent=t('ready')+(ver?' · '+ver:'');}
+  else if(st==='updating'){d.className='busy';x.textContent=t('updating');}
+  else if(st.startsWith('error')){d.className='bad';x.textContent=t('engErr')+'：'+st.slice(6);}
+  else{d.className='busy';x.textContent=t('starting');}
+  $('engVer').textContent=ver||'';
+};
+if(A){try{const e=JSON.parse(A.engine());window.onEngine(e.state,e.version);}catch(e){}}
+
+// ---------- analyze ----------
+let curReq=null,result=null,quality='best',autoMode=false,lastText='',retryPlatform=null;
+function analyze(text,auto){
+  text=(text||$('input').value).trim();
+  if(!text){$('input').focus();return;}
+  lastText=text;autoMode=!!auto;$('clip').hidden=true;
+  curReq='r'+Date.now();result=null;
+  const c=$('resCard');c.hidden=false;
+  c.innerHTML=`<div class="busy"><span class="spin"></span>${t('analyzing')}</div>`;
+  if(A)A.analyze(curReq,text);
+}
+window.onAnalyze=(id,r)=>{
+  if(id!==curReq)return;
+  result=r;quality='best';renderResult();
+  if(autoMode&&r.ok){startDownload();autoMode=false;}
+};
+function renderResult(){
+  const r=result,c=$('resCard');if(!r){c.hidden=true;return;}
+  if(!r.ok){
+    const msg=r.msg==='NO_LINK'?t('noLink'):`${t('fail')}${r.msg?'：'+r.msg:''}`;
+    let h=`<p class="err">${esc(msg)}</p>`;
+    if(r.needCookies&&PLAT[r.platform]){h+=`<p class="hint">${t('needCookie')}</p><button class="btn go" data-cookie="${esc(r.platform)}">${esc(t('getCookie').replace('{p}',PLAT[r.platform]))}</button>`;}
+    c.innerHTML=h;return;
+  }
+  const hs=(r.heights||[]).filter(h=>h>0);
+  const max=hs.length?hs[0]:0;
+  const opts=[['best',r.source==='ytdlp'?t('best')+(max?` · ${max}p`:''):t('original')]];
+  if(r.source==='ytdlp')[1080,720,480].forEach(h=>{if(max>h)opts.push([h+'p',h+'p']);});
+  if(r.source==='ytdlp')opts.push(['audio',t('audio')]);
+  c.innerHTML=`<div class="res"><div class="thumb">${r.thumbnail?`<img src="${esc(r.thumbnail)}" referrerpolicy="no-referrer" alt="" onerror="this.remove()">`:''}${r.duration?`<b>${fmtDur(r.duration)}</b>`:''}</div>
+    <div class="info"><div class="t">${esc(r.title||PLAT[r.platform]||'')}</div><div class="m">${esc(PLAT[r.platform]||'')}${r.uploader?' · '+esc(r.uploader):''}</div></div></div>
+    <div class="lbl">${t('quality')}</div>
+    <div class="qs">${opts.map(([k,l])=>`<button class="q" data-q="${k}" aria-pressed="${k===quality}">${esc(l)}</button>`).join('')}</div>
+    <button class="btn go" id="dlBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>${t('download')}</button>`;
+}
+function startDownload(){
+  const r=result;if(!r||!r.ok||!A)return;
+  A.download(JSON.stringify({url:r.url,direct:r.direct||'',title:r.title,thumbnail:r.thumbnail,platform:r.platform,quality}));
+  $('resCard').hidden=true;$('input').value='';result=null;
+}
+$('resCard').addEventListener('click',e=>{
+  const q=e.target.closest('[data-q]');if(q){quality=q.dataset.q;renderResult();return;}
+  if(e.target.closest('#dlBtn')){startDownload();return;}
+  const ck=e.target.closest('[data-cookie]');if(ck&&A){retryPlatform=ck.dataset.cookie;A.login(retryPlatform,retryPlatform==='douyin'||retryPlatform==='youtube'||retryPlatform==='bili');}
+});
+window.onLogin=p=>{
+  renderLogins();
+  if(retryPlatform&&p===retryPlatform&&lastText){retryPlatform=null;analyze(lastText);}
+};
+
+// ---------- tasks ----------
+const tasks=new Map();
+function loadTasks(){if(!A)return;try{JSON.parse(A.tasks()).forEach(x=>tasks.set(x.id,x));}catch(e){}renderTasks();}
+window.onTask=x=>{tasks.set(x.id,x);renderTasks();};
+function taskStatus(x){
+  switch(x.state){
+    case'queued':return[t('queued'),''];
+    case'running':{const p=Math.round(x.progress||0);return[`${t('running')} ${p}%${x.eta>0?` · ${t('left')} ${fmtDur(x.eta)}`:''}`,''];}
+    case'saving':return[t('saving'),''];
+    case'done':return[`${t('done')}${x.size?' · '+fmtSize(x.size):''}`,'done'];
+    case'failed':return[`${t('failed')}${x.error?'：'+(x.error==='NO_FILE'?t('noFile'):x.error):''}`,'failed'];
+    case'canceled':return[t('canceled'),''];
+  }
+  return['',''];
+}
+function renderTasks(){
+  const list=[...tasks.values()].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(!list.length){$('tasks').innerHTML=`<div class="empty">${t('empty')}</div>`;return;}
+  $('tasks').innerHTML=list.map(x=>{
+    const [s,cls]=taskStatus(x),active=x.state==='queued'||x.state==='running'||x.state==='saving';
+    const acts=x.state==='done'?`<button class="pri" data-open="${x.id}">${t('open')}</button><button data-share="${x.id}">${t('share')}</button><button data-rm="${x.id}">${t('remove')}</button>`
+      :active?`<button data-cancel="${x.id}">${t('cancel')}</button>`
+      :`<button class="pri" data-retry="${x.id}">${t('retry')}</button><button data-rm="${x.id}">${t('remove')}</button>`;
+    return `<div class="task"><div class="thumb">${x.thumbnail?`<img src="${esc(x.thumbnail)}" referrerpolicy="no-referrer" alt="" onerror="this.remove()">`:''}</div>
+      <div class="body"><div class="t">${esc(x.title||x.url)}</div><div class="s ${cls}">${esc(s)}</div>
+      ${active?`<div class="bar"><i style="width:${Math.max(2,Math.round(x.progress||0))}%"></i></div>`:''}
+      <div class="acts">${acts}</div></div></div>`;
+  }).join('');
+}
+$('tasks').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||!A)return;
+  if(b.dataset.open){if(!A.open(b.dataset.open))toast(t('failed'));}
+  else if(b.dataset.share)A.share(b.dataset.share);
+  else if(b.dataset.cancel)A.cancel(b.dataset.cancel);
+  else if(b.dataset.rm){A.remove(b.dataset.rm);tasks.delete(b.dataset.rm);renderTasks();}
+  else if(b.dataset.retry){const x=tasks.get(b.dataset.retry);if(x){A.remove(x.id);tasks.delete(x.id);$('input').value=x.url;analyze(x.url);window.scrollTo(0,0);}}
+});
+
+// ---------- input / clipboard / share ----------
+$('goBtn').onclick=()=>analyze();
+$('pasteBtn').onclick=()=>{if(!A)return;const c=A.paste();if(c){$('input').value=c;analyze(c);}};
+$('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();analyze();}});
+let clipText='';
+window.onClipboard=text=>{clipText=text;$('clipText').textContent=t('clipFound')+text.replace(/\s+/g,' ');$('clip').hidden=false;};
+$('clipGo').onclick=()=>{$('input').value=clipText;analyze(clipText);};
+window.onShared=(text,auto)=>{$('input').value=text;analyze(text,auto);};
+
+// ---------- settings ----------
+function renderLogins(){
+  if(!A)return;let st={};try{st=JSON.parse(A.logins());}catch(e){}
+  $('plist').innerHTML=['douyin','tiktok','xhs','x','youtube','ig','bili','fb'].map(p=>{
+    const s=st[p]||'none';
+    return `<div class="prow"><b>${PLAT[p]}</b><small class="${s}">${t('st_'+s)}</small><button data-web="${p}">${t('openWeb')}</button>${s!=='none'?`<button data-clear="${p}">${t('clear')}</button>`:''}</div>`;
+  }).join('');
+}
+$('setBtn').onclick=()=>{renderLogins();$('setSheet').hidden=false;};
+$('setSheet').addEventListener('click',e=>{
+  if(e.target===$('setSheet')||e.target.closest('[data-close]')){$('setSheet').hidden=true;return;}
+  const w=e.target.closest('[data-web]');if(w&&A){A.login(w.dataset.web,false);return;}
+  const c=e.target.closest('[data-clear]');if(c&&A){A.logout(c.dataset.clear);}
+});
+$('updBtn').onclick=()=>{if(A)A.update();};
+window.onAndroidBack=()=>{if(!$('setSheet').hidden){$('setSheet').hidden=true;return true;}if(!$('resCard').hidden){$('resCard').hidden=true;return true;}return false;};
+
+loadTasks();
+</script>
+</body>
+</html>
