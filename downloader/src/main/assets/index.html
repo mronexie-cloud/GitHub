@@ -167,6 +167,7 @@ const TT={
   close:['关闭','Close'],
   note:['请只下载你有权保存的内容，尊重原作者的版权。','Only download content you have the right to save, and respect creators’ copyright.'],
   noFile:['下载完成但没有找到文件','Finished but no file was produced'],
+  grabbing:['正在通过抖音网页读取视频…','Reading the video from Douyin’s web page…'],
   fetchCookie:['正在打开 {p} 获取 Cookie，几秒后自动重试…','Opening {p} to get cookies, retrying in a few seconds…'],
 };
 const t=k=>(TT[k]||[k,k])[ZH?0:1];
@@ -200,7 +201,7 @@ if(A){try{const e=JSON.parse(A.engine());window.onEngine(e.state,e.version);}cat
 // ---------- analyze ----------
 let curReq=null,result=null,quality='best',autoMode=false,lastText='',retryPlatform=null,retryAuto=false;
 // platforms where simply opening the website once gives the cookies the engine needs
-const AUTO_COOKIE=['douyin','tiktok','xhs','youtube','bili'];
+const AUTO_COOKIE=['tiktok','xhs','youtube','bili'];
 let autoTried={};
 function analyze(text,auto){
   text=(text||$('input').value).trim();
@@ -214,6 +215,10 @@ function analyze(text,auto){
 }
 window.onAnalyze=(id,r)=>{
   if(id!==curReq)return;
+  if(!r.ok&&r.web&&A&&A.grab){
+    $('resCard').innerHTML=`<div class="busy"><span class="spin"></span>${esc(t('grabbing'))}</div>`;
+    A.grab(curReq,r.id,r.url);return;
+  }
   if(!r.ok&&r.needCookies&&AUTO_COOKIE.includes(r.platform)&&!autoTried[r.platform]&&A){
     autoTried[r.platform]=true;retryPlatform=r.platform;retryAuto=autoMode;
     $('resCard').innerHTML=`<div class="busy"><span class="spin"></span>${esc(t('fetchCookie').replace('{p}',PLAT[r.platform]))}</div>`;
@@ -232,7 +237,7 @@ function renderResult(){
   }
   const hs=(r.heights||[]).filter(h=>h>0);
   const max=hs.length?hs[0]:0;
-  const opts=[['best',r.source==='ytdlp'?t('best')+(max?` · ${max}p`:''):t('original')]];
+  const opts=[['best',(r.source==='ytdlp'?t('best'):t('original'))+(max?` · ${max}p`:'')]];
   if(r.source==='ytdlp')[1080,720,480].forEach(h=>{if(max>h)opts.push([h+'p',h+'p']);});
   if(r.source==='ytdlp')opts.push(['audio',t('audio')]);
   c.innerHTML=`<div class="res"><div class="thumb">${r.thumbnail?`<img src="${esc(r.thumbnail)}" referrerpolicy="no-referrer" alt="" onerror="this.remove()">`:''}${r.duration?`<b>${fmtDur(r.duration)}</b>`:''}</div>
@@ -243,13 +248,13 @@ function renderResult(){
 }
 function startDownload(){
   const r=result;if(!r||!r.ok||!A)return;
-  A.download(JSON.stringify({url:r.url,direct:r.direct||'',title:r.title,thumbnail:r.thumbnail,platform:r.platform,quality}));
+  A.download(JSON.stringify({url:r.url,direct:r.direct||'',directs:r.directs||null,ua:r.ua||'',referer:r.referer||'',title:r.title,thumbnail:r.thumbnail,platform:r.platform,quality}));
   $('resCard').hidden=true;$('input').value='';result=null;
 }
 $('resCard').addEventListener('click',e=>{
   const q=e.target.closest('[data-q]');if(q){quality=q.dataset.q;renderResult();return;}
   if(e.target.closest('#dlBtn')){startDownload();return;}
-  const ck=e.target.closest('[data-cookie]');if(ck&&A){retryPlatform=ck.dataset.cookie;A.login(retryPlatform,retryPlatform==='douyin'||retryPlatform==='youtube'||retryPlatform==='bili');}
+  const ck=e.target.closest('[data-cookie]');if(ck&&A){retryPlatform=ck.dataset.cookie;A.login(retryPlatform,retryPlatform==='youtube'||retryPlatform==='bili');}
 });
 window.onLogin=p=>{
   renderLogins();

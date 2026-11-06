@@ -60,6 +60,7 @@ public class Engine {
     }
 
     static final String FOLDER = "万能下载";
+    static final boolean ZH = java.util.Locale.getDefault().getLanguage().startsWith("zh");
     static final String UA_IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
     /** platform key -> {name, home page used for cookies/login, cookie domain, session cookie name} */
@@ -211,9 +212,27 @@ public class Engine {
     static JSONObject analyzeNow(String text) throws Exception {
         String url = extractUrl(text);
         if (url == null) return err(null, "NO_LINK");
-        if (!state.equals("ready") && !state.equals("updating")) waitReady();
         url = resolve(url);
         String platform = platformOf(url);
+        if (platform.equals("douyin")) {
+            // Douyin only serves its videos to a real browser, so the app reads them through its own web page (GrabActivity)
+            Matcher m = Pattern.compile("(?:/video/|/note/|modal_id=|aweme_id=|/share/video/)(\\d{8,})").matcher(url);
+            if (m.find()) {
+                JSONObject o = err("douyin", "");
+                o.put("web", true);
+                o.put("id", m.group(1));
+                o.put("url", "https://www.douyin.com/video/" + m.group(1));
+                return o;
+            }
+            if (isShortLink(url)) { // could not follow the short link here: let the in-app browser open it
+                JSONObject o = err("douyin", "");
+                o.put("web", true);
+                o.put("id", "");
+                o.put("url", url);
+                return o;
+            }
+        }
+        if (!state.equals("ready") && !state.equals("updating")) waitReady();
         String ytErr;
         try {
             YoutubeDLRequest r = new YoutubeDLRequest(url);
@@ -227,18 +246,11 @@ public class Engine {
         } catch (Throwable e) {
             ytErr = cleanError(e.getMessage());
         }
-        if (platform.equals("douyin")) {
-            try {
-                JSONObject d = douyinShare(url);
-                if (d != null) return d;
-            } catch (Throwable ignored) {
-            }
-        }
         JSONObject e = err(platform, ytErr);
         String low = ytErr == null ? "" : ytErr.toLowerCase();
         boolean cookies = low.contains("cookie") || low.contains("sign in") || low.contains("log in") || low.contains("login")
                 || low.contains("412") || low.contains("not a bot") || low.contains("rate-limit") || low.contains("private");
-        boolean visitHelps = platform.equals("douyin") || platform.equals("tiktok") || platform.equals("xhs") || platform.equals("youtube") || platform.equals("bili");
+        boolean visitHelps = platform.equals("tiktok") || platform.equals("xhs") || platform.equals("youtube") || platform.equals("bili");
         e.put("needCookies", (cookies || visitHelps) && !platform.equals("other"));
         e.put("url", url);
         return e;
@@ -294,47 +306,6 @@ public class Engine {
         if (!video && fm != null && fm.length() > 0) video = !"none".equals(j.optString("vcodec", ""));
         o.put("heights", new JSONArray(new ArrayList<>(heights)));
         o.put("video", video || heights.size() > 0);
-        return o;
-    }
-
-    /** Douyin without cookies: read the public share page that the Douyin app itself opens. */
-    static JSONObject douyinShare(String url) throws Exception {
-        Matcher m = Pattern.compile("(\\d{8,})").matcher(url);
-        if (!m.find()) return null;
-        String id = m.group(1);
-        String html = httpGetText("https://www.iesdouyin.com/share/video/" + id + "/", "https://www.douyin.com/");
-        Matcher r = Pattern.compile("window\\._ROUTER_DATA\\s*=\\s*(\\{.*?\\})</script>", Pattern.DOTALL).matcher(html);
-        if (!r.find()) return null;
-        JSONObject loader = new JSONObject(r.group(1)).optJSONObject("loaderData");
-        if (loader == null) return null;
-        JSONObject item = null;
-        for (Iterator<String> it = loader.keys(); it.hasNext(); ) {
-            JSONObject v = loader.optJSONObject(it.next());
-            if (v == null) continue;
-            JSONObject vi = v.optJSONObject("videoInfoRes");
-            if (vi == null) continue;
-            JSONArray list = vi.optJSONArray("item_list");
-            if (list != null && list.length() > 0) item = list.getJSONObject(0);
-        }
-        if (item == null) return null;
-        JSONObject video = item.getJSONObject("video");
-        String play = video.getJSONObject("play_addr").getJSONArray("url_list").getString(0).replace("playwm", "play");
-        JSONObject o = new JSONObject();
-        o.put("ok", true);
-        o.put("source", "douyin");
-        o.put("platform", "douyin");
-        o.put("url", "https://www.douyin.com/video/" + id);
-        o.put("direct", play);
-        o.put("title", item.optString("desc", "抖音视频 " + id));
-        JSONObject author = item.optJSONObject("author");
-        o.put("uploader", author == null ? "" : author.optString("nickname", ""));
-        o.put("duration", video.optDouble("duration", 0) / 1000.0);
-        JSONObject cover = video.optJSONObject("cover");
-        o.put("thumbnail", cover == null ? "" : cover.optJSONArray("url_list").optString(0, ""));
-        JSONArray hs = new JSONArray();
-        if (video.optInt("height", 0) > 0) hs.put(video.optInt("height"));
-        o.put("heights", hs);
-        o.put("video", true);
         return o;
     }
 
@@ -449,6 +420,9 @@ public class Engine {
             t.put("id", id);
             t.put("url", req.optString("url"));
             t.put("direct", req.optString("direct", ""));
+            if (req.optJSONArray("directs") != null) t.put("directs", req.optJSONArray("directs"));
+            t.put("ua", req.optString("ua", ""));
+            t.put("referer", req.optString("referer", ""));
             t.put("title", req.optString("title", ""));
             t.put("thumbnail", req.optString("thumbnail", ""));
             t.put("platform", req.optString("platform", "other"));
@@ -533,14 +507,44 @@ public class Engine {
         }
     }
 
+    /** Downloads a plain video address (Douyin). Tries each address the page offered until one gives a video. */
     static void directDownload(JSONObject t, File out) throws Exception {
+        List<String> urls = new ArrayList<>();
+        JSONArray ds = t.optJSONArray("directs");
+        if (ds != null) for (int i = 0; i < ds.length(); i++) urls.add(ds.optString(i));
+        if (urls.isEmpty()) urls.add(t.optString("direct"));
+        Exception last = null;
+        for (String u : urls) {
+            if (u == null || !u.startsWith("http")) continue;
+            try {
+                directOne(t, u, out);
+                if (out.length() > 20000) return;
+                last = new Exception("EMPTY");
+            } catch (YoutubeDL.CanceledException e) {
+                throw e;
+            } catch (Exception e) {
+                last = e;
+            }
+            out.delete();
+        }
+        throw last != null ? last : new Exception("NO_FILE");
+    }
+
+    static void directOne(JSONObject t, String u, File out) throws Exception {
         String id = t.optString("id");
-        HttpURLConnection c = (HttpURLConnection) new URL(t.optString("direct")).openConnection();
+        String ua = t.optString("ua", "");
+        String ref = t.optString("referer", "");
+        HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
         try {
             c.setConnectTimeout(15000);
             c.setReadTimeout(30000);
-            c.setRequestProperty("User-Agent", UA_IPHONE);
-            c.setRequestProperty("Referer", "https://www.douyin.com/");
+            c.setInstanceFollowRedirects(true);
+            c.setRequestProperty("User-Agent", ua.isEmpty() ? UA_IPHONE : ua);
+            c.setRequestProperty("Referer", ref.isEmpty() ? "https://www.douyin.com/" : ref);
+            int code = c.getResponseCode();
+            if (code >= 400) throw new Exception("HTTP " + code);
+            String ct = c.getContentType();
+            if (ct != null && (ct.startsWith("text/") || ct.contains("json"))) throw new Exception("NOT_VIDEO " + ct);
             long total = c.getContentLengthLong();
             long done = 0;
             try (InputStream in = c.getInputStream(); OutputStream o = new FileOutputStream(out)) {

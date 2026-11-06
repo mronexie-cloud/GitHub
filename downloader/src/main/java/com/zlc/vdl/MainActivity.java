@@ -257,6 +257,13 @@ public class MainActivity extends Activity implements Engine.Listener {
             });
         }
 
+        /** Douyin: read the video through Douyin's own web page in an in-app browser. Result arrives via onAnalyze. */
+        @JavascriptInterface
+        public void grab(String reqId, String id, String url) {
+            ui.post(() -> startActivity(new Intent(MainActivity.this, GrabActivity.class)
+                    .putExtra("reqId", reqId).putExtra("id", id).putExtra("url", url)));
+        }
+
         @JavascriptInterface
         public void logout(String platform) {
             ui.post(() -> {

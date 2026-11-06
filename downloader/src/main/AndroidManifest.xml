@@ -43,6 +43,11 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
 
+        <activity
+            android:name=".GrabActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
+
         <service
             android:name=".DownloadService"
             android:exported="false"
