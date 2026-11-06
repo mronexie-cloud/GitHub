@@ -1,0 +1,30 @@
+name: Probe file hosts
+
+on:
+  push:
+    paths:
+      - "tests/probe-hosts.js"
+      - ".github/workflows/probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: |
+          npm i --no-save playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - run: node tests/probe-hosts.js 2>&1 | tee probe.log
+      - if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete probe --yes --cleanup-tag || true
+          gh release create probe probe.log --title "probe" --notes "file host probe" --latest=false --prerelease
