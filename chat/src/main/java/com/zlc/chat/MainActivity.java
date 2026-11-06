@@ -10,6 +10,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -24,6 +25,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.widget.FrameLayout;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -44,6 +46,8 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private View fullView;
     private WebChromeClient.CustomViewCallback fullCallback;
+    private static final int MIC_PERMISSION = 2;
+    private PermissionRequest pendingMic;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -86,6 +90,23 @@ public class MainActivity extends Activity {
             public void onHideCustomView() {
                 exitFullscreen();
             }
+
+            // microphone for voice calls
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                runOnUiThread(() -> {
+                    boolean audio = false;
+                    for (String r : request.getResources()) if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) audio = true;
+                    if (!audio) { request.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        if (pendingMic != null) pendingMic.deny();
+                        pendingMic = request;
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_PERMISSION);
+                    }
+                });
+            }
         });
         web.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new Bridge(this), "Android");
@@ -121,6 +142,17 @@ public class MainActivity extends Activity {
         fullView = null;
         if (fullCallback != null) fullCallback.onCustomViewHidden();
         fullCallback = null;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == MIC_PERMISSION && pendingMic != null) {
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED)
+                pendingMic.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            else pendingMic.deny();
+            pendingMic = null;
+        }
     }
 
     @Override
@@ -238,6 +270,32 @@ public class MainActivity extends Activity {
                 else ctx.startService(i);
             } catch (Exception ignored) {
             }
+        }
+
+        /** Call started or ended: phone-call audio mode, speaker on, and keep the microphone alive in the background. */
+        @SuppressWarnings("deprecation")
+        @JavascriptInterface
+        public void callMode(boolean on, String title, String text) {
+            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                am.setMode(on ? AudioManager.MODE_IN_COMMUNICATION : AudioManager.MODE_NORMAL);
+                am.setSpeakerphoneOn(on);
+            }
+            if (on) {
+                Intent i = new Intent(ctx, KeepAliveService.class).putExtra("title", title).putExtra("text", text).putExtra("mic", true);
+                try {
+                    if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i);
+                    else ctx.startService(i);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        @SuppressWarnings("deprecation")
+        @JavascriptInterface
+        public void setSpeaker(boolean on) {
+            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) am.setSpeakerphoneOn(on);
         }
 
         @JavascriptInterface

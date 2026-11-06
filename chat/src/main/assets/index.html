@@ -134,7 +134,22 @@ img.media{cursor:zoom-in}
 .mprog{font-size:.76rem;padding:5px 8px 3px;opacity:.9}
 .viewer{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:50;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
 .viewer img{max-width:100%;max-height:100%;object-fit:contain}
-.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);background:rgba(20,28,25,.9);color:#fff;padding:8px 14px;border-radius:999px;font-size:.86rem;z-index:40;pointer-events:none;max-width:88%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.callbar{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--accent);color:var(--accent-ink);
+  padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+.callbar.ring{animation:ringpulse 1.1s ease-in-out infinite}
+@keyframes ringpulse{50%{filter:brightness(1.18)}}
+@media (prefers-reduced-motion:reduce){.callbar.ring{animation:none}}
+.callbar .ct{flex:1;min-width:140px;font-weight:700;font-size:.92rem;font-variant-numeric:tabular-nums}
+.callbar .ct small{display:block;font-weight:500;opacity:.9;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.callbar .cp{display:inline-flex;align-items:center;gap:3px;margin-inline-end:8px}
+.callbar .cp i{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.35;display:inline-block}
+.callbar .cp.talk i{opacity:1;box-shadow:0 0 0 3px rgba(255,255,255,.35)}
+.cbtn{border:0;border-radius:999px;padding:8px 13px;font-weight:700;font-size:.85rem;background:rgba(255,255,255,.22);color:inherit;display:inline-flex;align-items:center;gap:6px}
+.cbtn svg{width:17px;height:17px}
+.cbtn.on,.cbtn.go{background:#fff;color:#0e7c6b}
+.cbtn.end{background:#d64545;color:#fff}
+#callBtn:disabled{opacity:.35}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 76px);transform:translateX(-50%);background:rgba(20,28,25,.9);color:#fff;padding:8px 14px;border-radius:999px;font-size:.86rem;z-index:40;pointer-events:none;max-width:88%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion:reduce){.switch::after{transition:none}}
 </style>
 </head>
@@ -158,8 +173,10 @@ img.media{cursor:zoom-in}
 <section id="chat" hidden>
   <header class="head">
     <button class="htitle" id="titleBtn"><b id="roomLbl"></b><span><i class="dot" id="netDot"></i><span id="onlineLbl"></span></span></button>
+    <button class="iconbtn" id="callBtn" aria-label="voice call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 4h3.5l1.8 4.6-2.3 1.5a11 11 0 0 0 6 6l1.5-2.3L20 15.6V19a1.6 1.6 0 0 1-1.7 1.6A16.5 16.5 0 0 1 3.4 5.7 1.6 1.6 0 0 1 5 4z"/></svg></button>
     <button class="iconbtn" id="setBtn" aria-label="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </header>
+  <div class="callbar" id="callBar" hidden></div>
   <div class="list" id="list"></div>
   <div class="compose">
     <button class="attach" id="attachBtn" aria-label="photo or video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v9M7.5 12h9"/></svg></button>
@@ -400,6 +417,28 @@ const MEDIATXT={
   fr:['Photo','Vidéo','Envoi {n} %','Réception {n} %','Touchez pour charger','Chargement…','Échec du chargement, touchez pour réessayer','Vidéo trop lourde (max. {n} Mo). Raccourcissez-la puis réessayez.'],
   de:['Foto','Video','Wird gesendet {n} %','Wird empfangen {n} %','Zum Laden tippen','Wird geladen…','Laden fehlgeschlagen, tippen zum Wiederholen','Video zu groß (max. {n} MB). Bitte kürzen und erneut senden.'],
   pt:['Foto','Vídeo','Enviando {n}%','Recebendo {n}%','Toque para carregar','Carregando…','Falha ao carregar, toque para tentar de novo','Vídeo grande demais (máx. {n} MB). Corte e tente de novo.']};
+// voice call labels
+const CALLTXT={
+  'zh-CN':['语音通话','语音通话进行中 · {n} 人','加入','通话中','静音','取消静音','扬声器','挂断','忽略','{n} 发起了语音通话','通话人数已满（最多 6 人）','无法使用麦克风，请在手机设置里允许本应用使用麦克风','和 {n} 连接不上，可能是移动网络限制，请换成 Wi‑Fi 再试','连接中'],
+  'zh-TW':['語音通話','語音通話進行中 · {n} 人','加入','通話中','靜音','取消靜音','擴音','掛斷','忽略','{n} 發起了語音通話','通話人數已滿（最多 6 人）','無法使用麥克風，請在手機設定裡允許本應用程式使用麥克風','和 {n} 連線不上，可能是行動網路限制，請改用 Wi‑Fi 再試','連線中'],
+  en:['Voice call','Voice call in progress · {n}','Join','In call','Mute','Unmute','Speaker','Hang up','Ignore','{n} started a voice call','The call is full (max 6 people)','Can’t use the microphone. Allow this app to use the microphone in your phone settings.','Can’t connect to {n}. Mobile networks sometimes block calls; try Wi‑Fi.','Connecting'],
+  ms:['Panggilan suara','Panggilan suara sedang berlangsung · {n}','Sertai','Dalam panggilan','Bisukan','Nyahbisu','Pembesar suara','Tamatkan','Abaikan','{n} memulakan panggilan suara','Panggilan penuh (maks 6 orang)','Mikrofon tidak dapat digunakan. Benarkan aplikasi ini menggunakan mikrofon dalam tetapan telefon.','Tidak dapat bersambung dengan {n}. Rangkaian mudah alih kadangkala menyekat panggilan; cuba Wi‑Fi.','Menyambung'],
+  id:['Panggilan suara','Panggilan suara berlangsung · {n}','Gabung','Dalam panggilan','Bisukan','Bunyikan','Speaker','Tutup','Abaikan','{n} memulai panggilan suara','Panggilan penuh (maks 6 orang)','Mikrofon tidak bisa dipakai. Izinkan aplikasi ini memakai mikrofon di pengaturan ponsel.','Tidak bisa terhubung dengan {n}. Jaringan seluler terkadang memblokir panggilan; coba pakai Wi‑Fi.','Menghubungkan'],
+  ta:['குரல் அழைப்பு','குரல் அழைப்பு நடக்கிறது · {n}','சேர்','அழைப்பில்','ஒலியடக்கு','ஒலியை இயக்கு','ஸ்பீக்கர்','துண்டி','புறக்கணி','{n} குரல் அழைப்பைத் தொடங்கினார்','அழைப்பு நிரம்பியது (அதிகபட்சம் 6 பேர்)','மைக்ரோஃபோனைப் பயன்படுத்த முடியவில்லை. தொலைபேசி அமைப்புகளில் இந்தச் செயலிக்கு மைக்ரோஃபோன் அனுமதி கொடுக்கவும்.','{n} உடன் இணைக்க முடியவில்லை. மொபைல் நெட்வொர்க் சில நேரம் அழைப்புகளைத் தடுக்கும்; Wi‑Fi இல் முயலவும்.','இணைக்கிறது'],
+  th:['โทรด้วยเสียง','กำลังโทรด้วยเสียง · {n} คน','เข้าร่วม','กำลังโทร','ปิดเสียง','เปิดเสียง','ลำโพง','วางสาย','ไม่สนใจ','{n} เริ่มการโทรด้วยเสียง','การโทรเต็มแล้ว (สูงสุด 6 คน)','ใช้ไมโครโฟนไม่ได้ โปรดอนุญาตให้แอปนี้ใช้ไมโครโฟนในการตั้งค่าโทรศัพท์','เชื่อมต่อกับ {n} ไม่ได้ เครือข่ายมือถือบางครั้งบล็อกการโทร ลองใช้ Wi‑Fi','กำลังเชื่อมต่อ'],
+  vi:['Gọi thoại','Đang gọi thoại · {n} người','Tham gia','Đang gọi','Tắt tiếng','Bật tiếng','Loa ngoài','Kết thúc','Bỏ qua','{n} đã bắt đầu cuộc gọi thoại','Cuộc gọi đã đủ người (tối đa 6)','Không dùng được micro. Hãy cho phép ứng dụng này dùng micro trong cài đặt điện thoại.','Không kết nối được với {n}. Mạng di động đôi khi chặn cuộc gọi; hãy thử Wi‑Fi.','Đang kết nối'],
+  tl:['Voice call','May voice call · {n}','Sumali','Nasa tawag','I-mute','I-unmute','Speaker','Ibaba','Huwag pansinin','Nagsimula si {n} ng voice call','Puno na ang tawag (max 6 tao)','Hindi magamit ang mikropono. Payagan ang app na ito na gumamit ng mikropono sa settings ng telepono.','Hindi makakonekta kay {n}. Minsan hinaharang ng mobile network ang tawag; subukan ang Wi‑Fi.','Kumokonekta'],
+  ja:['音声通話','音声通話中 · {n} 人','参加','通話中','ミュート','ミュート解除','スピーカー','終了','無視','{n} さんが音声通話を開始しました','通話の人数が上限です（最大 6 人）','マイクを使えません。スマホの設定でこのアプリのマイクを許可してください。','{n} さんと接続できません。モバイル回線では通話がブロックされることがあります。Wi‑Fi でお試しください。','接続中'],
+  ko:['음성 통화','음성 통화 중 · {n}명','참여','통화 중','음소거','음소거 해제','스피커','종료','무시','{n}님이 음성 통화를 시작했습니다','통화 인원이 가득 찼습니다(최대 6명)','마이크를 사용할 수 없습니다. 휴대폰 설정에서 이 앱의 마이크 사용을 허용하세요.','{n}님과 연결할 수 없습니다. 모바일 네트워크가 통화를 막는 경우가 있으니 Wi‑Fi로 다시 시도하세요.','연결 중'],
+  hi:['वॉइस कॉल','वॉइस कॉल चल रही है · {n}','जुड़ें','कॉल पर','म्यूट','अनम्यूट','स्पीकर','कॉल काटें','अनदेखा करें','{n} ने वॉइस कॉल शुरू की','कॉल भर गई है (अधिकतम 6 लोग)','माइक्रोफ़ोन इस्तेमाल नहीं हो पा रहा। फ़ोन की सेटिंग्स में इस ऐप को माइक्रोफ़ोन की अनुमति दें।','{n} से कनेक्ट नहीं हो पा रहा। मोबाइल नेटवर्क कभी-कभी कॉल रोक देते हैं; Wi‑Fi पर कोशिश करें।','कनेक्ट हो रहा है'],
+  ne:['भ्वाइस कल','भ्वाइस कल चलिरहेको छ · {n} जना','सामेल हुनुहोस्','कलमा','म्युट','अनम्युट','स्पिकर','कल काट्नुहोस्','बेवास्ता गर्नुहोस्','{n} ले भ्वाइस कल सुरु गर्नुभयो','कल भरिएको छ (बढीमा ६ जना)','माइक्रोफोन प्रयोग गर्न सकिएन। फोनको सेटिङमा यो एपलाई माइक्रोफोनको अनुमति दिनुहोस्।','{n} सँग जोडिन सकिएन। मोबाइल नेटवर्कले कहिलेकाहीँ कल रोक्छ; Wi‑Fi मा प्रयास गर्नुहोस्।','जोडिँदै'],
+  ar:['مكالمة صوتية','مكالمة صوتية جارية · {n}','انضمام','في مكالمة','كتم','إلغاء الكتم','مكبّر الصوت','إنهاء','تجاهل','بدأ {n} مكالمة صوتية','المكالمة ممتلئة (6 أشخاص كحد أقصى)','تعذّر استخدام الميكروفون. اسمح لهذا التطبيق باستخدام الميكروفون من إعدادات الهاتف.','تعذّر الاتصال بـ {n}. قد تحظر شبكات الجوال المكالمات أحيانًا؛ جرّب شبكة Wi‑Fi.','جارٍ الاتصال'],
+  ru:['Голосовой звонок','Идёт голосовой звонок · {n}','Присоединиться','Звонок','Выкл. микрофон','Вкл. микрофон','Динамик','Завершить','Игнорировать','{n} начинает голосовой звонок','Звонок заполнен (не больше 6 человек)','Нет доступа к микрофону. Разрешите этому приложению использовать микрофон в настройках телефона.','Не удаётся соединиться с {n}. Мобильные сети иногда блокируют звонки; попробуйте Wi‑Fi.','Соединение'],
+  es:['Llamada de voz','Llamada de voz en curso · {n}','Unirse','En llamada','Silenciar','Activar micrófono','Altavoz','Colgar','Ignorar','{n} inició una llamada de voz','La llamada está llena (máx. 6 personas)','No se puede usar el micrófono. Permite que esta app use el micrófono en los ajustes del teléfono.','No se puede conectar con {n}. Las redes móviles a veces bloquean las llamadas; prueba con Wi‑Fi.','Conectando'],
+  fr:['Appel vocal','Appel vocal en cours · {n}','Rejoindre','En appel','Couper le micro','Activer le micro','Haut-parleur','Raccrocher','Ignorer','{n} a lancé un appel vocal','L’appel est complet (6 personnes max.)','Impossible d’utiliser le micro. Autorisez cette application à utiliser le micro dans les réglages du téléphone.','Impossible de se connecter à {n}. Les réseaux mobiles bloquent parfois les appels ; essayez en Wi‑Fi.','Connexion'],
+  de:['Sprachanruf','Sprachanruf läuft · {n}','Beitreten','Im Anruf','Stumm','Ton an','Lautsprecher','Auflegen','Ignorieren','{n} hat einen Sprachanruf gestartet','Der Anruf ist voll (max. 6 Personen)','Das Mikrofon kann nicht verwendet werden. Erlaube dieser App in den Handy-Einstellungen den Zugriff aufs Mikrofon.','Keine Verbindung zu {n}. Mobilfunknetze blockieren Anrufe manchmal; versuch es über WLAN.','Verbinden'],
+  pt:['Chamada de voz','Chamada de voz em andamento · {n}','Entrar','Em chamada','Silenciar','Ativar som','Viva-voz','Desligar','Ignorar','{n} iniciou uma chamada de voz','A chamada está cheia (máx. 6 pessoas)','Não foi possível usar o microfone. Permita que este app use o microfone nas configurações do celular.','Não foi possível conectar com {n}. Redes móveis às vezes bloqueiam chamadas; tente no Wi‑Fi.','Conectando']};
+for(const[k,v]of Object.entries(CALLTXT))if(TXT[k])Object.assign(TXT[k],{call:v[0],callActive:v[1],joinCall:v[2],inCall:v[3],mute:v[4],unmute:v[5],speaker:v[6],hangup:v[7],ignore:v[8],callStarted:v[9],callFull:v[10],micDenied:v[11],callFail:v[12],callConn:v[13]});
 for(const[k,v]of Object.entries(MEDIATXT))if(TXT[k])Object.assign(TXT[k],{photo:v[0],video:v[1],sendingPct:v[2],recvPct:v[3],tapLoad:v[4],loading:v[5],mediaFail:v[6],tooBig:v[7]});
 let myLang=store.get('chat-lang',null)||guessLang();
 const T=()=>Object.assign({},TXT.en,TXT[myLang]||{});
@@ -620,7 +659,7 @@ async function enterRoom(room,nick){
   render(true);updateHeader();
   const sess=R;
   R.net=new Net((t,m)=>{if(R===sess)onNet(t,m);},()=>{if(R===sess){updateHeader();if(R.net.up)hello();}});
-  R.net.subscribe(R.topic+'/m');R.net.subscribe(R.topic+'/h');R.net.subscribe(R.topic+'/p');R.net.subscribe(R.topic+'/f');
+  R.net.subscribe(R.topic+'/m');R.net.subscribe(R.topic+'/h');R.net.subscribe(R.topic+'/p');R.net.subscribe(R.topic+'/f');R.net.subscribe(R.topic+'/c');R.calls=new Map();
   R.net.start().catch(()=>{});
   R.hb=setInterval(()=>{if(R===sess){presence('here');pruneMembers();}},20000);
   R.tick=setInterval(()=>{if(R===sess)updateHeader();},5000);
@@ -634,6 +673,8 @@ function keepAlive(on){
 }
 function leaveRoom(){
   if(!R)return;
+  if(CALL)hangUp();
+  stopRinging();
   keepAlive(false);
   const r=R;R=null;clearInterval(r.hb);clearInterval(r.tick);
   if(r.net){const n=r.net;(async()=>{try{const env=await sealWith(r.key,{t:'bye',id:myId,name:r.nick});n.publish(r.topic+'/p',env);}catch(e){}setTimeout(()=>n.close(),400);})();}
@@ -657,6 +698,8 @@ async function onNet(topic,env){
     addMsgs([obj],true);
     // if the shared history doesn't contain this message yet (two people sent at once), one receiver republishes it
     if(validMsg(obj)){const id=obj.id;setTimeout(()=>{if(R===sess&&!(R.histIds&&R.histIds.has(id))&&R.seen.has(id))publishHist();},1500+Math.random()*3500);}
+  }else if(kind==='c'){
+    onCall(obj);
   }else if(kind==='h'){
     if(Array.isArray(obj.msgs)){R.histIds=new Set(obj.msgs.map(m=>m&&m.id));addMsgs(obj.msgs,false);}
   }
@@ -869,6 +912,215 @@ async function sendMedia(file,kind){
   setTimeout(()=>{if(R===sess&&R.pending.has(m.id)){R.pending.delete(m.id);patchMsg(m.id);}},4000);
 }
 
+/* ================= VOICE CALL ================= */
+// Audio goes directly between phones (WebRTC, encrypted); the room's servers only carry the encrypted set-up messages.
+const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}]};
+const CALL_MAX=6;
+let CALL=null,RING=null;
+const callSeen=new Set();
+async function csend(o){
+  if(!R)return;const sess=R;
+  const env=await seal(Object.assign({from:myId,name:R.nick,k:rid(10)},o));
+  if(R===sess)R.net.publish(R.topic+'/c',env);
+}
+function callInfo(){
+  if(!R||!R.calls)return null;
+  const now=Date.now();let best=null;
+  for(const[cid,c]of R.calls){
+    for(const[u,m]of c.members)if(now-m.seen>13000)c.members.delete(u);
+    if(!c.members.size){R.calls.delete(cid);continue;}
+    if(!best||cid<best.cid)best={cid,members:c.members};
+  }
+  return best;
+}
+function onCall(o){
+  if(!o||typeof o.cid!=='string'||typeof o.k!=='string'||o.from===myId)return;
+  if(callSeen.has(o.k))return; // each message arrives once per server
+  callSeen.add(o.k);if(callSeen.size>3000)callSeen.clear();
+  const name=String(o.name||'').slice(0,16);
+  if(o.t==='in'||o.t==='ring'){
+    let c=R.calls.get(o.cid);if(!c){c={members:new Map()};R.calls.set(o.cid,c);}
+    c.members.set(o.from,{name,seen:Date.now()});
+    if(o.t==='ring'&&!CALL)startRinging(o.cid,name);
+    if(CALL){
+      if(o.cid===CALL.cid)ensurePeer(o.from,name);
+      else if(o.cid<CALL.cid)switchCall(o.cid); // two people started at once: everyone moves to one call
+    }
+    renderCall();
+  }else if(o.t==='bye'){
+    const c=R.calls.get(o.cid);if(c)c.members.delete(o.from);
+    if(CALL&&o.cid===CALL.cid)dropPeer(o.from);
+    if(RING&&RING.cid===o.cid&&!callInfo())stopRinging();
+    renderCall();
+  }else if(o.to===myId&&CALL&&o.cid===CALL.cid){
+    if(o.t==='sdp')onSdp(o,name);else if(o.t==='ice')onIce(o,name);
+  }
+}
+function startRinging(cid,name){
+  if(RING&&RING.cid===cid)return;
+  stopRinging();
+  RING={cid,name,until:Date.now()+30000};
+  const beep=()=>{
+    if(!RING||Date.now()>RING.until){stopRinging();renderCall();return;}
+    try{if(window.Android&&typeof Android.playTone==='function'){Android.playTone();Android.vibrate(400);}else ringBeep();}catch(e){}
+  };
+  beep();RING.t=setInterval(beep,2600);
+  if(appHidden()&&window.Android&&typeof Android.notify==='function'){try{Android.notify(fmt(T().callStarted,name),R?R.room:'',false);}catch(e){}}
+  else toast(fmt(T().callStarted,name));
+}
+function stopRinging(){if(RING){clearInterval(RING.t);RING=null;}}
+function ringBeep(){
+  try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}catch(e){}
+  if(!actx)return;
+  try{const t=actx.currentTime;[0,.35].forEach(d=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=d?660:880;g.gain.setValueAtTime(.18,t+d);g.gain.exponentialRampToValueAtTime(.001,t+d+.3);o.connect(g).connect(actx.destination);o.start(t+d);o.stop(t+d+.32);});}catch(e){}
+}
+async function joinCall(cid){
+  if(CALL||!R)return;
+  stopRinging();
+  const info=callInfo();
+  if(cid&&info&&info.cid===cid&&info.members.size>=CALL_MAX){toast(T().callFull);return;}
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});}
+  catch(e){toast(T().micDenied);return;}
+  try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}catch(e){}
+  CALL={cid:cid||(Date.now().toString(36)+rid(6)),stream,peers:new Map(),tries:new Map(),muted:false,speaker:true,t0:Date.now(),warned:new Set()};
+  CALL.me=meter(stream);
+  try{if(window.Android&&typeof Android.callMode==='function')Android.callMode(true,fmt(T().bgTitle,R.room),T().inCall);}catch(e){}
+  await csend({t:cid?'in':'ring',cid:CALL.cid});
+  CALL.hb=setInterval(()=>{if(CALL)csend({t:'in',cid:CALL.cid});},4000);
+  CALL.tick=setInterval(renderCall,500);
+  if(info&&info.cid===CALL.cid)for(const[u,m]of info.members)ensurePeer(u,m.name);
+  renderCall();
+}
+function startCall(){const info=callInfo();joinCall(info?info.cid:null);}
+function switchCall(cid){
+  if(!CALL)return;const stream=CALL.stream;
+  csend({t:'bye',cid:CALL.cid});
+  for(const u of[...CALL.peers.keys()])dropPeer(u);
+  CALL.cid=cid;CALL.tries.clear();
+  csend({t:'in',cid});
+  const info=callInfo();if(info&&info.cid===cid)for(const[u,m]of info.members)ensurePeer(u,m.name);
+  CALL.stream=stream;
+}
+function hangUp(){
+  if(!CALL)return;
+  const c=CALL;CALL=null;
+  clearInterval(c.hb);clearInterval(c.tick);
+  csend({t:'bye',cid:c.cid});
+  for(const[u,p]of c.peers){try{p.pc.close();}catch(e){}if(p.audio){p.audio.srcObject=null;p.audio.remove();}}
+  c.stream.getTracks().forEach(t=>t.stop());
+  try{if(window.Android&&typeof Android.callMode==='function')Android.callMode(false,'','');}catch(e){}
+  keepAlive(true);
+  renderCall();
+}
+function meter(stream){
+  try{if(!actx)return null;const an=actx.createAnalyser();an.fftSize=512;actx.createMediaStreamSource(stream).connect(an);return{an,buf:new Float32Array(an.fftSize)};}catch(e){return null;}
+}
+function talking(m){
+  if(!m)return false;
+  try{m.an.getFloatTimeDomainData(m.buf);let s=0;for(const v of m.buf)s+=v*v;return Math.sqrt(s/m.buf.length)>.02;}catch(e){return false;}
+}
+function ensurePeer(uid,name){
+  if(!CALL||uid===myId)return null;
+  let p=CALL.peers.get(uid);
+  if(p){if(name)p.name=name;return p;}
+  if(CALL.peers.size>=CALL_MAX-1)return null;
+  const pc=new RTCPeerConnection(ICE);
+  p={pc,name:name||'',state:'new',ice:[]};
+  CALL.peers.set(uid,p);
+  CALL.stream.getTracks().forEach(t=>pc.addTrack(t,CALL.stream));
+  const cid=CALL.cid;
+  pc.onicecandidate=e=>{if(e.candidate&&CALL&&CALL.cid===cid)csend({t:'ice',cid,to:uid,c:e.candidate.toJSON()});};
+  pc.ontrack=e=>{
+    const st=e.streams[0]||new MediaStream([e.track]);
+    if(!p.audio){p.audio=document.createElement('audio');p.audio.autoplay=true;p.audio.setAttribute('playsinline','');p.audio.hidden=true;document.body.appendChild(p.audio);}
+    p.audio.srcObject=st;p.audio.play().catch(()=>{});
+    p.meter=meter(st);
+  };
+  pc.onconnectionstatechange=()=>{
+    p.state=pc.connectionState;
+    if(p.state==='failed')peerFailed(uid);
+    renderCall();
+  };
+  if(myId<uid)makeOffer(uid,p);
+  return p;
+}
+async function makeOffer(uid,p){
+  try{const o=await p.pc.createOffer();await p.pc.setLocalDescription(o);csend({t:'sdp',cid:CALL.cid,to:uid,d:{type:o.type,sdp:o.sdp}});}catch(e){}
+}
+async function onSdp(o,name){
+  const d=o.d;if(!d||typeof d.sdp!=='string'||(d.type!=='offer'&&d.type!=='answer'))return;
+  let p=CALL.peers.get(o.from);
+  try{
+    if(d.type==='offer'){
+      if(!p)p=ensurePeer(o.from,name);if(!p)return;
+      await p.pc.setRemoteDescription(d);await flushIce(p);
+      const a=await p.pc.createAnswer();await p.pc.setLocalDescription(a);
+      csend({t:'sdp',cid:CALL.cid,to:o.from,d:{type:a.type,sdp:a.sdp}});
+    }else if(p&&p.pc.signalingState==='have-local-offer'){
+      await p.pc.setRemoteDescription(d);await flushIce(p);
+    }
+  }catch(e){}
+}
+async function onIce(o,name){
+  if(!o.c)return;
+  const p=CALL.peers.get(o.from)||ensurePeer(o.from,name);if(!p)return;
+  if(!p.pc.remoteDescription){p.ice.push(o.c);return;}
+  try{await p.pc.addIceCandidate(o.c);}catch(e){}
+}
+async function flushIce(p){const q=p.ice;p.ice=[];for(const c of q){try{await p.pc.addIceCandidate(c);}catch(e){}}}
+function dropPeer(uid){
+  if(!CALL)return;const p=CALL.peers.get(uid);if(!p)return;
+  try{p.pc.close();}catch(e){}
+  if(p.audio){p.audio.srcObject=null;p.audio.remove();}
+  CALL.peers.delete(uid);
+}
+function peerFailed(uid){
+  if(!CALL)return;
+  const n=(CALL.tries.get(uid)||0)+1;CALL.tries.set(uid,n);
+  const p=CALL.peers.get(uid),name=p?p.name:'';
+  if(n>=3){if(!CALL.warned.has(uid)){CALL.warned.add(uid);toast(fmt(T().callFail,name));}return;}
+  setTimeout(()=>{if(!CALL)return;dropPeer(uid);ensurePeer(uid,name);},1500+Math.random()*1500); // try again from scratch
+}
+const callIcon={
+  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>',
+  micOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M4 4l16 16"/></svg>',
+  spk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9.5h4l5-4v13l-5-4H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+  end:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-3.3 0-6.3 1-8.7 2.8-.6.5-.7 1.3-.3 1.9l1.3 1.9c.4.6 1.2.8 1.8.5l2.5-1.2c.5-.2.8-.8.7-1.3l-.3-1.6a12 12 0 0 1 6 0l-.3 1.6c-.1.5.2 1.1.7 1.3l2.5 1.2c.6.3 1.4.1 1.8-.5l1.3-1.9c.4-.6.3-1.4-.3-1.9A14.6 14.6 0 0 0 12 9z"/></svg>'
+};
+function renderCall(){
+  const bar=$('callBar');if(!bar)return;
+  const t=T();
+  $('callBtn').disabled=!!CALL;
+  if(!R){bar.hidden=true;return;}
+  const info=callInfo();
+  if(CALL){
+    const s=Math.floor((Date.now()-CALL.t0)/1000),dur=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    const people=[...CALL.peers.values()].map(p=>{
+      const ok=p.state==='connected',talk=ok&&talking(p.meter);
+      const tag=p.state==='failed'?' ✕':ok?'':' · '+t.callConn;
+      return `<span class="cp${talk?' talk':''}"><i></i>${esc(p.name)}${tag}</span>`;
+    }).join('');
+    const meTalk=!CALL.muted&&talking(CALL.me);
+    const hasSpk=!!(window.Android&&typeof Android.setSpeaker==='function');
+    const html=`<div class="ct">${t.inCall} ${dur}<small><span class="cp${meTalk?' talk':''}"><i></i>${esc(t.you)}</span>${people}</small></div>
+      <button class="cbtn${CALL.muted?' on':''}" data-call="mute">${CALL.muted?callIcon.micOff:callIcon.mic}${CALL.muted?t.unmute:t.mute}</button>
+      ${hasSpk?`<button class="cbtn${CALL.speaker?' on':''}" data-call="spk">${callIcon.spk}${t.speaker}</button>`:''}
+      <button class="cbtn end" data-call="end">${callIcon.end}${t.hangup}</button>`;
+    if(bar.dataset.h!==html){bar.innerHTML=html;bar.dataset.h=html;}
+    bar.className='callbar';bar.hidden=false;return;
+  }
+  if(info){
+    const names=[...info.members.values()].map(m=>esc(m.name)).join('、');
+    const html=`<div class="ct">${fmt(t.callActive,info.members.size)}<small>${names}</small></div>
+      <button class="cbtn go" data-call="join" data-cid="${esc(info.cid)}">${t.joinCall}</button>${RING?`<button class="cbtn" data-call="ignore">${t.ignore}</button>`:''}`;
+    if(bar.dataset.h!==html){bar.innerHTML=html;bar.dataset.h=html;}
+    bar.className='callbar'+(RING?' ring':'');bar.hidden=false;return;
+  }
+  bar.hidden=true;bar.dataset.h='';
+}
+setInterval(()=>{if(R&&!CALL)renderCall();},3000);
+
 /* ================= RENDER ================= */
 function show(id){$('lobby').hidden=id!=='lobby';$('chat').hidden=id!=='chat';closeSheets();}
 function fmtTime(ts){const d=new Date(ts);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
@@ -981,7 +1233,7 @@ function applyUIText(){
   $('t_room').textContent=t.room;$('roomIn').placeholder=t.roomPh;$('joinBtn').textContent=t.join;
   $('notes').innerHTML=t.notes.map(n=>`<div>${n}</div>`).join('');
   $('t_settings').textContent=t.settings;$('t_mylang').textContent=t.mylang;$('t_auto').textContent=t.auto;$('t_trnote').textContent=t.trnote;
-  $('leaveBtn').textContent=t.leave;$('t_photo').textContent=t.photo;$('t_video').textContent=t.video;$('leaveYes').textContent=t.leave;$('leaveNo').textContent=t.cancel;$('t_leaveQ').textContent=t.leaveQ;$('t_sound').textContent=t.sound;$('battBtn').textContent=t.battery;$('t_battTip').textContent=t.battTip;$('t_font').textContent=t.font;$('t_fontAuto').textContent=t.fontAuto;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
+  $('leaveBtn').textContent=t.leave;$('callBtn').setAttribute('aria-label',t.call);$('callBtn').title=t.call;$('t_photo').textContent=t.photo;$('t_video').textContent=t.video;$('leaveYes').textContent=t.leave;$('leaveNo').textContent=t.cancel;$('t_leaveQ').textContent=t.leaveQ;$('t_sound').textContent=t.sound;$('battBtn').textContent=t.battery;$('t_battTip').textContent=t.battTip;$('t_font').textContent=t.font;$('t_fontAuto').textContent=t.fontAuto;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
   renderRecent();
 }
 function renderRecent(){
@@ -1017,6 +1269,16 @@ function grow(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight+
 ta.addEventListener('input',grow);
 ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('sendBtn').click();}});
 $('sendBtn').onclick=()=>{const v=ta.value;if(!v.trim())return;ta.value='';grow();sendText(v);ta.focus();};
+$('callBtn').onclick=()=>startCall();
+$('callBar').addEventListener('click',e=>{
+  const b=e.target.closest('[data-call]');if(!b)return;
+  const a=b.dataset.call;
+  if(a==='join')joinCall(b.dataset.cid);
+  else if(a==='ignore'){stopRinging();renderCall();}
+  else if(a==='end')hangUp();
+  else if(a==='mute'&&CALL){CALL.muted=!CALL.muted;CALL.stream.getAudioTracks().forEach(tr=>tr.enabled=!CALL.muted);renderCall();}
+  else if(a==='spk'&&CALL){CALL.speaker=!CALL.speaker;try{Android.setSpeaker(CALL.speaker);}catch(err){}renderCall();}
+});
 $('attachBtn').onclick=e=>{e.stopPropagation();$('attachMenu').hidden=!$('attachMenu').hidden;};
 document.addEventListener('click',e=>{if(!$('attachMenu').hidden&&!e.target.closest('#attachMenu'))$('attachMenu').hidden=true;});
 $('pickImgBtn').onclick=()=>{$('attachMenu').hidden=true;$('pickImg').click();};

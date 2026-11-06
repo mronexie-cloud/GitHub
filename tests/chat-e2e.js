@@ -10,7 +10,7 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
 
 (async () => {
-  const b = await chromium.launch();
+  const b = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
   const people = {};
   const open = async (key, nick, lang, locale) => {
     const c = await b.newContext({ viewport: { width: 390, height: 780 }, deviceScaleFactor: 2, locale });
@@ -148,6 +148,43 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
       await G.waitForFunction(() => document.querySelectorAll('img.media').length >= 1, null, { timeout: 60000 });
       log('G (late joiner) loaded the earlier photo in', Date.now() - tG, 'ms');
     } catch (e) { check(false, 'late joiner loads earlier photo'); }
+    // ---- voice call ----
+    const callState = p => p.evaluate(async () => {
+      if (!CALL) return null;
+      const peers = [];
+      for (const [u, q] of CALL.peers) {
+        let bytes = 0; try { (await q.pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') bytes += r.bytesReceived || 0; }); } catch (e) {}
+        peers.push({ name: q.name, state: q.state, bytes });
+      }
+      return { cid: CALL.cid, peers };
+    });
+    const waitConnected = (p, n) => p.waitForFunction(n => CALL && [...CALL.peers.values()].filter(q => q.state === 'connected').length >= n, n, { timeout: 30000 });
+    await A.click('#callBtn');
+    await B.waitForSelector('#callBar [data-call="join"]', { timeout: 20000 });
+    log('B sees call bar:', (await B.textContent('#callBar')).replace(/\s+/g, ' ').trim());
+    const tJoin = Date.now();
+    await B.click('#callBar [data-call="join"]');
+    await waitConnected(A, 1); await waitConnected(B, 1);
+    log('A and B connected in', Date.now() - tJoin, 'ms');
+    await A.waitForTimeout(2500);
+    let sa = await callState(A), sb = await callState(B);
+    log('A call:', JSON.stringify(sa)); log('B call:', JSON.stringify(sb));
+    check(sa.peers[0].bytes > 1000 && sb.peers[0].bytes > 1000, 'audio flows both ways');
+    await C.waitForSelector('#callBar [data-call="join"]', { timeout: 20000 });
+    await C.click('#callBar [data-call="join"]');
+    await waitConnected(A, 2); await waitConnected(B, 2); await waitConnected(C, 2);
+    log('three-way call connected');
+    await D.waitForFunction(() => /\b3\b/.test(document.getElementById('callBar').textContent), null, { timeout: 15000 });
+    log('D (not in call) sees:', (await D.textContent('#callBar')).replace(/\s+/g, ' ').trim());
+    await A.waitForTimeout(2000);
+    sa = await callState(A); log('A three-way:', JSON.stringify(sa));
+    check(sa.peers.length === 2 && sa.peers.every(q => q.state === 'connected' && q.bytes > 1000), 'three-way audio');
+    await B.click('#callBar [data-call="end"]');
+    await A.waitForFunction(() => CALL && CALL.peers.size === 1, null, { timeout: 15000 });
+    log('after B hung up, A has', (await callState(A)).peers.length, 'peer');
+    await A.click('#callBar [data-call="end"]'); await C.click('#callBar [data-call="end"]');
+    await D.waitForFunction(() => document.getElementById('callBar').hidden, null, { timeout: 20000 });
+    log('call ended for everyone');
     // a message A sent must show as delivered (not "sending") on A's own screen
     const pend = await A.$$eval('.msg.me .time', e => e.map(x => x.textContent));
     log('A own message status:', JSON.stringify(pend)); check(pend.every(t => !/发送中|Sending/.test(t)), 'own message delivered');

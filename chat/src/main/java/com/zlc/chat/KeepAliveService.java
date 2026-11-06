@@ -2,8 +2,10 @@ package com.zlc.chat;
 
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.Manifest;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
@@ -28,11 +30,20 @@ public class KeepAliveService extends Service {
                 .setContentIntent(pi);
         if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_LOW);
         Notification n = b.build();
+        boolean mic = intent != null && intent.getBooleanExtra("mic", false)
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
         try {
-            if (Build.VERSION.SDK_INT >= 34) startForeground(ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
-            else startForeground(ID, n);
+            if (Build.VERSION.SDK_INT >= 34) {
+                int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING;
+                if (mic) type |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+                startForeground(ID, n, type);
+            } else if (Build.VERSION.SDK_INT >= 30 && mic) {
+                startForeground(ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+            } else {
+                startForeground(ID, n);
+            }
         } catch (Exception e) {
-            stopSelf();
+            try { startForeground(ID, n); } catch (Exception e2) { stopSelf(); }
         }
         return START_NOT_STICKY;
     }
