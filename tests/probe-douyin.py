@@ -12,7 +12,7 @@ def log(*a):
     print(*a, flush=True)
 
 # A. share page over plain HTTP: what does videoInfoRes hold?
-for vid in IDS:
+for vid in []:
     for ua_name, ua in (('iphone', IPHONE), ('android', ANDROID)):
         try:
             req = urllib.request.Request(f'https://www.iesdouyin.com/share/video/{vid}/', headers={'User-Agent': ua, 'Referer': 'https://www.douyin.com/'})
@@ -94,6 +94,37 @@ def browse(p, name, ua, mobile, url, vid, wait=25):
     cookies = {c['name'] for c in ctx.cookies()}
     log('   cookies:', sorted(cookies)[:40])
     # can the found media URL be fetched outside the browser?
+    try:
+        rd2 = page.evaluate('''() => { try { return JSON.stringify(window._ROUTER_DATA) } catch (e) { return null } }''')
+        if rd2:
+            d = json.loads(rd2).get('loaderData', {})
+            for k, v in d.items():
+                vi = (v or {}).get('videoInfoRes') if isinstance(v, dict) else None
+                if vi:
+                    it = (vi.get('item_list') or [{}])[0]
+                    vv = it.get('video', {})
+                    log('   ROUTER item:', k, 'desc', repr(it.get('desc', '')[:30]), 'author', (it.get('author') or {}).get('nickname'), 'dur', vv.get('duration'), 'h', vv.get('height'),
+                        'cover', bool((vv.get('cover') or {}).get('url_list')), 'play', (vv.get('play_addr') or {}).get('url_list', [''])[0][:140], 'bit_rate', len(vv.get('bit_rate') or []), 'images', bool(it.get('images')))
+        else:
+            log('   no _ROUTER_DATA')
+    except Exception as e:
+        log('   ROUTER err', e)
+    for s in srcs:
+        if not s.startswith('http'): continue
+        for variant in (s, s.replace('playwm', 'play'), s.replace('playwm', 'play').replace('ratio=720p', 'ratio=1080p')):
+            try:
+                req = urllib.request.Request(variant, headers={'User-Agent': ua, 'Referer': 'https://www.douyin.com/', 'Range': 'bytes=0-1023'})
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    log('   variant', variant[25:80], r.status, r.headers.get('Content-Type'), r.headers.get('Content-Range'), r.geturl()[:60])
+            except Exception as e:
+                log('   variant', variant[25:80], 'ERR', e)
+            try:
+                req = urllib.request.Request(variant, headers={'User-Agent': ua})
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    log('     no-referer/no-range:', r.status, r.headers.get('Content-Type'), r.headers.get('Content-Length'))
+            except Exception as e:
+                log('     no-referer ERR', e)
+        break
     cand = [s for s in srcs if s.startswith('http')] + [u for _, u in media]
     if detail.get('play'):
         cand.insert(0, detail['play'])
@@ -110,8 +141,5 @@ def browse(p, name, ua, mobile, url, vid, wait=25):
     ctx.browser.close()
 
 with sync_playwright() as p:
-    for vid in IDS[:2]:
-        browse(p, 'desktop', DESKTOP, False, f'https://www.douyin.com/video/{vid}', vid)
+    for vid in IDS:
         browse(p, 'android-www', ANDROID, True, f'https://www.douyin.com/video/{vid}', vid)
-        browse(p, 'android-share', ANDROID, True, f'https://www.iesdouyin.com/share/video/{vid}/', vid)
-        browse(p, 'iphone-share', IPHONE, True, f'https://www.iesdouyin.com/share/video/{vid}/', vid)
