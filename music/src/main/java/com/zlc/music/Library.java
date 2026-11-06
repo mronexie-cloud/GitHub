@@ -62,9 +62,12 @@ class Library {
                 s.put("albumId", c.getLong(4));
                 out.put(s.getString("id"), s);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            android.util.Log.w("MusicBox", "media index query failed", e);
         }
+        int indexed = out.size();
         walk(ctx, paths, minMs, out, root);
+        android.util.Log.i("MusicBox", "scan: " + indexed + " from the media index (" + paths.size() + " files), " + (out.size() - indexed) + " more from folders");
         songs.clear();
         byUri.clear();
         JSONArray arr = new JSONArray();

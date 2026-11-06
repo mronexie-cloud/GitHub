@@ -58,7 +58,7 @@ m['covr'] = [MP4Cover(cover, imageformat=MP4Cover.FORMAT_JPEG)]
 m.save()
 
 # a real song title (silent audio of the same length) to test the online lyrics lookup
-ff('-f', 'lavfi', '-i', 'anullsrc=r=22050:cl=mono', '-t', '354', '-c:a', 'aac', '-b:a', '16k', f'{M}/online-test.m4a')
+tone(f'{M}/online-test.m4a', 354, 220, '-c:a', 'aac', '-b:a', '32k')
 m = MP4(f'{M}/online-test.m4a')
 m['\xa9nam'] = 'Bohemian Rhapsody'
 m['\xa9ART'] = 'Queen'

@@ -44,6 +44,7 @@ adb shell input keyevent KEYCODE_MEDIA_PAUSE
 sleep 2
 state "after pause key"
 adb logcat -d > $OUT/logcat.txt
-grep -E "FATAL EXCEPTION|AndroidRuntime|com.zlc.music" $OUT/logcat.txt | head -60 > $OUT/crash.txt
+grep -E "FATAL EXCEPTION|AndroidRuntime" -A20 $OUT/logcat.txt | head -80 > $OUT/crash.txt
+grep -E "MusicBox" -A12 $OUT/logcat.txt | head -60 >> $OUT/results.txt
 cat $OUT/results.txt $OUT/mediastore.txt $OUT/notification.txt
 exit 0
