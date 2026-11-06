@@ -1,12 +1,13 @@
-# 游戏 App：二人麻将 + 五子棋 + 象棋 + 三国身份局
+# 译聊 + 游戏 App：译聊、二人麻将、五子棋、象棋、三国身份局
 
-这个仓库里有四个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
+这个仓库里有五个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
 
 | App | 模块目录 | 下载 |
 | --- | --- | --- |
 | 五子棋 | `app/` | [gomoku.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/gomoku.apk) |
 | 象棋 | `xiangqi/` | [xiangqi.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/xiangqi.apk) |
 | 三国身份局 | `sanguo/` | [sanguo.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/sanguo.apk) |
+| 译聊（多人聊天 + 翻译） | `chat/` | [chat.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/chat.apk) |
 | 二人麻将（联网） | `mahjong/` | [mahjong.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/mahjong.apk) |
 
 **苹果手机版：** 用 Safari 打开 https://mronexie-cloud.github.io/GitHub/ ，选游戏后通过"分享 → 添加到主屏幕"安装。苹果版文件在 `ios/` 目录，和安卓版互不影响。
@@ -61,3 +62,7 @@
 ## 二人麻将联网说明
 
 房主点"创建房间"得到 6 位房间号，好友输入房间号加入。消息通过公共 MQTT 服务器中转（房间号第一位表示线路：1 = broker.emqx.io，2 = broker.hivemq.com，3 = test.mosquitto.org），不需要自己搭服务器。房主的手机负责发牌和判定规则，所以房主离开房间后本局结束。`tests/mj-e2e.js` 会在 GitHub Actions 里用两个浏览器自动测试联机。
+
+## 译聊说明
+
+输入同一个房间名的人进入同一个聊天室，人数不限。每个人选择自己的语言，别人发来的消息会自动翻译成这种语言（Google 翻译，备用 MyMemory），原文同时显示。消息用房间名做 AES-GCM 加密后，同时经过 broker.emqx.io 和 broker.hivemq.com 两台公共服务器中转，任一台故障时仍可聊天。新加入的人能看到最近 50 条消息。`tests/chat-e2e.js` 在 GitHub Actions 里用 4 个不同语言的浏览器做联机测试。

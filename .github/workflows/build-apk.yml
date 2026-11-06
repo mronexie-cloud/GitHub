@@ -8,6 +8,7 @@ on:
       - ".github/workflows/pages.yml"
       - "tests/**"
       - ".github/workflows/e2e.yml"
+      - ".github/workflows/chat-e2e.yml"
       - ".github/workflows/tts.yml"
   workflow_dispatch:
 
@@ -36,6 +37,7 @@ jobs:
             xiangqi/build/outputs/apk/debug/xiangqi-debug.apk
             sanguo/build/outputs/apk/debug/sanguo-debug.apk
             mahjong/build/outputs/apk/debug/mahjong-debug.apk
+            chat/build/outputs/apk/debug/chat-debug.apk
       - name: Publish APK as release
         if: github.ref == 'refs/heads/main'
         env:
@@ -45,5 +47,6 @@ jobs:
           cp xiangqi/build/outputs/apk/debug/xiangqi-debug.apk xiangqi.apk
           cp sanguo/build/outputs/apk/debug/sanguo-debug.apk sanguo.apk
           cp mahjong/build/outputs/apk/debug/mahjong-debug.apk mahjong.apk
+          cp chat/build/outputs/apk/debug/chat-debug.apk chat.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest gomoku.apk xiangqi.apk sanguo.apk mahjong.apk --title "游戏 App" --notes "gomoku.apk 是五子棋，xiangqi.apk 是象棋，sanguo.apk 是三国身份局，mahjong.apk 是联机二人麻将。手机上点文件名即可下载安装，由 GitHub Actions 自动编译。" --latest
+          gh release create latest gomoku.apk xiangqi.apk sanguo.apk mahjong.apk chat.apk --title "游戏 App" --notes "gomoku.apk 是五子棋，xiangqi.apk 是象棋，sanguo.apk 是三国身份局，mahjong.apk 是联机二人麻将，chat.apk 是带翻译的聊天 App 译聊。手机上点文件名即可下载安装，由 GitHub Actions 自动编译。" --latest
