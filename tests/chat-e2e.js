@@ -52,7 +52,8 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
       const out = {};
       for (const [name, f] of [['google', () => trGoogle('你好，朋友', 'en')], ['googleAlt', () => trGoogleAlt('你好，朋友', 'en')],
         ['mymemory zh>en', () => trMyMemory('你好，朋友', 'zh-CN', 'en')], ['mymemory ja>zh', () => trMyMemory('よろしくお願いします！', 'ja', 'zh-CN')],
-        ['googleAlt ja>zh', () => trGoogleAlt('よろしくお願いします！', 'zh-CN')]]) {
+        ['googleAlt ja>zh', () => trGoogleAlt('よろしくお願いします！', 'zh-CN')],
+        ['google zh>ne', () => trGoogle('你好，朋友', 'ne')], ['google ne>zh', () => trGoogle('नमस्ते साथी, तिमीलाई कस्तो छ?', 'zh-CN')]]) {
         try { out[name] = (await f()).text; } catch (e) { out[name] = 'ERR ' + e.message; }
       }
       out.secure = window.isSecureContext;
@@ -90,6 +91,13 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
     const ja = 'よろしくお願いします！';
     await send(D, ja);
     r = await seen(A, ja, true); log('A (Chinese) sees:', JSON.stringify(r)); check(r.label && !r.failed, 'A translation from ja');
+    // Nepali speaker joins: sees history in Nepali, and her Nepali message reaches the Chinese speaker translated
+    const E = await open('E', 'Sita', 'ne', 'ne-NP');
+    r = await seen(E, zh, true); log('E (Nepali) sees history:', JSON.stringify(r)); check(r.label && !r.failed, 'E translation into Nepali');
+    const ne = 'नमस्ते सबैलाई, म पनि आउँछु।';
+    await send(E, ne);
+    r = await seen(A, ne, true); log('A (Chinese) sees Nepali:', JSON.stringify(r)); check(r.label && !r.failed, 'A translation from Nepali');
+    r = await seen(B, ne, true); log('B (English) sees Nepali:', JSON.stringify(r)); check(r.label && !r.failed, 'B translation from Nepali');
     // a message A sent must show as delivered (not "sending") on A's own screen
     const pend = await A.$$eval('.msg.me .time', e => e.map(x => x.textContent));
     log('A own message status:', JSON.stringify(pend)); check(pend.every(t => !/发送中|Sending/.test(t)), 'own message delivered');

@@ -157,7 +157,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const myId=store.get('chat-id',null)||(()=>{const v=rid(14);store.set('chat-id',v);return v;})();
 
 /* ================= LANGUAGES & UI TEXT ================= */
-const LANGS=[['zh-CN','简体中文'],['zh-TW','繁體中文'],['en','English'],['ms','Bahasa Melayu'],['id','Bahasa Indonesia'],['ta','தமிழ்'],['th','ไทย'],['vi','Tiếng Việt'],['tl','Filipino'],['ja','日本語'],['ko','한국어'],['hi','हिन्दी'],['ar','العربية'],['ru','Русский'],['es','Español'],['fr','Français'],['de','Deutsch'],['pt','Português']];
+const LANGS=[['zh-CN','简体中文'],['zh-TW','繁體中文'],['en','English'],['ms','Bahasa Melayu'],['id','Bahasa Indonesia'],['ta','தமிழ்'],['th','ไทย'],['vi','Tiếng Việt'],['tl','Filipino'],['ja','日本語'],['ko','한국어'],['hi','हिन्दी'],['ne','नेपाली'],['ar','العربية'],['ru','Русский'],['es','Español'],['fr','Français'],['de','Deutsch'],['pt','Português']];
 const LNAME=Object.fromEntries(LANGS);
 function guessLang(){
   const n=(navigator.language||'en').toLowerCase();
