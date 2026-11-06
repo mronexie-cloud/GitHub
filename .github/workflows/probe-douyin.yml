@@ -1,0 +1,29 @@
+name: Probe Douyin in a browser
+
+on:
+  push:
+    paths:
+      - "tests/probe-douyin.py"
+      - ".github/workflows/probe-douyin.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - run: python tests/probe-douyin.py 2>&1 | tee douyin.log
+      - if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip -qr douyin-shots.zip shots || true
+          gh release delete probe-douyin --yes --cleanup-tag || true
+          gh release create probe-douyin douyin.log douyin-shots.zip --title "probe" --notes "douyin probe" --latest=false --prerelease

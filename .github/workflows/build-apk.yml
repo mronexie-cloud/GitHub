@@ -10,6 +10,7 @@ on:
       - ".github/workflows/probe.yml"
       - ".github/workflows/probe-turn.yml"
       - ".github/workflows/probe-platforms.yml"
+      - ".github/workflows/probe-douyin.yml"
       - ".github/workflows/downloader-e2e.yml"
       - ".github/workflows/e2e.yml"
       - ".github/workflows/chat-e2e.yml"
