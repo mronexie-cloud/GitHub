@@ -111,7 +111,7 @@ def browse(p, name, ua, mobile, url, vid, wait=25):
         log('   ROUTER err', e)
     for s in srcs:
         if not s.startswith('http'): continue
-        for variant in (s, s.replace('playwm', 'play'), s.replace('playwm', 'play').replace('ratio=720p', 'ratio=1080p')):
+        for variant in (s, s.replace('ratio=720p', 'ratio=1080p'), s.replace('m.douyin.com', 'aweme.snssdk.com').replace('ratio=720p', 'ratio=1080p')):
             try:
                 req = urllib.request.Request(variant, headers={'User-Agent': ua, 'Referer': 'https://www.douyin.com/', 'Range': 'bytes=0-1023'})
                 with urllib.request.urlopen(req, timeout=20) as r:
@@ -140,6 +140,67 @@ def browse(p, name, ua, mobile, url, vid, wait=25):
             log('   fetch outside browser ERR', e)
     ctx.browser.close()
 
+def desktop_ssr(p, vid):
+    # the computer version embeds the video info (RENDER_DATA) in the page itself
+    b = p.chromium.launch()
+    ctx = b.new_context(user_agent=DESKTOP, viewport={'width': 1280, 'height': 800}, locale='zh-CN')
+    page = ctx.new_page()
+    t0 = time.time()
+    try:
+        page.goto(f'https://www.douyin.com/video/{vid}', wait_until='domcontentloaded', timeout=40000)
+    except Exception as e:
+        log('C goto err', e)
+    rd = None
+    for i in range(20):
+        time.sleep(1)
+        try:
+            rd = page.evaluate("() => { const e = document.getElementById('RENDER_DATA'); return e ? decodeURIComponent(e.textContent) : null }")
+        except Exception:
+            rd = None
+        if rd: break
+    log(f'C desktop-ssr {vid} {time.time()-t0:.0f}s url={page.url[:80]} RENDER_DATA={len(rd) if rd else None}')
+    if rd:
+        j = json.loads(rd)
+        found = []
+        def walk(n, path, d=0):
+            if d > 14: return
+            if isinstance(n, dict):
+                aid = str(n.get('awemeId') or n.get('aweme_id') or '')
+                v = n.get('video')
+                if aid == vid and isinstance(v, dict):
+                    found.append((path, n))
+                for k, x in n.items(): walk(x, path + '.' + k, d + 1)
+            elif isinstance(n, list):
+                for i, x in enumerate(n[:50]): walk(x, path + f'[{i}]', d + 1)
+        walk(j, '')
+        log('   top keys', list(j)[:12])
+        for path, n in found[:2]:
+            v = n['video']
+            log('   found at', path, 'video keys', list(v)[:30])
+            log('   desc', repr(n.get('desc', '')[:30]), 'author', (n.get('authorInfo') or n.get('author') or {}).get('nickname'))
+            pa = v.get('playAddr') or v.get('play_addr')
+            log('   playAddr', json.dumps(pa, ensure_ascii=False)[:400])
+            brl = v.get('bitRateList') or v.get('bit_rate') or []
+            for b2 in brl[:6]:
+                pa2 = b2.get('playAddr') or b2.get('play_addr')
+                log('   bitrate', b2.get('gearName') or b2.get('gear_name'), b2.get('width'), b2.get('height'), b2.get('isH265'), b2.get('format'), json.dumps(pa2)[:200])
+            srcs = []
+            if isinstance(pa, list): srcs = [x.get('src') for x in pa if isinstance(x, dict)]
+            elif isinstance(pa, dict): srcs = pa.get('url_list') or pa.get('urlList') or []
+            for s0 in srcs[:3]:
+                u = 'https:' + s0 if s0.startswith('//') else s0
+                for hdr in ({'User-Agent': DESKTOP, 'Referer': 'https://www.douyin.com/', 'Range': 'bytes=0-1023'}, {'User-Agent': ANDROID, 'Range': 'bytes=0-1023'}):
+                    try:
+                        with urllib.request.urlopen(urllib.request.Request(u, headers=hdr), timeout=20) as r:
+                            log('   fetch', u[:70], 'ref' if 'Referer' in hdr else 'noref', r.status, r.headers.get('Content-Type'), r.headers.get('Content-Range'))
+                    except Exception as e:
+                        log('   fetch', u[:70], 'ref' if 'Referer' in hdr else 'noref', 'ERR', e)
+        if not found:
+            log('   no aweme; sample', rd[:600])
+    b.close()
+
 with sync_playwright() as p:
-    for vid in IDS:
+    for vid in IDS[:2]:
+        desktop_ssr(p, vid)
+    for vid in IDS[:2]:
         browse(p, 'android-www', ANDROID, True, f'https://www.douyin.com/video/{vid}', vid)
