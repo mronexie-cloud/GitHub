@@ -18,8 +18,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - run: pip install playwright && python -m playwright install --with-deps chromium && sudo apt-get install -y -qq ffmpeg xvfb > /dev/null
       - run: python tests/probe-douyin.py 2>&1 | tee douyin.log
+      - run: HEADFUL=1 xvfb-run -a python tests/probe-douyin.py 2>&1 | grep -E "^==|  D-headful|in-page|detail desc|play_addr|bit_rate|fetch play|frame.*desktop" | tee -a douyin.log
       - if: always()
         env:
           GH_TOKEN: ${{ github.token }}
