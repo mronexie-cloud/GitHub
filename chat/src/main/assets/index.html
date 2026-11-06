@@ -48,7 +48,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* chat */
 #chat{height:100%;display:flex;flex-direction:column}
 .head{flex:none;display:flex;align-items:center;gap:10px;background:var(--surface);border-bottom:1px solid var(--line);
-  padding:max(10px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 10px max(12px,env(safe-area-inset-left,0px))}
+  padding:max(10px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 10px max(18px,env(safe-area-inset-left,0px))}
 .iconbtn{width:38px;height:38px;border-radius:10px;border:0;background:transparent;display:grid;place-items:center;flex:none;color:var(--ink)}
 .iconbtn svg{width:22px;height:22px}
 .htitle{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;background:none;border:0;padding:0;text-align:start}
@@ -107,13 +107,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .switch[aria-checked="true"]{background:var(--accent)}
 .switch[aria-checked="true"]::after{transform:translateX(20px)}
 [dir="rtl"] .switch[aria-checked="true"]::after{transform:translateX(-20px)}
-[dir="rtl"] #backBtn svg,[dir="rtl"] .send svg{transform:scaleX(-1)}
+[dir="rtl"] .send svg{transform:scaleX(-1)}
 .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{flex:1;min-width:0;padding:9px 4px;border:0;background:var(--bg);color:var(--ink);font-weight:600;line-height:1.1}
 .seg button+button{border-inline-start:1px solid var(--line)}
 .seg button[data-fs="auto"]{flex:2.2;font-size:.8rem}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .flabel{font-size:.82rem;color:var(--muted);font-weight:600}
+.ask{border:1px solid var(--warn);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.ask p{margin:0;line-height:1.5}
+.row2{display:flex;gap:8px}.row2>*{flex:1}
 .ghost{padding:12px;border-radius:11px;border:1px solid var(--line);background:none;font-weight:600}
 .danger{color:var(--warn)}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);background:rgba(20,28,25,.9);color:#fff;padding:8px 14px;border-radius:999px;font-size:.86rem;z-index:40;pointer-events:none;max-width:88%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -139,7 +142,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 <section id="chat" hidden>
   <header class="head">
-    <button class="iconbtn" id="backBtn" aria-label="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     <button class="htitle" id="titleBtn"><b id="roomLbl"></b><span><i class="dot" id="netDot"></i><span id="onlineLbl"></span></span></button>
     <button class="iconbtn" id="setBtn" aria-label="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </header>
@@ -165,7 +167,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div></div>
   <div class="row"><span id="t_auto"></span><button class="switch" id="autoSw" role="switch" aria-checked="true" aria-labelledby="t_auto"></button></div>
   <p class="notes" id="t_trnote" style="margin:0"></p>
+  <div class="row"><span id="t_sound"></span><button class="switch" id="soundSw" role="switch" aria-checked="true" aria-labelledby="t_sound"></button></div>
+  <div id="battBox" class="field" hidden><button class="ghost" id="battBtn"></button><p class="notes" id="t_battTip" style="margin:0"></p></div>
   <button class="ghost danger" id="leaveBtn"></button>
+  <div id="leaveAsk" class="ask" hidden><p id="t_leaveQ"></p><div class="row2"><button class="ghost danger" id="leaveYes"></button><button class="ghost" id="leaveNo"></button></div></div>
   <button class="ghost" data-close id="t_close2"></button>
 </div></div>
 <div class="toast" id="toast" hidden></div>
@@ -329,6 +334,28 @@ const FONTTXT={'zh-CN':['文字大小','跟随系统'],'zh-TW':['文字大小','
   ko:['글자 크기','시스템 설정'],hi:['अक्षरों का आकार','सिस्टम के अनुसार'],ne:['अक्षरको आकार','प्रणाली अनुसार'],ar:['حجم الخط','حسب النظام'],ru:['Размер текста','Как в системе'],
   es:['Tamaño del texto','Según el sistema'],fr:['Taille du texte','Comme le système'],de:['Schriftgröße','Wie im System'],pt:['Tamanho do texto','Seguir o sistema']};
 for(const[k,[a,b]]of Object.entries(FONTTXT))if(TXT[k])Object.assign(TXT[k],{font:a,fontAuto:b});
+// sound, background and leave-confirmation labels
+const MORETXT={
+  'zh-CN':['新消息提示音','正在房间「{n}」','后台接收消息中，点按返回聊天','允许后台运行','有些手机会在后台关闭应用。如果锁屏后收不到消息，请允许译聊在后台运行。','确定离开这个房间吗？离开后将不再接收这个房间的消息。','取消'],
+  'zh-TW':['新訊息提示音','正在房間「{n}」','背景接收訊息中，點按返回聊天','允許背景執行','有些手機會在背景關閉應用程式。如果鎖定螢幕後收不到訊息，請允許譯聊在背景執行。','確定離開這個房間嗎？離開後將不再接收這個房間的訊息。','取消'],
+  en:['New message sound','In room “{n}”','Receiving messages in the background. Tap to open.','Allow running in background','Some phones close apps in the background. If messages stop arriving when the screen is off, allow this app to run in the background.','Leave this room? You will stop receiving its messages.','Cancel'],
+  ms:['Bunyi mesej baharu','Dalam bilik “{n}”','Menerima mesej di latar belakang. Ketik untuk buka.','Benarkan berjalan di latar belakang','Sesetengah telefon menutup aplikasi di latar belakang. Jika mesej tidak diterima semasa skrin dimatikan, benarkan aplikasi ini berjalan di latar belakang.','Keluar dari bilik ini? Anda tidak akan menerima mesejnya lagi.','Batal'],
+  id:['Suara pesan baru','Di ruang “{n}”','Menerima pesan di latar belakang. Ketuk untuk membuka.','Izinkan berjalan di latar belakang','Beberapa ponsel menutup aplikasi di latar belakang. Jika pesan tidak masuk saat layar mati, izinkan aplikasi ini berjalan di latar belakang.','Keluar dari ruang ini? Anda tidak akan menerima pesannya lagi.','Batal'],
+  ta:['புதிய செய்தி ஒலி','“{n}” அறையில்','பின்னணியில் செய்திகளைப் பெறுகிறது. திறக்க தட்டவும்.','பின்னணியில் இயங்க அனுமதி','சில தொலைபேசிகள் பின்னணியில் செயலிகளை மூடிவிடும். திரை அணைந்ததும் செய்திகள் வரவில்லை என்றால், இந்தச் செயலியைப் பின்னணியில் இயங்க அனுமதியுங்கள்.','இந்த அறையை விட்டு வெளியேறவா? இதன் செய்திகள் இனி வராது.','ரத்துசெய்'],
+  th:['เสียงข้อความใหม่','อยู่ในห้อง “{n}”','กำลังรับข้อความในเบื้องหลัง แตะเพื่อเปิด','อนุญาตให้ทำงานเบื้องหลัง','โทรศัพท์บางรุ่นจะปิดแอปที่ทำงานเบื้องหลัง หากไม่ได้รับข้อความเมื่อปิดหน้าจอ โปรดอนุญาตให้แอปนี้ทำงานเบื้องหลัง','ออกจากห้องนี้ไหม คุณจะไม่ได้รับข้อความจากห้องนี้อีก','ยกเลิก'],
+  vi:['Âm báo tin nhắn mới','Đang ở phòng “{n}”','Đang nhận tin nhắn ở chế độ nền. Chạm để mở.','Cho phép chạy nền','Một số điện thoại sẽ đóng ứng dụng chạy nền. Nếu không nhận được tin nhắn khi tắt màn hình, hãy cho phép ứng dụng này chạy nền.','Rời phòng này? Bạn sẽ không nhận được tin nhắn của phòng nữa.','Hủy'],
+  tl:['Tunog ng bagong mensahe','Nasa room na “{n}”','Tumatanggap ng mensahe sa background. I-tap para buksan.','Payagang tumakbo sa background','May mga teleponong nagsasara ng app sa background. Kung hindi dumarating ang mensahe kapag nakapatay ang screen, payagan ang app na ito na tumakbo sa background.','Umalis sa room na ito? Hindi ka na makakatanggap ng mga mensahe nito.','Kanselahin'],
+  ja:['新着メッセージの通知音','ルーム「{n}」に参加中','バックグラウンドでメッセージを受信中。タップで開きます。','バックグラウンドでの実行を許可','一部のスマホはバックグラウンドのアプリを終了します。画面オフ中にメッセージが届かない場合は、このアプリのバックグラウンド実行を許可してください。','このルームを退出しますか？退出するとメッセージを受信しなくなります。','キャンセル'],
+  ko:['새 메시지 알림음','“{n}” 방에 있음','백그라운드에서 메시지를 받는 중입니다. 탭하여 열기','백그라운드 실행 허용','일부 휴대폰은 백그라운드 앱을 종료합니다. 화면이 꺼졌을 때 메시지가 오지 않으면 이 앱의 백그라운드 실행을 허용하세요.','이 방에서 나갈까요? 나가면 이 방의 메시지를 받지 않습니다.','취소'],
+  hi:['नए संदेश की ध्वनि','“{n}” रूम में','बैकग्राउंड में संदेश मिल रहे हैं। खोलने के लिए टैप करें।','बैकग्राउंड में चलने दें','कुछ फ़ोन बैकग्राउंड में ऐप बंद कर देते हैं। अगर स्क्रीन बंद होने पर संदेश नहीं आते, तो इस ऐप को बैकग्राउंड में चलने की अनुमति दें।','यह रूम छोड़ें? इसके बाद इस रूम के संदेश नहीं मिलेंगे।','रद्द करें'],
+  ne:['नयाँ सन्देशको आवाज','“{n}” कोठामा','पृष्ठभूमिमा सन्देश प्राप्त हुँदैछ। खोल्न थिच्नुहोस्।','पृष्ठभूमिमा चल्न दिनुहोस्','केही फोनले पृष्ठभूमिका एप बन्द गर्छन्। स्क्रिन बन्द हुँदा सन्देश आएन भने यो एपलाई पृष्ठभूमिमा चल्न अनुमति दिनुहोस्।','यो कोठाबाट निस्कने? त्यसपछि यस कोठाका सन्देश आउँदैनन्।','रद्द गर्नुहोस्'],
+  ar:['صوت الرسائل الجديدة','في غرفة «{n}»','يتم استلام الرسائل في الخلفية. انقر للفتح.','السماح بالعمل في الخلفية','بعض الهواتف تغلق التطبيقات في الخلفية. إذا توقفت الرسائل عن الوصول عند إطفاء الشاشة، فاسمح لهذا التطبيق بالعمل في الخلفية.','مغادرة هذه الغرفة؟ لن تستلم رسائلها بعد ذلك.','إلغاء'],
+  ru:['Звук новых сообщений','В комнате «{n}»','Сообщения принимаются в фоне. Нажмите, чтобы открыть.','Разрешить работу в фоне','Некоторые телефоны закрывают приложения в фоне. Если при выключенном экране сообщения перестают приходить, разрешите этому приложению работать в фоне.','Выйти из комнаты? Вы перестанете получать её сообщения.','Отмена'],
+  es:['Sonido de mensajes nuevos','En la sala «{n}»','Recibiendo mensajes en segundo plano. Toca para abrir.','Permitir segundo plano','Algunos teléfonos cierran las apps en segundo plano. Si dejan de llegar mensajes con la pantalla apagada, permite que esta app funcione en segundo plano.','¿Salir de esta sala? Dejarás de recibir sus mensajes.','Cancelar'],
+  fr:['Son des nouveaux messages','Dans le salon « {n} »','Réception des messages en arrière-plan. Touchez pour ouvrir.','Autoriser l’arrière-plan','Certains téléphones ferment les applications en arrière-plan. Si les messages n’arrivent plus écran éteint, autorisez cette application à fonctionner en arrière-plan.','Quitter ce salon ? Vous ne recevrez plus ses messages.','Annuler'],
+  de:['Ton für neue Nachrichten','Im Raum „{n}“','Nachrichten werden im Hintergrund empfangen. Zum Öffnen tippen.','Hintergrundbetrieb erlauben','Manche Handys beenden Apps im Hintergrund. Wenn bei ausgeschaltetem Bildschirm keine Nachrichten mehr ankommen, erlaube dieser App den Hintergrundbetrieb.','Diesen Raum verlassen? Du erhältst dann keine Nachrichten mehr aus ihm.','Abbrechen'],
+  pt:['Som de novas mensagens','Na sala “{n}”','Recebendo mensagens em segundo plano. Toque para abrir.','Permitir segundo plano','Alguns celulares fecham apps em segundo plano. Se as mensagens pararem de chegar com a tela desligada, permita que este app funcione em segundo plano.','Sair desta sala? Você deixará de receber as mensagens dela.','Cancelar']};
+for(const[k,v]of Object.entries(MORETXT))if(TXT[k])Object.assign(TXT[k],{sound:v[0],bgTitle:v[1],bgText:v[2],battery:v[3],battTip:v[4],leaveQ:v[5],cancel:v[6]});
 let myLang=store.get('chat-lang',null)||guessLang();
 const T=()=>Object.assign({},TXT.en,TXT[myLang]||{});
 const fmt=(s,n)=>String(s).replace('{n}',n);
@@ -435,7 +462,7 @@ function queueTranslate(m,front){
 }
 function pump(){while(trActive<1&&trQueue.length)trQueue.shift()();}
 let trSaveT=null;
-function saveTR(){clearTimeout(trSaveT);trSaveT=setTimeout(()=>{if(!R)return;const ok={};for(const[k,v]of Object.entries(TR))if(v.s==='ok'||v.s==='same')ok[k]=v;const keys=Object.keys(ok).slice(-300);store.set('chat-tr-'+R.topic,Object.fromEntries(keys.map(k=>[k,ok[k]])));},600);}
+function saveTR(){clearTimeout(trSaveT);trSaveT=setTimeout(()=>{if(!R)return;const ok={};for(const[k,v]of Object.entries(TR))if(v.s==='ok'||v.s==='same')ok[k]=v;const keys=Object.keys(ok).slice(-600);store.set('chat-tr-'+R.topic,Object.fromEntries(keys.map(k=>[k,ok[k]])));},600);}
 
 /* ================= CRYPTO ================= */
 const hex=buf=>Array.from(new Uint8Array(buf),b=>b.toString(16).padStart(2,'0')).join('');
@@ -476,7 +503,7 @@ class Mqtt{
   _open(onUp,onFail){
     let ws;try{ws=new WebSocket(this.url,['mqtt']);}catch(e){onFail&&onFail(e);return;}
     this.ws=ws;ws.binaryType='arraybuffer';this.buf=new Uint8Array(0);
-    ws.onopen=()=>{ws.send(mqPacket(0x10,[...mqStr('MQTT'),4,0x02,0,40,...mqStr('zch_'+rid(12))]));};
+    ws.onopen=()=>{ws.send(mqPacket(0x10,[...mqStr('MQTT'),4,0x02,0,120,...mqStr('zch_'+rid(12))]));};
     ws.onmessage=e=>{
       const d=new Uint8Array(e.data),b=new Uint8Array(this.buf.length+d.length);b.set(this.buf);b.set(d,this.buf.length);this.buf=b;
       for(;;){
@@ -502,7 +529,7 @@ class Mqtt{
     if(type===2){
       if(body[1]!==0){onFail&&onFail(new Error('refused'));return;}
       this.up=true;this.tries=0;clearInterval(this.ping);
-      this.ping=setInterval(()=>this._send(new Uint8Array([0xC0,0])),25000);
+      this.ping=setInterval(()=>this._send(new Uint8Array([0xC0,0])),45000);
       for(const t of this.subs)this._sub(t);
       onUp&&onUp();
       try{this.onState&&this.onState();}catch(e){}
@@ -533,7 +560,7 @@ class Net{
 
 /* ================= ROOM SESSION ================= */
 let R=null; // {room, topic, key, net, msgs:[], seen:Set, members:Map, pending:Set}
-const HIST_KEEP=100,HIST_SHARE=50;
+const HIST_KEEP=500,HIST_SHARE=50;
 function colorFor(id){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))>>>0;return `hsl(${h%360} 48% 46%)`;}
 async function enterRoom(room,nick){
   leaveRoom();
@@ -542,6 +569,7 @@ async function enterRoom(room,nick){
   R.seen=new Set(R.msgs.map(m=>m.id));
   TR=store.get('chat-tr-'+k.topic,{});
   R.nick=nick;
+  keepAlive(true);
   show('chat');$('roomLbl').textContent=R.room;$('textIn').placeholder=T().typePh;
   render(true);updateHeader();
   const sess=R;
@@ -551,8 +579,16 @@ async function enterRoom(room,nick){
   R.hb=setInterval(()=>{if(R===sess){presence('here');pruneMembers();}},20000);
   R.tick=setInterval(()=>{if(R===sess)updateHeader();},5000);
 }
+function keepAlive(on){
+  try{
+    if(!window.Android)return;
+    if(on&&R&&typeof Android.startKeepAlive==='function')Android.startKeepAlive(fmt(T().bgTitle,R.room),T().bgText);
+    else if(!on&&typeof Android.stopKeepAlive==='function')Android.stopKeepAlive();
+  }catch(e){}
+}
 function leaveRoom(){
   if(!R)return;
+  keepAlive(false);
   const r=R;R=null;clearInterval(r.hb);clearInterval(r.tick);
   if(r.net){const n=r.net;(async()=>{try{const env=await sealWith(r.key,{t:'bye',id:myId,name:r.nick});n.publish(r.topic+'/p',env);}catch(e){}setTimeout(()=>n.close(),400);})();}
 }
@@ -592,7 +628,7 @@ function addMsgs(list,live){
   if(R.msgs.length>HIST_KEEP)R.msgs=R.msgs.slice(-HIST_KEEP);
   store.set('chat-h-'+R.topic,R.msgs);
   render(false);
-  if(live&&newest&&newest.uid!==myId)ding();
+  if(live&&newest&&newest.uid!==myId)alertNew(newest);
 }
 async function sendText(text){
   text=text.trim();if(!text||!R)return;
@@ -683,9 +719,27 @@ function renderMembers(){
   $('memList').innerHTML=list.map(m=>`<div class="mem"><div class="av" style="background:${colorFor(m.id)}">${esc((m.name||'?').charAt(0).toUpperCase())}</div><div><b>${esc(m.name)}${m.me?` <small>(${esc(T().you)})</small>`:''}</b><small>${esc(LNAME[m.lang]||m.lang||'')}</small></div></div>`).join('');
 }
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200);}
+const appHidden=()=>document.hidden||window.__appVisible===false;
+// New message: system notification while the app is in the background, a short tone while it is open.
+async function alertNew(m){
+  const soundOn=store.get('chat-sound',true);
+  if(appHidden()&&window.Android&&typeof Android.notify==='function'){
+    let body=m.text;
+    if(needsTr(m)&&store.get('chat-auto',true)){
+      queueTranslate(m,true);
+      for(let i=0;i<25;i++){const tr=TR[m.id+'|'+myLang];if(tr&&tr.s!=='busy')break;await sleep(200);}
+      const tr=TR[m.id+'|'+myLang];if(tr&&tr.s==='ok')body=tr.t;
+    }
+    try{Android.notify(m.name+(R?' · '+R.room:''),body,!soundOn);}catch(e){}
+    return;
+  }
+  if(!soundOn)return;
+  try{if(window.Android&&typeof Android.playTone==='function'){Android.playTone();Android.vibrate(30);return;}}catch(e){}
+  ding();
+}
 let actx=null;
 function ding(){
-  try{if(window.Android)Android.vibrate(20);}catch(e){}
+  try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}catch(e){}
   if(!actx)return;
   try{const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.setValueAtTime(880,t);o.frequency.setValueAtTime(1320,t+.08);g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.27);}catch(e){}
 }
@@ -699,7 +753,7 @@ function applyUIText(){
   $('t_room').textContent=t.room;$('roomIn').placeholder=t.roomPh;$('joinBtn').textContent=t.join;
   $('notes').innerHTML=t.notes.map(n=>`<div>${n}</div>`).join('');
   $('t_settings').textContent=t.settings;$('t_mylang').textContent=t.mylang;$('t_auto').textContent=t.auto;$('t_trnote').textContent=t.trnote;
-  $('leaveBtn').textContent=t.leave;$('t_font').textContent=t.font;$('t_fontAuto').textContent=t.fontAuto;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
+  $('leaveBtn').textContent=t.leave;$('leaveYes').textContent=t.leave;$('leaveNo').textContent=t.cancel;$('t_leaveQ').textContent=t.leaveQ;$('t_sound').textContent=t.sound;$('battBtn').textContent=t.battery;$('t_battTip').textContent=t.battTip;$('t_font').textContent=t.font;$('t_fontAuto').textContent=t.fontAuto;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
   renderRecent();
 }
 function renderRecent(){
@@ -709,7 +763,7 @@ function renderRecent(){
 }
 function setLang(l){
   myLang=l;store.set('chat-lang',l);$('langSel').value=l;$('langSel2').value=l;applyUIText();
-  if(R){render(false);updateHeader();presence('here');}
+  if(R){render(false);updateHeader();presence('here');keepAlive(true);}
 }
 $('langSel').onchange=e=>setLang(e.target.value);
 $('langSel2').onchange=e=>setLang(e.target.value);
@@ -736,17 +790,24 @@ ta.addEventListener('input',grow);
 ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('sendBtn').click();}});
 $('sendBtn').onclick=()=>{const v=ta.value;if(!v.trim())return;ta.value='';grow();sendText(v);ta.focus();};
 $('list').addEventListener('click',e=>{const b=e.target.closest('[data-tr]');if(!b||!R)return;const m=R.msgs.find(x=>x.id===b.dataset.tr);if(m){delete TR[m.id+'|'+myLang];queueTranslate(m,true);patchMsg(m.id);}});
-function closeSheets(){$('memSheet').hidden=true;$('setSheet').hidden=true;}
+function closeSheets(){$('memSheet').hidden=true;$('setSheet').hidden=true;$('leaveAsk').hidden=true;$('leaveBtn').hidden=false;}
 document.querySelectorAll('.scrim').forEach(s=>s.addEventListener('click',e=>{if(e.target===s||e.target.closest('[data-close]'))closeSheets();}));
 $('titleBtn').onclick=()=>{$('memSheet').hidden=false;renderMembers();};
-$('setBtn').onclick=()=>{$('langSel2').value=myLang;$('autoSw').setAttribute('aria-checked',store.get('chat-auto',true));$('setSheet').hidden=false;};
+$('setBtn').onclick=()=>{$('langSel2').value=myLang;$('autoSw').setAttribute('aria-checked',store.get('chat-auto',true));$('soundSw').setAttribute('aria-checked',store.get('chat-sound',true));
+  let showBatt=false;try{showBatt=!!(window.Android&&typeof Android.batteryOk==='function'&&!Android.batteryOk());}catch(e){}$('battBox').hidden=!showBatt;
+  $('setSheet').hidden=false;};
 $('autoSw').onclick=()=>{const v=!store.get('chat-auto',true);store.set('chat-auto',v);$('autoSw').setAttribute('aria-checked',v);if(v)autoTranslate();};
 function exitToLobby(){leaveRoom();store.set('chat-last','');show('lobby');renderRecent();}
-$('backBtn').onclick=exitToLobby;
-$('leaveBtn').onclick=exitToLobby;
-window.onAndroidBack=()=>{if(!$('memSheet').hidden||!$('setSheet').hidden){closeSheets();return true;}if(!$('chat').hidden){exitToLobby();return true;}return false;};
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&R){R.net.kick();hello();}});
-window.addEventListener('pagehide',()=>{if(R)leaveRoom();});
+$('leaveBtn').onclick=()=>{$('leaveAsk').hidden=false;$('leaveBtn').hidden=true;};
+$('leaveNo').onclick=()=>{$('leaveAsk').hidden=true;$('leaveBtn').hidden=false;};
+$('leaveYes').onclick=exitToLobby;
+$('soundSw').onclick=()=>{const v=!store.get('chat-sound',true);store.set('chat-sound',v);$('soundSw').setAttribute('aria-checked',v);};
+$('battBtn').onclick=()=>{try{Android.askBattery();}catch(e){}};
+// Back on Android: close a sheet, otherwise send the app to the background and stay in the room.
+window.onAndroidBack=()=>{if(!$('memSheet').hidden||!$('setSheet').hidden){closeSheets();return true;}if(!$('chat').hidden)return 'bg';return false;};
+function onAppVisible(){if(R){R.net.kick();hello();const L=$('list');L.scrollTop=L.scrollHeight;}}
+window.onAppVisible=onAppVisible;
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)onAppVisible();});
 
 /* ================= TEXT SIZE ================= */
 function systemScale(){try{if(window.Android&&typeof Android.fontScale==='function'){const v=+Android.fontScale();if(v>0)return Math.max(.8,Math.min(2,v));}}catch(e){}return 1;}

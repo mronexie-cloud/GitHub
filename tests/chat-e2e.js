@@ -114,6 +114,14 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
     await A.click('#t_close2');
     const own = await A.waitForFunction(o => { for (const el of document.querySelectorAll('.msg.me')) { if (!el.innerText.includes(o)) continue; const t = el.querySelector('.mytr'); if (t) return t.innerText; if (el.querySelector('.fail')) return 'FAILED'; } return false; }, zh, { timeout: 30000 });
     const ownTr = await own.jsonValue(); log('A own message after switching to English:', ownTr); check(ownTr !== 'FAILED', 'own message translated');
+    // leaving needs an explicit confirmation; cancelling keeps you in the room
+    check(!(await A.$('#backBtn')), 'no back arrow in chat header');
+    await A.click('#setBtn'); await A.click('#leaveBtn');
+    check(await A.isVisible('#leaveAsk'), 'leave asks for confirmation');
+    await A.click('#leaveNo'); await A.click('#t_close2');
+    check(await A.isVisible('#chat'), 'still in room after cancelling');
+    check(await A.evaluate(() => HIST_KEEP) === 500, 'keeps 500 messages');
+    check(await A.evaluate(() => window.onAndroidBack()) === 'bg', 'Android back keeps the room open');
     // a message A sent must show as delivered (not "sending") on A's own screen
     const pend = await A.$$eval('.msg.me .time', e => e.map(x => x.textContent));
     log('A own message status:', JSON.stringify(pend)); check(pend.every(t => !/发送中|Sending/.test(t)), 'own message delivered');
