@@ -260,25 +260,29 @@ public class GrabActivity extends Activity {
         return u.startsWith("//") ? "https:" + u : u;
     }
 
-    /** Builds the result from the page's video info. Tries the 1080p version first, then what the page plays. */
+    static final java.util.regex.Pattern VIDEO_ID = java.util.regex.Pattern.compile("[?&]video_id=([^&]+)");
+
+    static String videoUri(String u) {
+        java.util.regex.Matcher m = VIDEO_ID.matcher(u == null ? "" : u);
+        return m.find() ? m.group(1) : "";
+    }
+
+    /** Builds the result from the page's video info. The page's own addresses (with watermark) are kept as fallbacks. */
     private JSONObject fromAweme(JSONObject a, JSONObject page) {
         try {
             JSONObject v = a.optJSONObject("video");
             List<String> urls = new ArrayList<>();
             JSONObject pa = v.optJSONObject("play_addr");
             JSONArray l = pa == null ? null : pa.optJSONArray("url_list");
-            // HD originals also come in a 1080p version (the page itself plays 720p)
-            boolean big = Math.max(v.optInt("height", 0), v.optInt("width", 0)) >= 1080;
-            if (l != null) for (int i = 0; i < l.length(); i++) {
-                String u = fix(l.optString(i));
-                if (big && u.contains("ratio=720p")) urls.add(u.replace("ratio=720p", "ratio=1080p"));
-                urls.add(u);
-            }
+            if (l != null) for (int i = 0; i < l.length(); i++) urls.add(fix(l.optString(i)));
             JSONArray srcs = page.optJSONArray("srcs");
             if (srcs != null) for (int i = 0; i < srcs.length(); i++) urls.add(fix(srcs.optString(i)));
             synchronized (media) { urls.addAll(media); }
             JSONObject o = base(urls);
             if (o == null) return null;
+            String uri = pa == null ? "" : pa.optString("uri", "");
+            if (uri.isEmpty()) for (String u : urls) if (!(uri = videoUri(u)).isEmpty()) break;
+            o.put("uri", uri);
             String desc = a.optString("desc", "").trim();
             o.put("title", desc.isEmpty() ? cleanTitle(page.optString("title")) : desc);
             JSONObject au = a.optJSONObject("author");
@@ -306,6 +310,7 @@ public class GrabActivity extends Activity {
             synchronized (media) { urls.addAll(media); }
             JSONObject o = base(urls);
             if (o == null) return null;
+            o.put("uri", videoUri(src));
             String t = cleanTitle(page.optString("title"));
             o.put("title", t.isEmpty() ? ("抖音视频 " + id).trim() : t);
             o.put("uploader", "");
@@ -350,9 +355,61 @@ public class GrabActivity extends Activity {
     private void succeed(JSONObject result) {
         if (finished || result == null) return;
         finished = true;
-        Engine.Listener l = Engine.listener;
-        if (l != null) l.onAnalyze(reqId, result);
-        finish();
+        Engine.bg.execute(() -> {
+            noWatermark(result);
+            ui.post(() -> {
+                Engine.Listener l = Engine.listener;
+                if (l != null) l.onAnalyze(reqId, result);
+                finish();
+            });
+        });
+    }
+
+    /**
+     * The page plays a copy with the Douyin watermark ("playwm"). The same video id also opens the clean
+     * original through Douyin's "play" address. It comes in a couple of sizes, and "1080p" is not always
+     * the sharper one, so we read each candidate's picture size from the start of the file and put the
+     * sharpest clean copy first, keeping the page's own addresses as fallbacks.
+     */
+    static void noWatermark(JSONObject result) {
+        try {
+            String uri = result.optString("uri", "");
+            if (uri.isEmpty()) return;
+            List<long[]> info = new ArrayList<>();
+            List<String> clean = new ArrayList<>();
+            for (String host : new String[]{"https://aweme.snssdk.com", "https://www.iesdouyin.com"}) {
+                for (String ratio : new String[]{"1080p", "720p"}) {
+                    String u = host + "/aweme/v1/play/?video_id=" + uri + "&ratio=" + ratio + "&line=0";
+                    long[] m = Engine.mp4Info(u, UA_ANDROID, "https://www.douyin.com/");
+                    android.util.Log.i("VDL", "clean " + ratio + " " + host + " -> " + (m == null ? "none" : m[0] + "x" + m[1] + " " + m[2] + "B"));
+                    if (m == null) continue;
+                    int at = 0;
+                    while (at < info.size() && better(info.get(at), m)) at++;
+                    info.add(at, m);
+                    clean.add(at, u);
+                }
+                if (!clean.isEmpty()) break; // the second host is only a backup
+            }
+            if (clean.isEmpty()) return;
+            JSONArray all = new JSONArray();
+            for (String u : clean) all.put(u);
+            JSONArray old = result.optJSONArray("directs");
+            if (old != null) for (int i = 0; i < old.length(); i++) all.put(old.optString(i));
+            result.put("directs", all);
+            result.put("direct", clean.get(0));
+            result.put("nowm", true);
+            long[] best = info.get(0);
+            long shortSide = Math.min(best[0], best[1]);
+            if (shortSide > 0) result.put("heights", new JSONArray().put(shortSide));
+        } catch (Throwable e) {
+            android.util.Log.w("VDL", "no-watermark lookup failed", e);
+        }
+    }
+
+    /** True if a is at least as good as b: more pixels first, then the bigger file. */
+    private static boolean better(long[] a, long[] b) {
+        long pa = a[0] * a[1], pb = b[0] * b[1];
+        return pa != pb ? pa > pb : a[2] >= b[2];
     }
 
     private void fail(String msg, boolean suggestLogin) {

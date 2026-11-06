@@ -562,6 +562,49 @@ public class Engine {
         }
     }
 
+    /** Reads the start of an MP4 address: {width, height, total bytes}, or null if it is not a video. */
+    static long[] mp4Info(String u, String ua, String referer) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(u).openConnection();
+            c.setConnectTimeout(10000);
+            c.setReadTimeout(12000);
+            c.setInstanceFollowRedirects(true);
+            c.setRequestProperty("User-Agent", ua);
+            if (referer != null) c.setRequestProperty("Referer", referer);
+            c.setRequestProperty("Range", "bytes=0-262143");
+            int code = c.getResponseCode();
+            if (code >= 400) return null;
+            String ct = c.getContentType();
+            if (ct != null && (ct.startsWith("text/") || ct.contains("json") || ct.contains("html"))) return null;
+            long total = c.getContentLengthLong();
+            String cr = c.getHeaderField("Content-Range");
+            if (cr != null && cr.contains("/")) try { total = Long.parseLong(cr.substring(cr.lastIndexOf('/') + 1).trim()); } catch (Exception ignored) { }
+            byte[] b = new byte[262144];
+            int n = 0, r;
+            try (InputStream in = c.getInputStream()) {
+                while (n < b.length && (r = in.read(b, n, b.length - n)) > 0) n += r;
+            }
+            if (n < 1024) return null;
+            long w = 0, h = 0;
+            // track header boxes ("tkhd") carry the picture size as 16.16 fixed point; audio tracks have 0
+            for (int i = 4; i + 100 < n; i++) {
+                if (b[i] != 't' || b[i + 1] != 'k' || b[i + 2] != 'h' || b[i + 3] != 'd') continue;
+                int c0 = i + 4;
+                int off = c0 + (b[c0] == 1 ? 88 : 76);
+                if (off + 8 > n) continue;
+                long tw = (((b[off] & 0xffL) << 24) | ((b[off + 1] & 0xffL) << 16) | ((b[off + 2] & 0xffL) << 8) | (b[off + 3] & 0xffL)) >>> 16;
+                long th = (((b[off + 4] & 0xffL) << 24) | ((b[off + 5] & 0xffL) << 16) | ((b[off + 6] & 0xffL) << 8) | (b[off + 7] & 0xffL)) >>> 16;
+                if (tw * th > w * h && tw < 10000 && th < 10000) { w = tw; h = th; }
+            }
+            return new long[]{w, h, total};
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
     static File pickOutput(File dir) {
         File best = null;
         File[] fs = dir.listFiles();

@@ -32,6 +32,17 @@ n=$(count); run x "https://twitter.com/captainamerica/status/719944021058060289"
 n=$(count); run tiktok "https://www.tiktok.com/@barudakhb_/video/6984138651336838402" $((n+1))
 adb shell content query --uri content://media/external/video/media --projection _display_name:_size:relative_path > $OUT/gallery.txt 2>&1
 adb logcat -d > $OUT/logcat.txt
+grep -E " VDL" $OUT/logcat.txt > $OUT/vdl.txt || true
+# one frame from each Douyin video, to check by eye that there is no watermark
+mkdir -p pulled && adb pull "/sdcard/Movies/万能下载/" pulled/ > /dev/null 2>&1 || true
+python3 -m pip install -q --break-system-packages imageio-ffmpeg > /dev/null 2>&1 || python3 -m pip install -q imageio-ffmpeg > /dev/null 2>&1 || true
+FF=$(python3 -c "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())" 2>/dev/null)
+i=0
+find pulled -name "*.mp4" | sort | while read -r f; do
+  i=$((i+1))
+  for ss in 1.5 6; do "$FF" -y -loglevel error -ss $ss -i "$f" -frames:v 1 -vf scale=300:-2 "$OUT/frame-$i-$ss.jpg" || true; done
+  echo "frame-$i: $(basename "$f") $("$FF" -i "$f" 2>&1 | grep -oE "Duration: [0-9:.]+|Video: [a-z0-9]+[^,]*, [^,]*, [0-9]+x[0-9]+" | tr '\n' ' ')" >> $OUT/frames.txt
+done
 grep -E "FATAL EXCEPTION|AndroidRuntime|com.zlc.vdl" $OUT/logcat.txt | head -60 > $OUT/crash.txt
-cat $OUT/results.txt $OUT/gallery.txt
+cat $OUT/results.txt $OUT/gallery.txt $OUT/vdl.txt $OUT/frames.txt
 exit 0
