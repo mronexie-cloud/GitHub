@@ -68,6 +68,12 @@ public class MainActivity extends Activity {
             else v.vibrate(ms);
         }
 
+        /** The phone's system font scale (1.0 = default), used when text size is set to follow the system. */
+        @JavascriptInterface
+        public float fontScale() {
+            return ctx.getResources().getConfiguration().fontScale;
+        }
+
         /** Native GET used when the page cannot reach a translation service with fetch(). Result comes back via window.__httpCb. */
         @JavascriptInterface
         public void httpGet(final String id, final String url) {

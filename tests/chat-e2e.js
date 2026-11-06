@@ -107,6 +107,13 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
     const expect = { A: '输入消息', B: 'Message', C: 'Mesej', D: 'メッセージ', E: 'सन्देश', F: 'رسالة' };
     for (const [k, v] of Object.entries(expect)) check(ui[k] && ui[k].placeholder === v, 'UI text for ' + k);
     check(ui.F && ui.F.dir === 'rtl', 'Arabic is right-to-left');
+    // A switches to English: A's own Chinese message must now get an English translation
+    await A.click('#setBtn'); await A.selectOption('#langSel2', 'en');
+    await A.click('#fontSeg [data-fs="1.36"]');
+    log('A text size after choosing large:', await A.evaluate(() => getComputedStyle(document.documentElement).fontSize));
+    await A.click('#t_close2');
+    const own = await A.waitForFunction(o => { for (const el of document.querySelectorAll('.msg.me')) { if (!el.innerText.includes(o)) continue; const t = el.querySelector('.mytr'); if (t) return t.innerText; if (el.querySelector('.fail')) return 'FAILED'; } return false; }, zh, { timeout: 30000 });
+    const ownTr = await own.jsonValue(); log('A own message after switching to English:', ownTr); check(ownTr !== 'FAILED', 'own message translated');
     // a message A sent must show as delivered (not "sending") on A's own screen
     const pend = await A.$$eval('.msg.me .time', e => e.map(x => x.textContent));
     log('A own message status:', JSON.stringify(pend)); check(pend.every(t => !/发送中|Sending/.test(t)), 'own message delivered');

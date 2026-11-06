@@ -25,9 +25,11 @@
   --accent:#2fb39d; --accent-ink:#06231d; --mine:#1d8a78; --mine-ink:#f2fffb; --bubble:#1c2523;
   --tr-bg:#15332d; --tr-ink:#8fe3d3; --warn:#e98a62; --shadow:none; color-scheme:dark}}
 [hidden]{display:none!important}
+:root{--scale:1}
+html{font-size:calc(16px * var(--scale))}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:.94rem;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -86,10 +88,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .msg.me .bub{background:var(--mine);color:var(--mine-ink);border-color:transparent;border-radius:16px;border-end-end-radius:5px}
 .msg.me .meta{flex-direction:row-reverse}
 .msg.me .av{display:none}
+.msg.me .bub .orig{border-top-color:rgba(255,255,255,.35);color:inherit;opacity:.88}
+.msg.me .bub .tr{background:rgba(255,255,255,.2);color:inherit;margin:0 4px 0 0;vertical-align:1px}
+.msg.me .bub .act{color:inherit;text-decoration:underline}
+.msg.me .bub .busy{color:inherit;opacity:.8}
 .msg .time{font-size:.68rem;color:var(--muted);padding:0 4px;font-variant-numeric:tabular-nums}
 .compose{flex:none;display:flex;gap:8px;align-items:flex-end;background:var(--surface);border-top:1px solid var(--line);
   padding:8px max(10px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
-.compose textarea{flex:1;min-width:0;resize:none;border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:9px 14px;font-size:1rem;line-height:1.4;max-height:7.5em;height:40px}
+.compose textarea{flex:1;min-width:0;resize:none;border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:9px 14px;font-size:1rem;line-height:1.4;max-height:7.5em;min-height:40px}
 .send{width:40px;height:40px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
 .send:disabled{opacity:.4}
 .send svg{width:20px;height:20px}
@@ -110,6 +116,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .switch[aria-checked="true"]::after{transform:translateX(20px)}
 [dir="rtl"] .switch[aria-checked="true"]::after{transform:translateX(-20px)}
 [dir="rtl"] #backBtn svg,[dir="rtl"] .send svg{transform:scaleX(-1)}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;min-width:0;padding:9px 4px;border:0;background:var(--bg);color:var(--ink);font-weight:600;line-height:1.1}
+.seg button+button{border-inline-start:1px solid var(--line)}
+.seg button[data-fs="auto"]{flex:2.2;font-size:.8rem}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.flabel{font-size:.82rem;color:var(--muted);font-weight:600}
 .ghost{padding:12px;border-radius:11px;border:1px solid var(--line);background:none;font-weight:600}
 .danger{color:var(--warn)}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);background:rgba(20,28,25,.9);color:#fff;padding:8px 14px;border-radius:999px;font-size:.86rem;z-index:40;pointer-events:none;max-width:88%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -150,6 +162,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <div class="scrim" id="setSheet" hidden><div class="sheet">
   <h2 id="t_settings"></h2>
   <div class="field"><label for="langSel2" id="t_mylang"></label><select id="langSel2"></select></div>
+  <div class="field"><span class="flabel" id="t_font"></span>
+    <div class="seg" id="fontSeg" role="group" aria-labelledby="t_font">
+      <button data-fs="auto" id="t_fontAuto"></button>
+      <button data-fs="0.88" aria-label="88%"><span style="font-size:.8rem">A</span></button>
+      <button data-fs="1" aria-label="100%"><span style="font-size:1rem">A</span></button>
+      <button data-fs="1.18" aria-label="118%"><span style="font-size:1.2rem">A</span></button>
+      <button data-fs="1.36" aria-label="136%"><span style="font-size:1.4rem">A</span></button>
+      <button data-fs="1.6" aria-label="160%"><span style="font-size:1.6rem">A</span></button>
+    </div></div>
   <div class="row"><span id="t_auto"></span><button class="switch" id="autoSw" role="switch" aria-checked="true" aria-labelledby="t_auto"></button></div>
   <p class="notes" id="t_trnote" style="margin:0"></p>
   <button class="ghost danger" id="leaveBtn"></button>
@@ -310,6 +331,12 @@ const TXT={
     notes:['<b>Como funciona:</b> todos que digitam <b>o mesmo nome de sala</b> entram na mesma sala.','<b>Privacidade:</b> as mensagens são criptografadas com o nome da sala antes de passar por um servidor público. O nome da sala é a senha, então escolha um difícil de adivinhar.','<b>Tradução:</b> feita pelo Google Tradutor; as mensagens que precisam de tradução são enviadas a esse serviço.','<b>Histórico:</b> quem entra depois vê as últimas 50 mensagens. Não há notificações com o app fechado.'],
     trnote:'Tradução pelo Google Tradutor (reserva: MyMemory). Requer internet.'}
 };
+// text-size setting labels
+const FONTTXT={'zh-CN':['文字大小','跟随系统'],'zh-TW':['文字大小','跟隨系統'],en:['Text size','System'],ms:['Saiz teks','Ikut sistem'],id:['Ukuran teks','Ikuti sistem'],
+  ta:['எழுத்து அளவு','கணினி அமைப்பு'],th:['ขนาดตัวอักษร','ตามระบบ'],vi:['Cỡ chữ','Theo hệ thống'],tl:['Laki ng teksto','Gaya ng system'],ja:['文字サイズ','端末に合わせる'],
+  ko:['글자 크기','시스템 설정'],hi:['अक्षरों का आकार','सिस्टम के अनुसार'],ne:['अक्षरको आकार','प्रणाली अनुसार'],ar:['حجم الخط','حسب النظام'],ru:['Размер текста','Как в системе'],
+  es:['Tamaño del texto','Según el sistema'],fr:['Taille du texte','Comme le système'],de:['Schriftgröße','Wie im System'],pt:['Tamanho do texto','Seguir o sistema']};
+for(const[k,[a,b]]of Object.entries(FONTTXT))if(TXT[k])Object.assign(TXT[k],{font:a,fontAuto:b});
 let myLang=store.get('chat-lang',null)||guessLang();
 const T=()=>Object.assign({},TXT.en,TXT[myLang]||{});
 const fmt=(s,n)=>String(s).replace('{n}',n);
@@ -354,6 +381,35 @@ async function trMyMemory(text,src,tl){
   const mt=(d.matches||[]).find(m=>m&&(m['created-by']==='MT!'||/machine translation/i.test(m.reference||'')));
   if(!mt||!mt.translation||/MYMEMORY WARNING/i.test(mt.translation))throw new Error('no machine translation');
   return{text:mt.translation,src};
+}
+// Rough script check so a message is still translated when its sender picked one language but wrote in another.
+const LANG_SCRIPT={'zh-CN':'han','zh-TW':'han',ja:'kana',ko:'hangul',ru:'cyr',ar:'arab',hi:'deva',ne:'deva',ta:'tamil',th:'thai'};
+function scriptCounts(t){
+  const c={han:0,kana:0,hangul:0,latin:0,cyr:0,arab:0,deva:0,tamil:0,thai:0};
+  for(const ch of t){const k=ch.codePointAt(0);
+    if((k>=0x4e00&&k<=0x9fff)||(k>=0x3400&&k<=0x4dbf))c.han++;
+    else if(k>=0x3040&&k<=0x30ff)c.kana++;
+    else if((k>=0xac00&&k<=0xd7af)||(k>=0x1100&&k<=0x11ff))c.hangul++;
+    else if((k>=65&&k<=90)||(k>=97&&k<=122)||(k>=0xc0&&k<=0x24f)||(k>=0x1e00&&k<=0x1eff))c.latin++;
+    else if(k>=0x400&&k<=0x4ff)c.cyr++;
+    else if(k>=0x600&&k<=0x6ff)c.arab++;
+    else if(k>=0x900&&k<=0x97f)c.deva++;
+    else if(k>=0xb80&&k<=0xbff)c.tamil++;
+    else if(k>=0xe00&&k<=0xe7f)c.thai++;}
+  return c;
+}
+function looksLike(text,lang){
+  const c=scriptCounts(text),total=Object.values(c).reduce((a,b)=>a+b,0);
+  if(!total)return true;
+  const want=LANG_SCRIPT[lang]||'latin';
+  if(want==='kana')return c.kana>0&&(c.kana+c.han)/total>=.5;
+  if(want==='han')return c.kana===0&&c.han/total>=.5;
+  return c[want]/total>=.5;
+}
+function needsTr(m){
+  if(!/\p{L}/u.test(m.text))return false;
+  if(m.lang&&!sameLang(m.lang,myLang))return true;
+  return !looksLike(m.text,myLang);
 }
 const sameLang=(a,b)=>!!a&&!!b&&(a===b||(a.split('-')[0]===b.split('-')[0]&&!a.startsWith('zh')));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -577,9 +633,15 @@ function fmtDay(ts){
 }
 function bubbleInner(m){
   const mine=m.uid===myId,t=T();
-  if(mine)return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
-  if(sameLang(m.lang,myLang))return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
+  if(!needsTr(m))return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
   const k=m.id+'|'+myLang,tr=TR[k];
+  if(mine){ // my own words stay on top; the translation into my current language goes underneath
+    if(tr&&tr.s==='ok')return `<div class="tx" dir="auto">${esc(m.text)}</div><div class="orig mytr" dir="auto"><span class="tr">${t.trans}</span> ${esc(tr.t)}</div>`;
+    if(tr&&tr.s==='busy')return `<div class="tx" dir="auto">${esc(m.text)}</div><div class="busy">${t.translating}</div>`;
+    if(tr&&tr.s==='fail')return `<div class="tx" dir="auto">${esc(m.text)}</div><button class="act fail" data-tr="${m.id}">${t.trFail}</button>`;
+    if(tr&&tr.s==='same')return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
+    return `<div class="tx" dir="auto">${esc(m.text)}</div><button class="act" data-tr="${m.id}">${t.tapTr}</button>`;
+  }
   if(tr&&tr.s==='ok')return `<span class="tr">${t.trans} · ${esc(LNAME[m.lang]||m.lang)}</span><div class="tx" dir="auto">${esc(tr.t)}</div><div class="orig" dir="auto">${esc(m.text)}</div>`;
   if(tr&&tr.s==='same')return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
   if(tr&&tr.s==='busy')return `<div class="tx" dir="auto">${esc(m.text)}</div><div class="busy">${t.translating}</div>`;
@@ -613,8 +675,8 @@ function patchMsg(id){
 }
 function autoTranslate(){
   if(!R||!store.get('chat-auto',true))return;
-  const others=R.msgs.filter(m=>m.uid!==myId&&!sameLang(m.lang,myLang));
-  others.slice(-40).reverse().forEach(m=>{const k=m.id+'|'+myLang;if(!TR[k])queueTranslate(m,false);});
+  const need=R.msgs.filter(needsTr);
+  need.slice(-40).reverse().forEach(m=>{const k=m.id+'|'+myLang;if(!TR[k])queueTranslate(m,false);});
 }
 function updateHeader(){
   if(!R)return;
@@ -645,7 +707,7 @@ function applyUIText(){
   $('t_room').textContent=t.room;$('roomIn').placeholder=t.roomPh;$('joinBtn').textContent=t.join;
   $('notes').innerHTML=t.notes.map(n=>`<div>${n}</div>`).join('');
   $('t_settings').textContent=t.settings;$('t_mylang').textContent=t.mylang;$('t_auto').textContent=t.auto;$('t_trnote').textContent=t.trnote;
-  $('leaveBtn').textContent=t.leave;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
+  $('leaveBtn').textContent=t.leave;$('t_font').textContent=t.font;$('t_fontAuto').textContent=t.fontAuto;$('t_close1').textContent=t.close;$('t_close2').textContent=t.close;$('textIn').placeholder=t.typePh;
   renderRecent();
 }
 function renderRecent(){
@@ -677,7 +739,7 @@ $('roomIn').addEventListener('keydown',e=>{if(e.key==='Enter')join();});
 
 /* ================= CHAT EVENTS ================= */
 const ta=$('textIn');
-function grow(){ta.style.height='40px';ta.style.height=Math.min(ta.scrollHeight+2,140)+'px';$('sendBtn').disabled=!ta.value.trim();}
+function grow(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight+2,(parseFloat(getComputedStyle(ta).lineHeight)||22)*5+22)+'px';$('sendBtn').disabled=!ta.value.trim();}
 ta.addEventListener('input',grow);
 ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('sendBtn').click();}});
 $('sendBtn').onclick=()=>{const v=ta.value;if(!v.trim())return;ta.value='';grow();sendText(v);ta.focus();};
@@ -693,6 +755,20 @@ $('leaveBtn').onclick=exitToLobby;
 window.onAndroidBack=()=>{if(!$('memSheet').hidden||!$('setSheet').hidden){closeSheets();return true;}if(!$('chat').hidden){exitToLobby();return true;}return false;};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&R){R.net.kick();hello();}});
 window.addEventListener('pagehide',()=>{if(R)leaveRoom();});
+
+/* ================= TEXT SIZE ================= */
+function systemScale(){try{if(window.Android&&typeof Android.fontScale==='function'){const v=+Android.fontScale();if(v>0)return Math.max(.8,Math.min(2,v));}}catch(e){}return 1;}
+function applyFont(){
+  const v=String(store.get('chat-font','auto'));
+  const sc=v==='auto'?systemScale():Math.max(.8,Math.min(2,+v||1));
+  const L=$('list'),bottom=L&&L.scrollHeight-L.scrollTop-L.clientHeight<120;
+  document.documentElement.style.setProperty('--scale',sc);
+  document.querySelectorAll('#fontSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.fs===v));
+  if(bottom&&L)L.scrollTop=L.scrollHeight;
+  grow();
+}
+$('fontSeg').addEventListener('click',e=>{const b=e.target.closest('[data-fs]');if(!b)return;store.set('chat-font',b.dataset.fs);applyFont();});
+applyFont();
 
 /* ================= START ================= */
 fillLangs($('langSel'));fillLangs($('langSel2'));
