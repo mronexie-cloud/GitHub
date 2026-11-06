@@ -57,7 +57,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   padding:max(10px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 10px max(12px,env(safe-area-inset-left,0px))}
 .iconbtn{width:38px;height:38px;border-radius:10px;border:0;background:transparent;display:grid;place-items:center;flex:none;color:var(--ink)}
 .iconbtn svg{width:22px;height:22px}
-.htitle{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;background:none;border:0;padding:0;text-align:left}
+.htitle{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;background:none;border:0;padding:0;text-align:start}
 .htitle b{font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .htitle span{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:5px}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block}
@@ -75,7 +75,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .meta{font-size:.74rem;color:var(--muted);display:flex;gap:6px;align-items:baseline;padding:0 4px}
 .meta .ln{font-size:.68rem;border:1px solid var(--line);border-radius:4px;padding:0 4px}
 .msg.cont .meta{display:none}
-.bub{background:var(--bubble);border:1px solid var(--line);border-radius:16px 16px 16px 5px;padding:8px 11px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;box-shadow:var(--shadow)}
+.bub{background:var(--bubble);border:1px solid var(--line);border-radius:16px;border-end-start-radius:5px;padding:8px 11px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;box-shadow:var(--shadow)}
 .bub .tx{font-size:1rem}
 .bub .orig{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:.84rem;color:var(--muted)}
 .bub .tr{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;color:var(--tr-ink);background:var(--tr-bg);border-radius:4px;padding:1px 6px;margin-bottom:4px}
@@ -83,7 +83,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .bub .busy{font-size:.78rem;color:var(--muted);margin-top:5px}
 .msg.me{flex-direction:row-reverse}
 .msg.me .col{align-items:flex-end}
-.msg.me .bub{background:var(--mine);color:var(--mine-ink);border-color:transparent;border-radius:16px 16px 5px 16px}
+.msg.me .bub{background:var(--mine);color:var(--mine-ink);border-color:transparent;border-radius:16px;border-end-end-radius:5px}
 .msg.me .meta{flex-direction:row-reverse}
 .msg.me .av{display:none}
 .msg .time{font-size:.68rem;color:var(--muted);padding:0 4px;font-variant-numeric:tabular-nums}
@@ -105,9 +105,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .mem small{color:var(--muted);font-size:.8rem}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .switch{width:50px;height:30px;border-radius:999px;border:0;background:var(--line);position:relative;flex:none}
-.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .switch[aria-checked="true"]{background:var(--accent)}
 .switch[aria-checked="true"]::after{transform:translateX(20px)}
+[dir="rtl"] .switch[aria-checked="true"]::after{transform:translateX(-20px)}
+[dir="rtl"] #backBtn svg,[dir="rtl"] .send svg{transform:scaleX(-1)}
 .ghost{padding:12px;border-radius:11px;border:1px solid var(--line);background:none;font-weight:600}
 .danger{color:var(--warn)}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);background:rgba(20,28,25,.9);color:#fff;padding:8px 14px;border-radius:999px;font-size:.86rem;z-index:40;pointer-events:none;max-width:88%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -139,7 +141,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </header>
   <div class="list" id="list"></div>
   <div class="compose">
-    <textarea id="textIn" rows="1" maxlength="1000" enterkeyhint="send"></textarea>
+    <textarea id="textIn" dir="auto" rows="1" maxlength="1000" enterkeyhint="send"></textarea>
     <button class="send" id="sendBtn" aria-label="send" disabled><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.4-7.5c.8-.4.8-1.5 0-1.8L3.4 3.6c-.7-.3-1.4.3-1.3 1l1 6.1 9.4 1.3-9.4 1.3-1 6.1c-.1.7.6 1.3 1.3 1z"/></svg></button>
   </div>
 </section>
@@ -174,23 +176,143 @@ function guessLang(){
   return LANGS.find(l=>l[0]===two)?two:'en';
 }
 const TXT={
-  zh:{sub:'多人聊天，消息自动翻译成你的语言',nick:'昵称',nickPh:'别人看到的名字',lang:'我的语言',room:'房间名',roomPh:'例如：家人群、mygroup2026',join:'进入房间',recent:'最近',
-      needNick:'请先填写昵称',needRoom:'请填写房间名',online:n=>`${n} 人在线`,connecting:'连接中…',offline:'网络断开，正在重连',members:n=>`在线成员（${n}）`,you:'你',
-      settings:'设置',mylang:'我的语言（消息会翻译成这种语言）',auto:'自动翻译别人的消息',leave:'离开房间',close:'关闭',typePh:'输入消息',
-      empty:'还没有消息。\n把房间名告诉朋友，他们输入同样的房间名就能进来。',trans:'译',translating:'翻译中…',trFail:'翻译失败，点击重试',tapTr:'翻译',showOrig:'原文',
-      joined:n=>`${n} 进入了房间`,left:n=>`${n} 离开了房间`,today:'今天',yesterday:'昨天',sending:'发送中',
-      notes:['<b>怎么用：</b>想一起聊的人输入<b>同一个房间名</b>就会进到同一个房间。','<b>隐私：</b>消息用房间名加密后再经过公共服务器，不知道房间名的人看不到内容。房间名就是口令，起一个别人猜不到的名字。','<b>翻译：</b>由 Google 翻译提供，需要翻译的消息会发送给翻译服务。','<b>记录：</b>新进来的人能看到最近 50 条消息。App 关闭时收不到消息通知。'],
-      trnote:'翻译由 Google 翻译提供（备用 MyMemory），需要联网。'},
-  en:{sub:'Group chat that translates every message into your language',nick:'Nickname',nickPh:'Name others will see',lang:'My language',room:'Room name',roomPh:'e.g. family, mygroup2026',join:'Enter room',recent:'Recent',
-      needNick:'Please enter a nickname',needRoom:'Please enter a room name',online:n=>`${n} online`,connecting:'Connecting…',offline:'Offline, reconnecting',members:n=>`Online (${n})`,you:'you',
-      settings:'Settings',mylang:'My language (messages are translated into it)',auto:'Auto-translate others’ messages',leave:'Leave room',close:'Close',typePh:'Message',
-      empty:'No messages yet.\nShare the room name with friends. Anyone who enters the same name joins this room.',trans:'Translated',translating:'Translating…',trFail:'Translation failed, tap to retry',tapTr:'Translate',showOrig:'Original',
-      joined:n=>`${n} joined`,left:n=>`${n} left`,today:'Today',yesterday:'Yesterday',sending:'Sending',
-      notes:['<b>How it works:</b> everyone who types the <b>same room name</b> lands in the same room.','<b>Privacy:</b> messages are encrypted with the room name before passing through a public server. The room name is the password, so pick one that is hard to guess.','<b>Translation:</b> powered by Google Translate; messages that need translating are sent to that service.','<b>History:</b> newcomers see the latest 50 messages. No notifications while the app is closed.'],
-      trnote:'Translation by Google Translate (MyMemory as backup). Requires internet.'}
+  'zh-CN':{sub:'多人聊天，消息自动翻译成你的语言',nick:'昵称',nickPh:'别人看到的名字',lang:'我的语言',room:'房间名',roomPh:'例如：家人群、mygroup2026',join:'进入房间',
+    needNick:'请先填写昵称',needRoom:'请填写房间名',online:'{n} 人在线',connecting:'连接中…',offline:'网络断开，正在重连',members:'在线成员（{n}）',you:'你',
+    settings:'设置',mylang:'我的语言（消息会翻译成这种语言）',auto:'自动翻译别人的消息',leave:'离开房间',close:'关闭',typePh:'输入消息',
+    empty:'还没有消息。\n把房间名告诉朋友，他们输入同样的房间名就能进来。',trans:'译',translating:'翻译中…',trFail:'翻译失败，点击重试',tapTr:'翻译',
+    joined:'{n} 进入了房间',left:'{n} 离开了房间',today:'今天',yesterday:'昨天',sending:'发送中',
+    notes:['<b>怎么用：</b>想一起聊的人输入<b>同一个房间名</b>就会进到同一个房间。','<b>隐私：</b>消息用房间名加密后再经过公共服务器，不知道房间名的人看不到内容。房间名就是口令，起一个别人猜不到的名字。','<b>翻译：</b>由 Google 翻译提供，需要翻译的消息会发送给翻译服务。','<b>记录：</b>新进来的人能看到最近 50 条消息。App 关闭时收不到消息通知。'],
+    trnote:'翻译由 Google 翻译提供（备用 MyMemory），需要联网。'},
+  'zh-TW':{sub:'多人聊天，訊息自動翻譯成你的語言',nick:'暱稱',nickPh:'別人看到的名字',lang:'我的語言',room:'房間名稱',roomPh:'例如：家人群、mygroup2026',join:'進入房間',
+    needNick:'請先填寫暱稱',needRoom:'請填寫房間名稱',online:'{n} 人在線',connecting:'連線中…',offline:'網路中斷，正在重新連線',members:'在線成員（{n}）',you:'你',
+    settings:'設定',mylang:'我的語言（訊息會翻譯成這種語言）',auto:'自動翻譯別人的訊息',leave:'離開房間',close:'關閉',typePh:'輸入訊息',
+    empty:'還沒有訊息。\n把房間名稱告訴朋友，他們輸入相同的房間名稱就能進來。',trans:'譯',translating:'翻譯中…',trFail:'翻譯失敗，點擊重試',tapTr:'翻譯',
+    joined:'{n} 進入了房間',left:'{n} 離開了房間',today:'今天',yesterday:'昨天',sending:'傳送中',
+    notes:['<b>怎麼用：</b>想一起聊天的人輸入<b>相同的房間名稱</b>，就會進到同一個房間。','<b>隱私：</b>訊息用房間名稱加密後才經過公共伺服器，不知道房間名稱的人看不到內容。房間名稱就是密碼，請取一個別人猜不到的名字。','<b>翻譯：</b>由 Google 翻譯提供，需要翻譯的訊息會傳送給翻譯服務。','<b>紀錄：</b>新加入的人能看到最近 50 則訊息。App 關閉時收不到訊息通知。'],
+    trnote:'翻譯由 Google 翻譯提供（備用 MyMemory），需要連網。'},
+  'en':{sub:'Group chat that translates every message into your language',nick:'Nickname',nickPh:'Name others will see',lang:'My language',room:'Room name',roomPh:'e.g. family, mygroup2026',join:'Enter room',
+    needNick:'Please enter a nickname',needRoom:'Please enter a room name',online:'{n} online',connecting:'Connecting…',offline:'Offline, reconnecting',members:'Online ({n})',you:'you',
+    settings:'Settings',mylang:'My language (messages are translated into it)',auto:'Auto-translate others’ messages',leave:'Leave room',close:'Close',typePh:'Message',
+    empty:'No messages yet.\nShare the room name with friends. Anyone who enters the same name joins this room.',trans:'Translated',translating:'Translating…',trFail:'Translation failed, tap to retry',tapTr:'Translate',
+    joined:'{n} joined',left:'{n} left',today:'Today',yesterday:'Yesterday',sending:'Sending',
+    notes:['<b>How it works:</b> everyone who types the <b>same room name</b> lands in the same room.','<b>Privacy:</b> messages are encrypted with the room name before passing through a public server. The room name is the password, so pick one that is hard to guess.','<b>Translation:</b> powered by Google Translate; messages that need translating are sent to that service.','<b>History:</b> newcomers see the latest 50 messages. No notifications while the app is closed.'],
+    trnote:'Translation by Google Translate (MyMemory as backup). Requires internet.'},
+  'ms':{sub:'Sembang berkumpulan yang menterjemah setiap mesej ke dalam bahasa anda',nick:'Nama panggilan',nickPh:'Nama yang dilihat orang lain',lang:'Bahasa saya',room:'Nama bilik',roomPh:'cth. keluarga, mygroup2026',join:'Masuk bilik',
+    needNick:'Sila masukkan nama panggilan',needRoom:'Sila masukkan nama bilik',online:'{n} dalam talian',connecting:'Menyambung…',offline:'Luar talian, menyambung semula',members:'Dalam talian ({n})',you:'anda',
+    settings:'Tetapan',mylang:'Bahasa saya (mesej diterjemah ke bahasa ini)',auto:'Terjemah mesej orang lain secara automatik',leave:'Keluar bilik',close:'Tutup',typePh:'Mesej',
+    empty:'Belum ada mesej.\nKongsi nama bilik dengan rakan. Sesiapa yang memasukkan nama yang sama akan menyertai bilik ini.',trans:'Diterjemah',translating:'Sedang menterjemah…',trFail:'Terjemahan gagal, ketik untuk cuba lagi',tapTr:'Terjemah',
+    joined:'{n} telah masuk',left:'{n} telah keluar',today:'Hari ini',yesterday:'Semalam',sending:'Menghantar',
+    notes:['<b>Cara guna:</b> semua yang memasukkan <b>nama bilik yang sama</b> akan berada dalam bilik yang sama.','<b>Privasi:</b> mesej disulitkan dengan nama bilik sebelum melalui pelayan awam. Nama bilik ialah kata laluan, jadi pilih nama yang sukar diteka.','<b>Terjemahan:</b> menggunakan Google Translate; mesej yang perlu diterjemah dihantar ke perkhidmatan itu.','<b>Sejarah:</b> ahli baharu boleh melihat 50 mesej terkini. Tiada pemberitahuan semasa aplikasi ditutup.'],
+    trnote:'Terjemahan oleh Google Translate (MyMemory sebagai sandaran). Memerlukan internet.'},
+  'id':{sub:'Obrolan grup yang menerjemahkan setiap pesan ke bahasa Anda',nick:'Nama panggilan',nickPh:'Nama yang dilihat orang lain',lang:'Bahasa saya',room:'Nama ruang',roomPh:'mis. keluarga, mygroup2026',join:'Masuk ruang',
+    needNick:'Isi nama panggilan dulu',needRoom:'Isi nama ruang',online:'{n} online',connecting:'Menghubungkan…',offline:'Offline, menghubungkan ulang',members:'Online ({n})',you:'Anda',
+    settings:'Pengaturan',mylang:'Bahasa saya (pesan diterjemahkan ke bahasa ini)',auto:'Terjemahkan pesan orang lain secara otomatis',leave:'Keluar ruang',close:'Tutup',typePh:'Pesan',
+    empty:'Belum ada pesan.\nBagikan nama ruang ke teman. Siapa pun yang memasukkan nama yang sama akan masuk ke ruang ini.',trans:'Diterjemahkan',translating:'Menerjemahkan…',trFail:'Gagal menerjemahkan, ketuk untuk coba lagi',tapTr:'Terjemahkan',
+    joined:'{n} bergabung',left:'{n} keluar',today:'Hari ini',yesterday:'Kemarin',sending:'Mengirim',
+    notes:['<b>Cara pakai:</b> semua orang yang memasukkan <b>nama ruang yang sama</b> akan masuk ke ruang yang sama.','<b>Privasi:</b> pesan dienkripsi dengan nama ruang sebelum melewati server publik. Nama ruang adalah kata sandinya, jadi pilih nama yang sulit ditebak.','<b>Terjemahan:</b> menggunakan Google Translate; pesan yang perlu diterjemahkan dikirim ke layanan tersebut.','<b>Riwayat:</b> anggota baru bisa melihat 50 pesan terakhir. Tidak ada notifikasi saat aplikasi ditutup.'],
+    trnote:'Terjemahan oleh Google Translate (cadangan: MyMemory). Memerlukan internet.'},
+  'ta':{sub:'ஒவ்வொரு செய்தியையும் உங்கள் மொழியில் மொழிபெயர்க்கும் குழு அரட்டை',nick:'புனைப்பெயர்',nickPh:'மற்றவர்கள் பார்க்கும் பெயர்',lang:'என் மொழி',room:'அறையின் பெயர்',roomPh:'எ.கா. குடும்பம், mygroup2026',join:'அறைக்குள் நுழை',
+    needNick:'புனைப்பெயரை உள்ளிடவும்',needRoom:'அறையின் பெயரை உள்ளிடவும்',online:'{n} பேர் ஆன்லைனில்',connecting:'இணைக்கிறது…',offline:'இணைப்பு இல்லை, மீண்டும் இணைக்கிறது',members:'ஆன்லைனில் ({n})',you:'நீங்கள்',
+    settings:'அமைப்புகள்',mylang:'என் மொழி (செய்திகள் இந்த மொழிக்கு மொழிபெயர்க்கப்படும்)',auto:'மற்றவர்களின் செய்திகளைத் தானாக மொழிபெயர்',leave:'அறையை விட்டு வெளியேறு',close:'மூடு',typePh:'செய்தி',
+    empty:'இன்னும் செய்திகள் இல்லை.\nஅறையின் பெயரை நண்பர்களுடன் பகிருங்கள். அதே பெயரை உள்ளிடுபவர்கள் இந்த அறையில் சேருவார்கள்.',trans:'மொழிபெயர்ப்பு',translating:'மொழிபெயர்க்கிறது…',trFail:'மொழிபெயர்ப்பு தோல்வி, மீண்டும் முயல தட்டவும்',tapTr:'மொழிபெயர்',
+    joined:'{n} சேர்ந்தார்',left:'{n} வெளியேறினார்',today:'இன்று',yesterday:'நேற்று',sending:'அனுப்புகிறது',
+    notes:['<b>எப்படி:</b> <b>ஒரே அறைப் பெயரை</b> உள்ளிடும் அனைவரும் ஒரே அறையில் இருப்பார்கள்.','<b>தனியுரிமை:</b> செய்திகள் பொது சேவையகம் வழியாகச் செல்லும் முன் அறைப் பெயரால் மறைகுறியாக்கப்படும். அறைப் பெயரே கடவுச்சொல், எனவே யூகிக்கக் கடினமான பெயரைத் தேர்ந்தெடுக்கவும்.','<b>மொழிபெயர்ப்பு:</b> Google Translate மூலம்; மொழிபெயர்க்க வேண்டிய செய்திகள் அந்தச் சேவைக்கு அனுப்பப்படும்.','<b>வரலாறு:</b> புதிதாகச் சேர்பவர்கள் கடைசி 50 செய்திகளைப் பார்க்கலாம். செயலி மூடியிருக்கும்போது அறிவிப்புகள் வராது.'],
+    trnote:'மொழிபெயர்ப்பு: Google Translate (மாற்று: MyMemory). இணையம் தேவை.'},
+  'th':{sub:'แชทกลุ่มที่แปลทุกข้อความเป็นภาษาของคุณ',nick:'ชื่อเล่น',nickPh:'ชื่อที่คนอื่นจะเห็น',lang:'ภาษาของฉัน',room:'ชื่อห้อง',roomPh:'เช่น ครอบครัว, mygroup2026',join:'เข้าห้อง',
+    needNick:'กรุณาใส่ชื่อเล่น',needRoom:'กรุณาใส่ชื่อห้อง',online:'ออนไลน์ {n} คน',connecting:'กำลังเชื่อมต่อ…',offline:'ออฟไลน์ กำลังเชื่อมต่อใหม่',members:'ออนไลน์ ({n})',you:'คุณ',
+    settings:'การตั้งค่า',mylang:'ภาษาของฉัน (ข้อความจะถูกแปลเป็นภาษานี้)',auto:'แปลข้อความของคนอื่นอัตโนมัติ',leave:'ออกจากห้อง',close:'ปิด',typePh:'ข้อความ',
+    empty:'ยังไม่มีข้อความ\nบอกชื่อห้องให้เพื่อน ใครที่ใส่ชื่อห้องเดียวกันจะเข้ามาในห้องนี้',trans:'แปลแล้ว',translating:'กำลังแปล…',trFail:'แปลไม่สำเร็จ แตะเพื่อลองอีกครั้ง',tapTr:'แปล',
+    joined:'{n} เข้าห้องแล้ว',left:'{n} ออกจากห้องแล้ว',today:'วันนี้',yesterday:'เมื่อวาน',sending:'กำลังส่ง',
+    notes:['<b>วิธีใช้:</b> ทุกคนที่ใส่<b>ชื่อห้องเดียวกัน</b>จะอยู่ในห้องเดียวกัน','<b>ความเป็นส่วนตัว:</b> ข้อความถูกเข้ารหัสด้วยชื่อห้องก่อนส่งผ่านเซิร์ฟเวอร์สาธารณะ ชื่อห้องคือรหัสผ่าน จึงควรตั้งชื่อที่เดายาก','<b>การแปล:</b> ใช้ Google Translate ข้อความที่ต้องแปลจะถูกส่งไปยังบริการนั้น','<b>ประวัติ:</b> คนที่เข้ามาใหม่จะเห็น 50 ข้อความล่าสุด ไม่มีการแจ้งเตือนขณะปิดแอป'],
+    trnote:'แปลโดย Google Translate (สำรอง: MyMemory) ต้องใช้อินเทอร์เน็ต'},
+  'vi':{sub:'Trò chuyện nhóm, tự động dịch mọi tin nhắn sang ngôn ngữ của bạn',nick:'Biệt danh',nickPh:'Tên người khác sẽ thấy',lang:'Ngôn ngữ của tôi',room:'Tên phòng',roomPh:'vd: giadinh, mygroup2026',join:'Vào phòng',
+    needNick:'Vui lòng nhập biệt danh',needRoom:'Vui lòng nhập tên phòng',online:'{n} người trực tuyến',connecting:'Đang kết nối…',offline:'Mất kết nối, đang kết nối lại',members:'Đang trực tuyến ({n})',you:'bạn',
+    settings:'Cài đặt',mylang:'Ngôn ngữ của tôi (tin nhắn sẽ được dịch sang ngôn ngữ này)',auto:'Tự động dịch tin nhắn của người khác',leave:'Rời phòng',close:'Đóng',typePh:'Tin nhắn',
+    empty:'Chưa có tin nhắn nào.\nGửi tên phòng cho bạn bè. Ai nhập cùng tên sẽ vào phòng này.',trans:'Đã dịch',translating:'Đang dịch…',trFail:'Dịch thất bại, chạm để thử lại',tapTr:'Dịch',
+    joined:'{n} đã vào phòng',left:'{n} đã rời phòng',today:'Hôm nay',yesterday:'Hôm qua',sending:'Đang gửi',
+    notes:['<b>Cách dùng:</b> những ai nhập <b>cùng một tên phòng</b> sẽ vào cùng một phòng.','<b>Riêng tư:</b> tin nhắn được mã hóa bằng tên phòng trước khi đi qua máy chủ công cộng. Tên phòng chính là mật khẩu, hãy chọn tên khó đoán.','<b>Dịch:</b> dùng Google Dịch; tin nhắn cần dịch sẽ được gửi đến dịch vụ này.','<b>Lịch sử:</b> người mới vào sẽ thấy 50 tin nhắn gần nhất. Không có thông báo khi ứng dụng đóng.'],
+    trnote:'Dịch bởi Google Dịch (dự phòng: MyMemory). Cần kết nối internet.'},
+  'tl':{sub:'Group chat na isinasalin ang bawat mensahe sa iyong wika',nick:'Palayaw',nickPh:'Pangalang makikita ng iba',lang:'Aking wika',room:'Pangalan ng room',roomPh:'hal. pamilya, mygroup2026',join:'Pumasok sa room',
+    needNick:'Maglagay ng palayaw',needRoom:'Maglagay ng pangalan ng room',online:'{n} online',connecting:'Kumokonekta…',offline:'Offline, kumokonekta muli',members:'Online ({n})',you:'ikaw',
+    settings:'Settings',mylang:'Aking wika (dito isasalin ang mga mensahe)',auto:'Awtomatikong isalin ang mensahe ng iba',leave:'Umalis sa room',close:'Isara',typePh:'Mensahe',
+    empty:'Wala pang mensahe.\nIbahagi ang pangalan ng room sa mga kaibigan. Ang sinumang maglagay ng parehong pangalan ay papasok sa room na ito.',trans:'Isinalin',translating:'Isinasalin…',trFail:'Hindi naisalin, i-tap para subukan muli',tapTr:'Isalin',
+    joined:'Pumasok si {n}',left:'Umalis si {n}',today:'Ngayon',yesterday:'Kahapon',sending:'Ipinapadala',
+    notes:['<b>Paano:</b> lahat ng maglalagay ng <b>parehong pangalan ng room</b> ay mapupunta sa iisang room.','<b>Privacy:</b> naka-encrypt ang mga mensahe gamit ang pangalan ng room bago dumaan sa pampublikong server. Ang pangalan ng room ang password, kaya pumili ng mahirap hulaan.','<b>Pagsasalin:</b> gamit ang Google Translate; ipinapadala sa serbisyong iyon ang mga mensaheng kailangang isalin.','<b>History:</b> makikita ng bagong pasok ang huling 50 mensahe. Walang notification kapag sarado ang app.'],
+    trnote:'Pagsasalin ng Google Translate (backup: MyMemory). Kailangan ng internet.'},
+  'ja':{sub:'メッセージを自動であなたの言語に翻訳するグループチャット',nick:'ニックネーム',nickPh:'ほかの人に表示される名前',lang:'私の言語',room:'ルーム名',roomPh:'例：家族、mygroup2026',join:'ルームに入る',
+    needNick:'ニックネームを入力してください',needRoom:'ルーム名を入力してください',online:'{n} 人がオンライン',connecting:'接続中…',offline:'オフライン、再接続中',members:'オンライン（{n}）',you:'あなた',
+    settings:'設定',mylang:'私の言語（メッセージはこの言語に翻訳されます）',auto:'ほかの人のメッセージを自動翻訳',leave:'ルームを出る',close:'閉じる',typePh:'メッセージ',
+    empty:'まだメッセージはありません。\nルーム名を友だちに教えてください。同じ名前を入力した人がこのルームに入れます。',trans:'翻訳',translating:'翻訳中…',trFail:'翻訳に失敗しました。タップして再試行',tapTr:'翻訳する',
+    joined:'{n} さんが入室しました',left:'{n} さんが退室しました',today:'今日',yesterday:'昨日',sending:'送信中',
+    notes:['<b>使い方：</b><b>同じルーム名</b>を入力した人どうしが同じルームに入ります。','<b>プライバシー：</b>メッセージはルーム名で暗号化されてから公共サーバーを通ります。ルーム名がパスワードの役割をするので、推測されにくい名前にしてください。','<b>翻訳：</b>Google 翻訳を使用しています。翻訳が必要なメッセージはそのサービスに送信されます。','<b>履歴：</b>新しく入った人は直近 50 件のメッセージを見られます。アプリを閉じている間は通知が届きません。'],
+    trnote:'翻訳は Google 翻訳（予備：MyMemory）。インターネット接続が必要です。'},
+  'ko':{sub:'모든 메시지를 내 언어로 번역해 주는 그룹 채팅',nick:'닉네임',nickPh:'다른 사람에게 보이는 이름',lang:'내 언어',room:'방 이름',roomPh:'예: 가족, mygroup2026',join:'방 입장',
+    needNick:'닉네임을 입력하세요',needRoom:'방 이름을 입력하세요',online:'{n}명 접속 중',connecting:'연결 중…',offline:'연결 끊김, 다시 연결 중',members:'접속 중 ({n})',you:'나',
+    settings:'설정',mylang:'내 언어 (메시지가 이 언어로 번역됩니다)',auto:'다른 사람의 메시지 자동 번역',leave:'방 나가기',close:'닫기',typePh:'메시지',
+    empty:'아직 메시지가 없습니다.\n친구에게 방 이름을 알려 주세요. 같은 이름을 입력하면 이 방에 들어옵니다.',trans:'번역됨',translating:'번역 중…',trFail:'번역 실패, 탭하여 다시 시도',tapTr:'번역',
+    joined:'{n}님이 들어왔습니다',left:'{n}님이 나갔습니다',today:'오늘',yesterday:'어제',sending:'보내는 중',
+    notes:['<b>사용 방법:</b> <b>같은 방 이름</b>을 입력한 사람끼리 같은 방에 들어갑니다.','<b>개인정보:</b> 메시지는 방 이름으로 암호화된 뒤 공용 서버를 거칩니다. 방 이름이 비밀번호 역할을 하니 추측하기 어려운 이름을 쓰세요.','<b>번역:</b> Google 번역을 사용하며, 번역이 필요한 메시지는 해당 서비스로 전송됩니다.','<b>기록:</b> 새로 들어온 사람은 최근 메시지 50개를 볼 수 있습니다. 앱이 닫혀 있으면 알림이 오지 않습니다.'],
+    trnote:'번역: Google 번역 (예비: MyMemory). 인터넷 연결이 필요합니다.'},
+  'hi':{sub:'ग्रुप चैट जो हर संदेश का आपकी भाषा में अनुवाद करता है',nick:'उपनाम',nickPh:'दूसरों को दिखने वाला नाम',lang:'मेरी भाषा',room:'रूम का नाम',roomPh:'जैसे: परिवार, mygroup2026',join:'रूम में जाएँ',
+    needNick:'कृपया उपनाम लिखें',needRoom:'कृपया रूम का नाम लिखें',online:'{n} ऑनलाइन',connecting:'कनेक्ट हो रहा है…',offline:'ऑफ़लाइन, फिर से कनेक्ट हो रहा है',members:'ऑनलाइन ({n})',you:'आप',
+    settings:'सेटिंग्स',mylang:'मेरी भाषा (संदेशों का अनुवाद इसी भाषा में होगा)',auto:'दूसरों के संदेशों का अपने-आप अनुवाद करें',leave:'रूम छोड़ें',close:'बंद करें',typePh:'संदेश',
+    empty:'अभी कोई संदेश नहीं है।\nदोस्तों को रूम का नाम बताएँ। वही नाम डालने वाला कोई भी इस रूम में आ जाएगा।',trans:'अनूदित',translating:'अनुवाद हो रहा है…',trFail:'अनुवाद नहीं हो सका, फिर से कोशिश करने के लिए टैप करें',tapTr:'अनुवाद करें',
+    joined:'{n} रूम में आए',left:'{n} रूम से चले गए',today:'आज',yesterday:'कल',sending:'भेजा जा रहा है',
+    notes:['<b>कैसे:</b> जो भी <b>एक ही रूम का नाम</b> डालता है, वह एक ही रूम में पहुँचता है।','<b>गोपनीयता:</b> संदेश सार्वजनिक सर्वर से गुज़रने से पहले रूम के नाम से एन्क्रिप्ट होते हैं। रूम का नाम ही पासवर्ड है, इसलिए ऐसा नाम चुनें जिसका अनुमान लगाना मुश्किल हो।','<b>अनुवाद:</b> Google Translate द्वारा; जिन संदेशों का अनुवाद होना है वे उस सेवा को भेजे जाते हैं।','<b>इतिहास:</b> नए लोग पिछले 50 संदेश देख सकते हैं। ऐप बंद होने पर सूचनाएँ नहीं आतीं।'],
+    trnote:'अनुवाद: Google Translate (बैकअप: MyMemory)। इंटरनेट ज़रूरी है।'},
+  'ne':{sub:'हरेक सन्देश तपाईंको भाषामा अनुवाद गर्ने समूह च्याट',nick:'उपनाम',nickPh:'अरूले देख्ने नाम',lang:'मेरो भाषा',room:'कोठाको नाम',roomPh:'जस्तै: परिवार, mygroup2026',join:'कोठामा प्रवेश गर्नुहोस्',
+    needNick:'कृपया उपनाम लेख्नुहोस्',needRoom:'कृपया कोठाको नाम लेख्नुहोस्',online:'{n} जना अनलाइन',connecting:'जोडिँदै…',offline:'अफलाइन, फेरि जोडिँदै',members:'अनलाइन ({n})',you:'तपाईं',
+    settings:'सेटिङ',mylang:'मेरो भाषा (सन्देशहरू यही भाषामा अनुवाद हुन्छन्)',auto:'अरूका सन्देश स्वतः अनुवाद गर्ने',leave:'कोठाबाट निस्कनुहोस्',close:'बन्द गर्नुहोस्',typePh:'सन्देश',
+    empty:'अहिलेसम्म कुनै सन्देश छैन।\nसाथीहरूलाई कोठाको नाम भन्नुहोस्। उही नाम राख्ने जो कोही यो कोठामा आउँछ।',trans:'अनुवादित',translating:'अनुवाद हुँदैछ…',trFail:'अनुवाद असफल, फेरि प्रयास गर्न थिच्नुहोस्',tapTr:'अनुवाद गर्नुहोस्',
+    joined:'{n} कोठामा आउनुभयो',left:'{n} कोठाबाट जानुभयो',today:'आज',yesterday:'हिजो',sending:'पठाउँदै',
+    notes:['<b>कसरी:</b> <b>एउटै कोठाको नाम</b> राख्ने सबैजना एउटै कोठामा पुग्छन्।','<b>गोपनीयता:</b> सन्देशहरू सार्वजनिक सर्भरबाट जानुअघि कोठाको नामले इन्क्रिप्ट हुन्छन्। कोठाको नाम नै पासवर्ड हो, त्यसैले अनुमान गर्न गाह्रो नाम राख्नुहोस्।','<b>अनुवाद:</b> Google Translate प्रयोग गरिन्छ; अनुवाद गर्नुपर्ने सन्देशहरू त्यो सेवामा पठाइन्छन्।','<b>इतिहास:</b> नयाँ आउनेले पछिल्ला ५० सन्देश देख्न सक्छन्। एप बन्द हुँदा सूचना आउँदैन।'],
+    trnote:'अनुवाद: Google Translate (ब्याकअप: MyMemory)। इन्टरनेट चाहिन्छ।'},
+  'ar':{sub:'دردشة جماعية تترجم كل رسالة إلى لغتك',nick:'الاسم المستعار',nickPh:'الاسم الذي يراه الآخرون',lang:'لغتي',room:'اسم الغرفة',roomPh:'مثال: العائلة، mygroup2026',join:'دخول الغرفة',
+    needNick:'يرجى إدخال اسم مستعار',needRoom:'يرجى إدخال اسم الغرفة',online:'{n} متصل',connecting:'جارٍ الاتصال…',offline:'غير متصل، جارٍ إعادة الاتصال',members:'المتصلون ({n})',you:'أنت',
+    settings:'الإعدادات',mylang:'لغتي (تُترجَم الرسائل إليها)',auto:'ترجمة رسائل الآخرين تلقائيًا',leave:'مغادرة الغرفة',close:'إغلاق',typePh:'رسالة',
+    empty:'لا توجد رسائل بعد.\nشارك اسم الغرفة مع أصدقائك. كل من يكتب الاسم نفسه ينضم إلى هذه الغرفة.',trans:'مترجَمة',translating:'جارٍ الترجمة…',trFail:'تعذّرت الترجمة، انقر لإعادة المحاولة',tapTr:'ترجمة',
+    joined:'انضم {n}',left:'غادر {n}',today:'اليوم',yesterday:'أمس',sending:'جارٍ الإرسال',
+    notes:['<b>طريقة الاستخدام:</b> كل من يكتب <b>اسم الغرفة نفسه</b> يدخل الغرفة نفسها.','<b>الخصوصية:</b> تُشفَّر الرسائل باسم الغرفة قبل مرورها عبر خادم عام. اسم الغرفة هو كلمة المرور، فاختر اسمًا يصعب تخمينه.','<b>الترجمة:</b> بواسطة ترجمة Google؛ تُرسَل الرسائل التي تحتاج إلى ترجمة إلى تلك الخدمة.','<b>السجل:</b> يرى المنضمون الجدد آخر 50 رسالة. لا تصل إشعارات أثناء إغلاق التطبيق.'],
+    trnote:'الترجمة بواسطة ترجمة Google (والبديل MyMemory). يتطلب اتصالًا بالإنترنت.'},
+  'ru':{sub:'Групповой чат, который переводит каждое сообщение на ваш язык',nick:'Ник',nickPh:'Имя, которое видят другие',lang:'Мой язык',room:'Название комнаты',roomPh:'например: семья, mygroup2026',join:'Войти в комнату',
+    needNick:'Введите ник',needRoom:'Введите название комнаты',online:'В сети: {n}',connecting:'Подключение…',offline:'Нет связи, переподключение',members:'В сети ({n})',you:'вы',
+    settings:'Настройки',mylang:'Мой язык (на него переводятся сообщения)',auto:'Автоматически переводить сообщения других',leave:'Выйти из комнаты',close:'Закрыть',typePh:'Сообщение',
+    empty:'Сообщений пока нет.\nПоделитесь названием комнаты с друзьями: любой, кто введёт то же название, попадёт сюда.',trans:'Перевод',translating:'Перевод…',trFail:'Не удалось перевести, нажмите, чтобы повторить',tapTr:'Перевести',
+    joined:'Новый участник: {n}',left:'{n} покидает комнату',today:'Сегодня',yesterday:'Вчера',sending:'Отправка',
+    notes:['<b>Как это работает:</b> все, кто вводит <b>одно и то же название комнаты</b>, попадают в одну комнату.','<b>Конфиденциальность:</b> сообщения шифруются названием комнаты перед отправкой через общий сервер. Название комнаты служит паролем, поэтому выберите такое, которое трудно угадать.','<b>Перевод:</b> через Google Переводчик; сообщения, которые нужно перевести, отправляются в этот сервис.','<b>История:</b> новые участники видят последние 50 сообщений. Пока приложение закрыто, уведомления не приходят.'],
+    trnote:'Перевод: Google Переводчик (резерв: MyMemory). Нужен интернет.'},
+  'es':{sub:'Chat grupal que traduce cada mensaje a tu idioma',nick:'Apodo',nickPh:'Nombre que verán los demás',lang:'Mi idioma',room:'Nombre de la sala',roomPh:'p. ej. familia, mygroup2026',join:'Entrar en la sala',
+    needNick:'Escribe un apodo',needRoom:'Escribe el nombre de la sala',online:'{n} en línea',connecting:'Conectando…',offline:'Sin conexión, reconectando',members:'En línea ({n})',you:'tú',
+    settings:'Ajustes',mylang:'Mi idioma (los mensajes se traducen a este idioma)',auto:'Traducir automáticamente los mensajes de otros',leave:'Salir de la sala',close:'Cerrar',typePh:'Mensaje',
+    empty:'Todavía no hay mensajes.\nComparte el nombre de la sala con tus amigos: quien escriba el mismo nombre entrará aquí.',trans:'Traducido',translating:'Traduciendo…',trFail:'No se pudo traducir, toca para reintentar',tapTr:'Traducir',
+    joined:'{n} se unió',left:'{n} salió',today:'Hoy',yesterday:'Ayer',sending:'Enviando',
+    notes:['<b>Cómo funciona:</b> todos los que escriben <b>el mismo nombre de sala</b> entran en la misma sala.','<b>Privacidad:</b> los mensajes se cifran con el nombre de la sala antes de pasar por un servidor público. El nombre de la sala es la contraseña, así que elige uno difícil de adivinar.','<b>Traducción:</b> con Google Translate; los mensajes que hay que traducir se envían a ese servicio.','<b>Historial:</b> quienes llegan ven los últimos 50 mensajes. No hay notificaciones con la app cerrada.'],
+    trnote:'Traducción de Google Translate (respaldo: MyMemory). Requiere internet.'},
+  'fr':{sub:'Discussion de groupe qui traduit chaque message dans votre langue',nick:'Pseudo',nickPh:'Nom visible par les autres',lang:'Ma langue',room:'Nom du salon',roomPh:'ex. famille, mygroup2026',join:'Entrer dans le salon',
+    needNick:'Saisissez un pseudo',needRoom:'Saisissez le nom du salon',online:'{n} en ligne',connecting:'Connexion…',offline:'Hors ligne, reconnexion',members:'En ligne ({n})',you:'vous',
+    settings:'Paramètres',mylang:'Ma langue (les messages sont traduits dans cette langue)',auto:'Traduire automatiquement les messages des autres',leave:'Quitter le salon',close:'Fermer',typePh:'Message',
+    empty:'Aucun message pour l’instant.\nPartagez le nom du salon avec vos amis : quiconque saisit le même nom rejoint ce salon.',trans:'Traduit',translating:'Traduction…',trFail:'Échec de la traduction, touchez pour réessayer',tapTr:'Traduire',
+    joined:'{n} a rejoint le salon',left:'{n} a quitté le salon',today:'Aujourd’hui',yesterday:'Hier',sending:'Envoi',
+    notes:['<b>Fonctionnement :</b> toutes les personnes qui saisissent <b>le même nom de salon</b> arrivent dans le même salon.','<b>Confidentialité :</b> les messages sont chiffrés avec le nom du salon avant de passer par un serveur public. Le nom du salon sert de mot de passe : choisissez-en un difficile à deviner.','<b>Traduction :</b> assurée par Google Traduction ; les messages à traduire sont envoyés à ce service.','<b>Historique :</b> les nouveaux venus voient les 50 derniers messages. Aucune notification quand l’application est fermée.'],
+    trnote:'Traduction par Google Traduction (secours : MyMemory). Connexion Internet requise.'},
+  'de':{sub:'Gruppenchat, der jede Nachricht in deine Sprache übersetzt',nick:'Spitzname',nickPh:'Name, den andere sehen',lang:'Meine Sprache',room:'Raumname',roomPh:'z. B. familie, mygroup2026',join:'Raum betreten',
+    needNick:'Bitte gib einen Spitznamen ein',needRoom:'Bitte gib einen Raumnamen ein',online:'{n} online',connecting:'Verbinden…',offline:'Offline, verbinde neu',members:'Online ({n})',you:'du',
+    settings:'Einstellungen',mylang:'Meine Sprache (Nachrichten werden in diese Sprache übersetzt)',auto:'Nachrichten anderer automatisch übersetzen',leave:'Raum verlassen',close:'Schließen',typePh:'Nachricht',
+    empty:'Noch keine Nachrichten.\nTeile den Raumnamen mit Freunden. Wer denselben Namen eingibt, kommt in diesen Raum.',trans:'Übersetzt',translating:'Wird übersetzt…',trFail:'Übersetzung fehlgeschlagen, tippen zum Wiederholen',tapTr:'Übersetzen',
+    joined:'{n} ist beigetreten',left:'{n} hat den Raum verlassen',today:'Heute',yesterday:'Gestern',sending:'Wird gesendet',
+    notes:['<b>So geht’s:</b> Alle, die <b>denselben Raumnamen</b> eingeben, landen im selben Raum.','<b>Datenschutz:</b> Nachrichten werden mit dem Raumnamen verschlüsselt, bevor sie über einen öffentlichen Server laufen. Der Raumname ist das Passwort, wähle also einen, der schwer zu erraten ist.','<b>Übersetzung:</b> über Google Übersetzer; Nachrichten, die übersetzt werden müssen, gehen an diesen Dienst.','<b>Verlauf:</b> Neue Mitglieder sehen die letzten 50 Nachrichten. Keine Benachrichtigungen, solange die App geschlossen ist.'],
+    trnote:'Übersetzung durch Google Übersetzer (Ersatz: MyMemory). Internet erforderlich.'},
+  'pt':{sub:'Chat em grupo que traduz cada mensagem para o seu idioma',nick:'Apelido',nickPh:'Nome que os outros verão',lang:'Meu idioma',room:'Nome da sala',roomPh:'ex.: familia, mygroup2026',join:'Entrar na sala',
+    needNick:'Digite um apelido',needRoom:'Digite o nome da sala',online:'{n} online',connecting:'Conectando…',offline:'Sem conexão, reconectando',members:'Online ({n})',you:'você',
+    settings:'Configurações',mylang:'Meu idioma (as mensagens são traduzidas para ele)',auto:'Traduzir automaticamente as mensagens dos outros',leave:'Sair da sala',close:'Fechar',typePh:'Mensagem',
+    empty:'Ainda não há mensagens.\nCompartilhe o nome da sala com amigos: quem digitar o mesmo nome entra nesta sala.',trans:'Traduzido',translating:'Traduzindo…',trFail:'Falha na tradução, toque para tentar de novo',tapTr:'Traduzir',
+    joined:'{n} entrou',left:'{n} saiu',today:'Hoje',yesterday:'Ontem',sending:'Enviando',
+    notes:['<b>Como funciona:</b> todos que digitam <b>o mesmo nome de sala</b> entram na mesma sala.','<b>Privacidade:</b> as mensagens são criptografadas com o nome da sala antes de passar por um servidor público. O nome da sala é a senha, então escolha um difícil de adivinhar.','<b>Tradução:</b> feita pelo Google Tradutor; as mensagens que precisam de tradução são enviadas a esse serviço.','<b>Histórico:</b> quem entra depois vê as últimas 50 mensagens. Não há notificações com o app fechado.'],
+    trnote:'Tradução pelo Google Tradutor (reserva: MyMemory). Requer internet.'}
 };
 let myLang=store.get('chat-lang',null)||guessLang();
-const T=()=>TXT[myLang.startsWith('zh')?'zh':'en'];
+const T=()=>Object.assign({},TXT.en,TXT[myLang]||{});
+const fmt=(s,n)=>String(s).replace('{n}',n);
 
 /* ================= TRANSLATION ================= */
 const nativeWait={};let nativeSeq=0;
@@ -396,9 +518,9 @@ async function onNet(topic,env){
   if(kind==='p'){
     if(obj.id===myId)return;
     const known=R.members.has(obj.id);
-    if(obj.t==='bye'){if(known){R.members.delete(obj.id);toast(T().left(obj.name));}updateHeader();return;}
+    if(obj.t==='bye'){if(known){R.members.delete(obj.id);toast(fmt(T().left,obj.name));}updateHeader();return;}
     R.members.set(obj.id,{name:String(obj.name||'').slice(0,16),lang:obj.lang,seen:Date.now()});
-    if(obj.t==='hi'){if(!known)toast(T().joined(obj.name));setTimeout(()=>presence('here'),300+Math.random()*900);}
+    if(obj.t==='hi'){if(!known)toast(fmt(T().joined,obj.name));setTimeout(()=>presence('here'),300+Math.random()*900);}
     updateHeader();renderMembers();
   }else if(kind==='m'){
     addMsgs([obj],true);
@@ -455,14 +577,14 @@ function fmtDay(ts){
 }
 function bubbleInner(m){
   const mine=m.uid===myId,t=T();
-  if(mine)return `<div class="tx">${esc(m.text)}</div>`;
-  if(sameLang(m.lang,myLang))return `<div class="tx">${esc(m.text)}</div>`;
+  if(mine)return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
+  if(sameLang(m.lang,myLang))return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
   const k=m.id+'|'+myLang,tr=TR[k];
-  if(tr&&tr.s==='ok')return `<span class="tr">${t.trans} · ${esc(LNAME[m.lang]||m.lang)}</span><div class="tx">${esc(tr.t)}</div><div class="orig">${esc(m.text)}</div>`;
-  if(tr&&tr.s==='same')return `<div class="tx">${esc(m.text)}</div>`;
-  if(tr&&tr.s==='busy')return `<div class="tx">${esc(m.text)}</div><div class="busy">${t.translating}</div>`;
-  if(tr&&tr.s==='fail')return `<div class="tx">${esc(m.text)}</div><button class="act" data-tr="${m.id}">${t.trFail}</button>`;
-  return `<div class="tx">${esc(m.text)}</div><button class="act" data-tr="${m.id}">${t.tapTr}</button>`;
+  if(tr&&tr.s==='ok')return `<span class="tr">${t.trans} · ${esc(LNAME[m.lang]||m.lang)}</span><div class="tx" dir="auto">${esc(tr.t)}</div><div class="orig" dir="auto">${esc(m.text)}</div>`;
+  if(tr&&tr.s==='same')return `<div class="tx" dir="auto">${esc(m.text)}</div>`;
+  if(tr&&tr.s==='busy')return `<div class="tx" dir="auto">${esc(m.text)}</div><div class="busy">${t.translating}</div>`;
+  if(tr&&tr.s==='fail')return `<div class="tx" dir="auto">${esc(m.text)}</div><button class="act fail" data-tr="${m.id}">${t.trFail}</button>`;
+  return `<div class="tx" dir="auto">${esc(m.text)}</div><button class="act" data-tr="${m.id}">${t.tapTr}</button>`;
 }
 function msgHTML(m,prev){
   const mine=m.uid===myId,cont=prev&&prev.uid===m.uid&&m.ts-prev.ts<180000&&new Date(prev.ts).toDateString()===new Date(m.ts).toDateString();
@@ -498,13 +620,13 @@ function updateHeader(){
   if(!R)return;
   const up=R.net&&R.net.up,n=1+[...R.members.values()].filter(m=>Date.now()-m.seen<55000).length;
   $('netDot').className='dot '+(up?'ok':'bad');
-  $('onlineLbl').textContent=!R.net?T().connecting:up?T().online(n):T().offline;
+  $('onlineLbl').textContent=!R.net?T().connecting:up?fmt(T().online,n):T().offline;
 }
 function renderMembers(){
   if(!R||$('memSheet').hidden)return;
   const list=[{name:R.nick,lang:myLang,me:true,id:myId},...[...R.members.entries()].map(([id,m])=>({...m,id}))];
-  $('memTitle').textContent=T().members(list.length);
-  $('memList').innerHTML=list.map(m=>`<div class="mem"><div class="av" style="background:${colorFor(m.id)}">${esc((m.name||'?').charAt(0).toUpperCase())}</div><div><b>${esc(m.name)}${m.me?` <small>（${T().you}）</small>`:''}</b><small>${esc(LNAME[m.lang]||m.lang||'')}</small></div></div>`).join('');
+  $('memTitle').textContent=fmt(T().members,list.length);
+  $('memList').innerHTML=list.map(m=>`<div class="mem"><div class="av" style="background:${colorFor(m.id)}">${esc((m.name||'?').charAt(0).toUpperCase())}</div><div><b>${esc(m.name)}${m.me?` <small>(${esc(T().you)})</small>`:''}</b><small>${esc(LNAME[m.lang]||m.lang||'')}</small></div></div>`).join('');
 }
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200);}
 let actx=null;
@@ -518,7 +640,7 @@ function ding(){
 /* ================= LOBBY ================= */
 function fillLangs(sel){sel.innerHTML=LANGS.map(([c,n])=>`<option value="${c}">${n}</option>`).join('');sel.value=myLang;}
 function applyUIText(){
-  const t=T();document.documentElement.lang=myLang;
+  const t=T();document.documentElement.lang=myLang;document.documentElement.dir=myLang==='ar'?'rtl':'ltr';
   $('t_sub').textContent=t.sub;$('t_nick').textContent=t.nick;$('nickIn').placeholder=t.nickPh;$('t_lang').textContent=t.lang;
   $('t_room').textContent=t.room;$('roomIn').placeholder=t.roomPh;$('joinBtn').textContent=t.join;
   $('notes').innerHTML=t.notes.map(n=>`<div>${n}</div>`).join('');

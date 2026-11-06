@@ -37,7 +37,7 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
         if (!need) return { shown: txt };
         const tr = bub.querySelector('.tr');
         if (tr) return { shown: bub.querySelector('.tx').innerText, label: tr.innerText };
-        if (bub.querySelector('[data-tr]') && /fail|失败/i.test(bub.innerText)) return { failed: true, shown: txt };
+        if (bub.querySelector('.fail')) return { failed: true, shown: txt };
       }
       return false;
     }, [orig, needTranslation], { timeout: 30000 });
@@ -98,6 +98,15 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
     await send(E, ne);
     r = await seen(A, ne, true); log('A (Chinese) sees Nepali:', JSON.stringify(r)); check(r.label && !r.failed, 'A translation from Nepali');
     r = await seen(B, ne, true); log('B (English) sees Nepali:', JSON.stringify(r)); check(r.label && !r.failed, 'B translation from Nepali');
+    // Arabic speaker: interface must be Arabic and right-to-left
+    const F = await open('F', 'Omar', 'ar', 'ar-SA');
+    r = await seen(F, en, true); log('F (Arabic) sees history:', JSON.stringify(r)); check(r.label && !r.failed, 'F translation into Arabic');
+    const ui = {};
+    for (const [k, p] of Object.entries(people)) ui[k] = await p.evaluate(() => ({ placeholder: document.getElementById('textIn').placeholder, dir: document.documentElement.dir, online: document.getElementById('onlineLbl').textContent }));
+    log('UI language per person:', JSON.stringify(ui));
+    const expect = { A: '输入消息', B: 'Message', C: 'Mesej', D: 'メッセージ', E: 'सन्देश', F: 'رسالة' };
+    for (const [k, v] of Object.entries(expect)) check(ui[k] && ui[k].placeholder === v, 'UI text for ' + k);
+    check(ui.F && ui.F.dir === 'rtl', 'Arabic is right-to-left');
     // a message A sent must show as delivered (not "sending") on A's own screen
     const pend = await A.$$eval('.msg.me .time', e => e.map(x => x.textContent));
     log('A own message status:', JSON.stringify(pend)); check(pend.every(t => !/发送中|Sending/.test(t)), 'own message delivered');
