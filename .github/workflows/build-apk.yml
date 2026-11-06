@@ -43,10 +43,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk 五子棋.apk
-          cp xiangqi/build/outputs/apk/debug/xiangqi-debug.apk 象棋.apk
-          cp sanguo/build/outputs/apk/debug/sanguo-debug.apk 三国身份局.apk
-          cp mahjong/build/outputs/apk/debug/mahjong-debug.apk 二人麻将.apk
-          cp chat/build/outputs/apk/debug/chat-debug.apk 译聊.apk
+          cp app/build/outputs/apk/debug/app-debug.apk gomoku.apk
+          cp xiangqi/build/outputs/apk/debug/xiangqi-debug.apk xiangqi.apk
+          cp sanguo/build/outputs/apk/debug/sanguo-debug.apk sanguo.apk
+          cp mahjong/build/outputs/apk/debug/mahjong-debug.apk mahjong.apk
+          cp chat/build/outputs/apk/debug/chat-debug.apk chat.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest 译聊.apk 二人麻将.apk 五子棋.apk 象棋.apk 三国身份局.apk --title "安卓 App 下载" --notes "手机上点文件名即可下载安装：译聊（多人聊天自动翻译）、二人麻将（联网对战）、五子棋、象棋、三国身份局。由 GitHub Actions 自动编译。" --latest
+          gh release create latest "chat.apk#译聊（多人聊天自动翻译）.apk" "mahjong.apk#二人麻将（联网对战）.apk" "gomoku.apk#五子棋.apk" "xiangqi.apk#象棋.apk" "sanguo.apk#三国身份局.apk" --title "安卓 App 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest
