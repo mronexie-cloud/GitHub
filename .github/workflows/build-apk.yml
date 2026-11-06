@@ -11,6 +11,7 @@ on:
       - ".github/workflows/probe-turn.yml"
       - ".github/workflows/probe-platforms.yml"
       - ".github/workflows/probe-douyin.yml"
+      - ".github/workflows/music-e2e.yml"
       - ".github/workflows/downloader-e2e.yml"
       - ".github/workflows/e2e.yml"
       - ".github/workflows/chat-e2e.yml"
@@ -53,6 +54,7 @@ jobs:
             mahjong/build/outputs/apk/debug/mahjong-debug.apk
             chat/build/outputs/apk/debug/chat-debug.apk
             downloader/build/outputs/apk/debug/*.apk
+            music/build/outputs/apk/debug/music-debug.apk
       - name: Publish APK as release
         if: github.ref == 'refs/heads/main'
         env:
@@ -65,5 +67,6 @@ jobs:
           cp chat/build/outputs/apk/debug/chat-debug.apk chat.apk
           cp downloader/build/outputs/apk/debug/downloader-arm64-v8a-debug.apk downloader-arm64.apk
           cp downloader/build/outputs/apk/debug/downloader-armeabi-v7a-debug.apk downloader-armv7.apk
+          cp music/build/outputs/apk/debug/music-debug.apk music.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest "downloader-arm64.apk#万能下载（视频下载器，多数手机选这个）.apk" "downloader-armv7.apk#万能下载（老款 32 位手机）.apk" "chat.apk#译聊（多人聊天自动翻译）.apk" "mahjong.apk#二人麻将（联网对战）.apk" "gomoku.apk#五子棋.apk" "xiangqi.apk#象棋.apk" "sanguo.apk#三国身份局.apk" --title "安卓 App 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest
+          gh release create latest "music.apk#音乐盒（本地音乐播放器）.apk" "downloader-arm64.apk#万能下载（视频下载器，多数手机选这个）.apk" "downloader-armv7.apk#万能下载（老款 32 位手机）.apk" "chat.apk#译聊（多人聊天自动翻译）.apk" "mahjong.apk#二人麻将（联网对战）.apk" "gomoku.apk#五子棋.apk" "xiangqi.apk#象棋.apk" "sanguo.apk#三国身份局.apk" --title "安卓 App 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest
