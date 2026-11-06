@@ -215,18 +215,36 @@ async function trGoogle(text,tl){
   const d=JSON.parse(await getText(u));
   return{text:(d[0]||[]).map(x=>x&&x[0]||'').join(''),src:d[2]||''};
 }
-async function trMyMemory(text,src,tl){
-  const u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair='+encodeURIComponent((src||'en')+'|'+tl);
+// Google's second public endpoint (used by the Chrome dictionary extension)
+async function trGoogleAlt(text,tl){
+  const u='https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl='+encodeURIComponent(tl)+'&q='+encodeURIComponent(text);
   const d=JSON.parse(await getText(u));
-  if(String(d.responseStatus)!=='200'||!d.responseData)throw new Error('mymemory '+d.responseStatus);
-  const t=d.responseData.translatedText||'';
-  if(/MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(t))throw new Error('mymemory limit');
-  return{text:t,src:src||''};
+  if(Array.isArray(d)){const f=d[0];if(Array.isArray(f)&&typeof f[0]==='string')return{text:f[0],src:f[1]||''};if(typeof f==='string')return{text:f,src:''};}
+  if(d&&Array.isArray(d.sentences))return{text:d.sentences.map(x=>x.trans||'').join(''),src:d.src||''};
+  throw new Error('unexpected response');
+}
+// MyMemory: only its machine-translation result is used; its crowd "translation memory" often returns unrelated text
+async function trMyMemory(text,src,tl){
+  if(!src)throw new Error('unknown source language');
+  const u='https://api.mymemory.translated.net/get?mt=1&q='+encodeURIComponent(text)+'&langpair='+encodeURIComponent(src+'|'+tl);
+  const d=JSON.parse(await getText(u));
+  if(String(d.responseStatus)!=='200')throw new Error('mymemory '+d.responseStatus);
+  const mt=(d.matches||[]).find(m=>m&&(m['created-by']==='MT!'||/machine translation/i.test(m.reference||'')));
+  if(!mt||!mt.translation||/MYMEMORY WARNING/i.test(mt.translation))throw new Error('no machine translation');
+  return{text:mt.translation,src};
 }
 const sameLang=(a,b)=>!!a&&!!b&&(a===b||(a.split('-')[0]===b.split('-')[0]&&!a.startsWith('zh')));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const trMemo=new Map();
 async function translate(text,src,tl){
-  try{return await trGoogle(text,tl);}
-  catch(e){return await trMyMemory(text,src,tl);}
+  const key=tl+'|'+text;
+  if(trMemo.has(key))return trMemo.get(key);
+  const tries=[()=>trGoogle(text,tl),()=>trGoogleAlt(text,tl),async()=>{await sleep(1500);return trGoogle(text,tl);},()=>trMyMemory(text,src,tl)];
+  let last=null;
+  for(const f of tries){
+    try{const r=await f();if(r&&r.text&&r.text.trim()){trMemo.set(key,r);return r;}}catch(e){last=e;}
+  }
+  throw last||new Error('translation failed');
 }
 // cache: key `${msgId}|${lang}` -> {s:'busy'|'ok'|'same'|'fail', t}
 let TR={};let trActive=0;const trQueue=[];
@@ -245,7 +263,7 @@ function queueTranslate(m,front){
   };
   front?trQueue.unshift(job):trQueue.push(job);pump();
 }
-function pump(){while(trActive<2&&trQueue.length)trQueue.shift()();}
+function pump(){while(trActive<1&&trQueue.length)trQueue.shift()();}
 let trSaveT=null;
 function saveTR(){clearTimeout(trSaveT);trSaveT=setTimeout(()=>{if(!R)return;const ok={};for(const[k,v]of Object.entries(TR))if(v.s==='ok'||v.s==='same')ok[k]=v;const keys=Object.keys(ok).slice(-300);store.set('chat-tr-'+R.topic,Object.fromEntries(keys.map(k=>[k,ok[k]])));},600);}
 

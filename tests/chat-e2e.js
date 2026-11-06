@@ -50,8 +50,11 @@ const room = 'e2e-' + Math.random().toString(36).slice(2, 10);
     // translation services reachable from the page?
     const probe = await A.evaluate(async () => {
       const out = {};
-      try { out.google = await trGoogle('你好，朋友', 'en'); } catch (e) { out.google = 'ERR ' + e.message; }
-      try { out.mymemory = await trMyMemory('你好，朋友', 'zh-CN', 'en'); } catch (e) { out.mymemory = 'ERR ' + e.message; }
+      for (const [name, f] of [['google', () => trGoogle('你好，朋友', 'en')], ['googleAlt', () => trGoogleAlt('你好，朋友', 'en')],
+        ['mymemory zh>en', () => trMyMemory('你好，朋友', 'zh-CN', 'en')], ['mymemory ja>zh', () => trMyMemory('よろしくお願いします！', 'ja', 'zh-CN')],
+        ['googleAlt ja>zh', () => trGoogleAlt('よろしくお願いします！', 'zh-CN')]]) {
+        try { out[name] = (await f()).text; } catch (e) { out[name] = 'ERR ' + e.message; }
+      }
       out.secure = window.isSecureContext;
       return out;
     });
