@@ -49,7 +49,9 @@ class Library {
                 MediaStore.Audio.Media.DATA, MediaStore.Audio.Media.DISPLAY_NAME, MediaStore.Audio.Media.SIZE,
                 MediaStore.Audio.Media.DATE_ADDED, MediaStore.Audio.Media.MIME_TYPE};
         try (Cursor c = ctx.getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, proj, null, null, null)) {
+            android.util.Log.i("MusicBox", "media index rows: " + (c == null ? "no cursor" : c.getCount()));
             while (c != null && c.moveToNext()) {
+                try {
                 long id = c.getLong(0);
                 long dur = c.isNull(5) ? 0 : c.getLong(5);
                 String path = c.getString(6);
@@ -61,6 +63,9 @@ class Library {
                 JSONObject s = song("m" + id, uri.toString(), path, name, c.getString(1), c.getString(2), c.getString(3), dur, c.getLong(8), c.getLong(9), root);
                 s.put("albumId", c.getLong(4));
                 out.put(s.getString("id"), s);
+                } catch (Exception e) {
+                    android.util.Log.w("MusicBox", "media index row", e);
+                }
             }
         } catch (Exception e) {
             android.util.Log.w("MusicBox", "media index query failed", e);

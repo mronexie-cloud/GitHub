@@ -16,6 +16,7 @@ adb logcat -c
 adb shell am start -n com.zlc.music/.MainActivity
 sleep 12
 shot 1-library
+adb logcat -d -s MusicBox:* > $OUT/scanlog.txt
 adb shell am start -n com.zlc.music/.MainActivity --es demo play
 sleep 8
 shot 2-player-mp3
@@ -46,5 +47,5 @@ state "after pause key"
 adb logcat -d > $OUT/logcat.txt
 grep -E "FATAL EXCEPTION|AndroidRuntime" -A20 $OUT/logcat.txt | head -80 > $OUT/crash.txt
 grep -E "MusicBox" -A12 $OUT/logcat.txt | head -60 >> $OUT/results.txt
-cat $OUT/results.txt $OUT/mediastore.txt $OUT/notification.txt
+cat $OUT/results.txt $OUT/scanlog.txt $OUT/mediastore.txt
 exit 0
