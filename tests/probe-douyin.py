@@ -1,5 +1,7 @@
 # Can a phone get Douyin videos WITHOUT the watermark? Tries the known no-watermark addresses and the computer page's own data API.
 import json, re, subprocess, sys, time, urllib.request, os
+import imageio_ffmpeg
+FF = imageio_ffmpeg.get_ffmpeg_exe()
 from playwright.sync_api import sync_playwright
 
 IDS = ['7704939941600323939', '6961737553342991651']
@@ -13,12 +15,18 @@ def log(*a):
     print(*a, flush=True)
 
 def frame(url, ua, name):
+    try:
+        return frame0(url, ua, name)
+    except Exception as e:
+        return f'frame err {e}'
+
+def frame0(url, ua, name):
     """Save one frame at 1.5 s so the watermark can be checked by eye."""
     out = f'shots/{name}.jpg'
-    r = subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-user_agent', ua, '-headers', 'Referer: https://www.douyin.com/\r\n',
-                        '-ss', '1.5', '-i', url, '-frames:v', '1', '-vf', 'scale=360:-2', out], capture_output=True, text=True, timeout=60)
-    p = subprocess.run(['ffprobe', '-v', 'error', '-user_agent', ua, '-select_streams', 'v:0', '-show_entries', 'stream=codec_name,width,height', '-of', 'csv=p=0', url],
-                       capture_output=True, text=True, timeout=60)
+    r = subprocess.run([FF, '-y', '-loglevel', 'error', '-user_agent', ua, '-headers', 'Referer: https://www.douyin.com/\r\n',
+                        '-rw_timeout', '15000000', '-ss', '1.5', '-i', url, '-loglevel', 'info', '-frames:v', '1', '-vf', 'scale=360:-2', out], capture_output=True, text=True, timeout=40)
+    vline = [l.strip()[:90] for l in r.stderr.splitlines() if 'Video:' in l]
+    p = type('P', (), {'stdout': vline[0] if vline else ''})()
     return (out if os.path.exists(out) else 'no frame ' + r.stderr[-120:]), p.stdout.strip()
 
 def head(url, ua, ref=True):
@@ -80,12 +88,12 @@ def desktop_api(p, vid):
     # ask the page itself to fetch the detail (Douyin's own security script signs it)
     if 'detail' not in got:
         try:
-            res = page.evaluate("""async (id) => {
+            res = page.evaluate("""(id) => Promise.race([new Promise(r => setTimeout(() => r([0, 'timeout']), 15000)), (async () => {
                 const q = new URLSearchParams({device_platform: 'webapp', aid: '6383', channel: 'channel_pc_web', aweme_id: id, pc_client_type: '1',
                     version_code: '190500', version_name: '19.5.0', cookie_enabled: 'true', platform: 'PC', downlink: '10'});
                 const r = await fetch('/aweme/v1/web/aweme/detail/?' + q.toString(), {credentials: 'include'});
                 return [r.status, await r.text()];
-            }""", vid)
+            })()])""", vid)
             st, body = res
             log(f'  in-page fetch: {st} len={len(body)} {body[:120] if len(body) < 300 else ""}')
             if body.startswith('{') and json.loads(body).get('aweme_detail'):
@@ -107,6 +115,8 @@ def desktop_api(p, vid):
             log('  frame', frame(u, DESKTOP, f'desktop-api-{vid}'))
     b.close()
 
+import signal
+signal.alarm(600)
 with sync_playwright() as p:
     for vid in IDS:
         log('==', vid)
