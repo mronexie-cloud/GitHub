@@ -949,7 +949,7 @@ def T(spec, days=None):
 
 FERRIES = [
     dict(id="lgk-kp", island="langkawi", name="玻璃市 Kuala Perlis ⇄ 兰卡威瓜镇 Kuah",
-         a=("玻璃市 Kuala Perlis 码头", 6.3996, 100.1288, "Jeti Kuala Perlis"), b=("兰卡威 Kuah 码头（Jetty Point）", 6.3105, 99.8508, "Jetty Point Langkawi"),
+         a=("玻璃市 Kuala Perlis 码头", 6.3996, 100.1288, "Jeti Kuala Perlis"), b=("兰卡威 Kuah 码头（Jetty Point）", 6.3105, 99.8508, "Jetty Point Complex Kuah"),
          ops="Langkawi Ferry Line", mins=75, out=[], back=[],
          note="2026 年 3 月 25 日起因柴油涨价，每天减为约 3 班（早上、下午、傍晚各一班），具体时间每 3 个月公布、旺季会加班。出发前一天在官网查当天船班。",
          fares=dict(cur="MYR", rows=[("马来西亚人 MyKad", 21, 16), ("外国人", 45, 35)], unit="单程"),
@@ -957,7 +957,7 @@ FERRIES = [
          src=["https://www.malaymail.com/amp/news/malaysia/2026/04/10/langkawi-ferry-operator-raises-fares-for-non-mykad-holders-by-rm10-amid-rising-costs/215839",
               "https://www.stampednomad.com/digital-nomad-news/malaysia-ferry-routes-to-langkawi-stay-capped-at-3-daily-sailings"], asof="2026-07"),
     dict(id="lgk-kk", island="langkawi", name="吉打 Kuala Kedah ⇄ 兰卡威瓜镇 Kuah",
-         a=("瓜拉吉打 Kuala Kedah 码头", 6.1036, 100.2905, "Jeti Kuala Kedah"), b=("兰卡威 Kuah 码头（Jetty Point）", 6.3105, 99.8508, "Jetty Point Langkawi"),
+         a=("瓜拉吉打 Kuala Kedah 码头", 6.1036, 100.2905, "Jeti Kuala Kedah"), b=("兰卡威 Kuah 码头（Jetty Point）", 6.3105, 99.8508, "Jetty Point Complex Kuah"),
          ops="Langkawi Ferry Line", mins=105, out=[], back=[],
          note="2026 年 3 月 25 日起每天约 3 班（早上、下午、傍晚），时间每 3 个月更新；风浪大时会取消。",
          fares=dict(cur="MYR", rows=[("马来西亚人 MyKad", 26.5, 20.5), ("外国人", 55, 42)], unit="单程"),

@@ -266,8 +266,9 @@ def main():
                 la, ln = float(d[0]["lat"]), float(d[0]["lon"])
                 dist = km(lat, lng, la, ln)
                 dn = d[0].get("display_name", "").lower()
-                words = [w for w in q.lower().split() if len(w) > 4 and w not in ("jetty", "ferry", "terminal", "pelabuhan", "island", "langkawi", "harbour", "phuket", "beach", "kuala")]
-                if dist < 3 or (dist < 15 and any(w in dn for w in words)):
+                words = [w for w in q.lower().split() if len(w) > 4 and w not in ("jetty", "ferry", "terminal", "pelabuhan", "island", "langkawi", "harbour", "phuket", "beach", "kuala", "point")]
+                porty = any(w in dn for w in ("jeti", "jetty", "pelabuhan", "terminal", "pier", "ท่าเรือ", "port"))
+                if dist < 3 or (dist < 15 and porty and any(w in dn for w in words)):
                     print("  pier %-14s %s moved %.2f km (%s)" % (f["id"], k, dist, d[0].get("display_name", "")[:50]), flush=True)
                     lat, lng = round(la, 5), round(ln, 5)
                 else:
