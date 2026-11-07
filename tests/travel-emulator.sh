@@ -112,7 +112,7 @@ shot 28-add-place
 adb emu geo fix 101.6869 3.1340
 sleep 2
 adb emu geo fix 101.6870 3.1341
-adb shell am start -n com.zlc.travel/.MainActivity --es demo "navt:petronas"
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "navt:petronas:3.1334,101.6865"
 sleep 15
 shot 30-nav-transit
 adb shell input swipe 540 1700 540 700 400

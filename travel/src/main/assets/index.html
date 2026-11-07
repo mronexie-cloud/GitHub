@@ -2023,7 +2023,7 @@ function openNav(dest) {
       const segs = legPlan(from, dest, 'public');
       const est = () => { $q('#nSum').innerHTML = `<b>约 ${fmtDur(segMin(segs))}</b><span class="mini">（估算）</span><div class="note">这一段查不到公交班次（这一带可能没有公开的时刻表）。可以用 Google 地图查，或者坐 Grab。</div>` + links(); bindFollow(); };
       draw([[from.lat, from.lng], [dest.lat, dest.lng]], true);
-      if (d < 0.6) { est(); return; }
+      if (d < 0.6) { $q('#nSum').innerHTML = `<b>走路约 ${Math.max(2, Math.round(d / 4.5 * 60))} 分钟</b><div class="note">很近，不用坐车，走过去就好。</div>` + links(); bindFollow(); return; }
       $q('#nSum').innerHTML = '<div class="row"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在查公交和地铁…</div>';
       transitPlan(from, dest, Date.now()).then(its => {
         if (seq !== st.seq) return;
@@ -2345,7 +2345,7 @@ function runDemo(d) {
     if (k === 'calshare' && A) A.shareFile(`trip-${ymd(CUR_PLAN.days[0].date)}.ics`, 'text/calendar', icsText(CUR_PLAN));
   }
   // public transport (v1.4): navigation by transit, and the transit sheet of the first long-enough leg of a public-transport plan
-  if (k === 'navt') { while (OV.length) closeOverlay(); store.set('navMode', 'transit'); openNavTo(a); }
+  if (k === 'navt') { while (OV.length) closeOverlay(); store.set('navMode', 'transit'); if (b) { const [la, lo] = b.split(',').map(Number); LASTPOS = {lat: la, lng: lo, t: Date.now()}; } openNavTo(a); }
   if (k === 'planpub') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.days = +b || 2; F.mode = 'public'; F.fixed = null; renderPlanForm(); go(); } }
   if (k === 'transit') { const tb = document.querySelector('[data-transit]'); if (tb) { tb.scrollIntoView({block: 'center'}); tb.click(); } }
   if (k === 'gmaps') openUrl(gmapsPlace(PL[a]));
