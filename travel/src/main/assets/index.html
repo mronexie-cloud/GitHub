@@ -196,6 +196,17 @@ table.eat{width:100%;border-collapse:collapse;font-size:14px}
 .spot{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
 .spot .wd{width:42px;font-weight:700;color:var(--acc)}
 .spot .nm{flex:1;min-width:0}
+.ferry{display:flex;flex-direction:column;gap:8px}
+.ferry .fh b{font-size:15.5px;display:block;line-height:1.35}
+.fcols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fcols>div{min-width:0;background:var(--soft);border-radius:12px;padding:8px 10px}
+.times{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.times i{font-style:normal;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:700;padding:3px 7px;border-radius:8px;background:var(--card);color:var(--ink)}
+.times i.past{color:var(--faint);text-decoration:line-through;font-weight:500;background:none}
+.times i.next{background:var(--acc);color:var(--accInk)}
+.leg .note.warn,.note.warn{color:var(--warn);background:var(--warnBg);border-radius:8px;padding:4px 8px}
+.fdays{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.fdays input{height:34px;border-radius:17px;border:1.5px solid var(--line);background:var(--bg);padding:0 10px}
 </style>
 </head>
 <body>
@@ -321,7 +332,7 @@ function legPlan(from, to, mode) {
     const fl = flightOption(from, to, fr, tr);
     const ferryMin = r1.min + tr.ferry.hours * 60 + 40;
     if (fl && fl.total < ferryMin - 60) return fl.segs;
-    return [{type: roadType, min: r1.min, km: r1.km, to: tr.ferry.name}, {type: 'ferry', min: Math.round(tr.ferry.hours * 60 + 40), km: Math.round(km(pier, to)), to: tr.name}];
+    return [{type: roadType, min: r1.min, km: r1.km, to: tr.ferry.name}, {type: 'ferry', min: Math.round(tr.ferry.hours * 60 + 40), km: Math.round(km(pier, to)), to: tr.name, isl: tr.key, dir: 'out'}];
   }
   if (fr && fr.ferry && fg !== tg) {
     const pier = {lat: fr.ferry.lat, lng: fr.ferry.lng};
@@ -329,7 +340,7 @@ function legPlan(from, to, mode) {
     const fl = flightOption(from, to, fr, tr);
     const ferryMin = fr.ferry.hours * 60 + 40 + r1.min;
     if (fl && fl.total < ferryMin - 60) return fl.segs;
-    return [{type: 'ferry', min: Math.round(fr.ferry.hours * 60 + 40), km: Math.round(km(from, pier)), to: fr.ferry.name}, {type: roadType, min: r1.min, km: r1.km, to: tr ? tr.name : ''}];
+    return [{type: 'ferry', min: Math.round(fr.ferry.hours * 60 + 40), km: Math.round(km(from, pier)), to: fr.ferry.name, isl: fr.key, dir: 'back'}, {type: roadType, min: r1.min, km: r1.km, to: tr ? tr.name : ''}];
   }
   if (fg !== tg) {
     const fl = flightOption(from, to, fr, tr);
@@ -400,6 +411,50 @@ function cost(p, party, resident) {
     text: (pr.approx ? '约 ' : '') + money(local, pr.cur) + (pr.cur !== 'MYR' ? '（≈' + rm(r) + '）' : '')};
 }
 
+/* ---------------- ferries ---------------- */
+const FERRY = D.ferries || [];
+const FR = {}; FERRY.forEach(x => FR[x.id] = x);
+const toMin = hm => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+/** departure times ("HH:MM") on that date, sorted */
+function sailings(list, date) { const wd = date.getDay(); return (list || []).filter(x => !x[1] || x[1].includes(wd)).map(x => x[0]).sort(); }
+function ferryStatus(fe, date) {
+  const m = date.getMonth() + 1;
+  if (fe.closed && fe.closed.includes(m)) return 'closed';
+  if (fe.monsoon && fe.monsoon.includes(m)) return 'monsoon';
+  return '';
+}
+function ferriesForPlace(p) { return FERRY.filter(x => (x.places && x.places.includes(p.id)) || (!x.places && x.island === p.region)); }
+/** the main ferry to an island: the one leaving from the pier the planner drives to */
+function mainFerry(isl) {
+  const r = R[isl], list = FERRY.filter(x => x.island === isl && !x.places);
+  if (!list.length) return null;
+  return r && r.ferry ? list.sort((a, b) => km(a.a, r.ferry) - km(b.a, r.ferry))[0] : list[0];
+}
+function islandClosed(isl, date) { const fe = mainFerry(isl); return !!(fe && ferryStatus(fe, date) === 'closed'); }
+/** give ferry segments real sailing times: wait at the pier for the next boat that day */
+function timeFerries(segs, t0, date) {
+  let tt = t0;
+  for (const s of segs) {
+    if (s.type === 'ferry' && s.isl) {
+      const fe = mainFerry(s.isl);
+      if (fe) {
+        s.route = fe.id;
+        const st = ferryStatus(fe, date);
+        if (st) s.season = st;
+        const times = sailings(s.dir === 'out' ? fe.out : fe.back, date).map(toMin);
+        delete s.dep; delete s.none; delete s.wait;
+        if (times.length) {
+          const dep = times.find(x => x >= tt + 20);   // 20 minutes to buy tickets and board
+          if (dep != null) { s.dep = dep; s.wait = dep - tt; s.min = s.wait + fe.mins; }
+          else { s.none = true; s.min = fe.mins + 40; }
+        } else s.min = fe.mins + 40;
+      }
+    }
+    tt += s.min;
+  }
+  return segs;
+}
+
 /* ---------------- planner ---------------- */
 const PACE = {relax: [570, 1050, 7], normal: [540, 1140, 9], tight: [480, 1260, 11]};
 const CAP = {relax: 4, normal: 5, tight: 7}; // most attractions a day
@@ -464,8 +519,10 @@ function plan(f) {
     // long trips start on a fresh morning if the day is mostly gone
     if (big && t > dayStart + 120 && dayEnd - t < total * 0.6) { days[days.length - 1].region = days[days.length - 1].region || region; newDay(); t = dayStart; }
     const day = days[days.length - 1];
-    day.items.push({type: 'leg', segs, start: t, end: t + total, from: loc.name || '', to: to.name || label || '', big, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: {lat: to.lat, lng: to.lng}});
-    t += total;
+    timeFerries(segs, t, day.date);
+    const total2 = segMin(segs);
+    day.items.push({type: 'leg', segs, start: t, end: t + total2, from: loc.name || '', to: to.name || label || '', big, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: {lat: to.lat, lng: to.lng}});
+    t += total2;
     loc = Object.assign({}, to);
     while (t > dayEnd + 120) { t = t - (dayEnd - dayStart) - 720; newDay(); if (t < dayStart) t = dayStart; }
   };
@@ -485,7 +542,7 @@ function plan(f) {
     // sunrise spots: leave before dawn when it is the first thing of the day
     const dawn = p.slot === 'sunrise' && t <= dayStart + 30 && !day.items.some(x => x.type !== 'meal');
     if (km(loc, pt) > 0.3) {
-      const segs = legPlan(loc, pt, f.mode);
+      const segs = timeFerries(legPlan(loc, pt, f.mode), t, day.date);
       const m = segMin(segs);
       if (dawn) t = Math.max(150, 300 - m);
       day.items.push({type: 'leg', segs, start: t, end: t + m, small: true, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: pt});
@@ -568,6 +625,7 @@ function plan(f) {
         let best = null, bestEff = -1;
         for (const r of D.regions) {
           if (!countries.has(r.country) || r.key === region) continue;
+          if (r.ferry && islandClosed(r.key, dateAt(f, days.length - 1)) && !mustIn(r.key)) continue; // boats stop in the monsoon
           const rp = Object.assign({}, r, {rk: r.key});
           const segs = legPlan(loc, rp, f.mode);
           const travelH = segMin(segs) / 60;
@@ -614,7 +672,7 @@ function plan(f) {
         let st = t + tm;
         if (p.slot === 'night') st = Math.max(st, 1170);
         if (p.slot === 'sunrise' && (dayNow.items.some(x => x.type !== 'meal') || t > dayStart + 30)) continue;
-        if (p.dur >= 5 && st > 660 && p.slot !== 'night') continue; // full-day parks and tours start in the morning
+        if (p.dur >= 5 && st > 660 && p.slot !== 'night' && (p.cat !== 'beach' || p.dur >= 7)) continue; // full-day parks and tours start in the morning; a beach is fine in the afternoon
         if (p.cat === 'food' && p.slot === 'day' && !f.must.includes(p.id) && (st < 660 || st > 840)) continue; // lunch spots at lunch time
         let limit = p.slot === 'night' ? endToday + 90 : p.slot === 'evening' ? endToday + 60 : endToday - 150;
         if (p.dur >= 6) limit = Math.max(limit, Math.min(endToday - 90, dayEnd + 60)); // day tours: back by evening
@@ -806,22 +864,33 @@ function navLinks(a, b, mode, name, grab) {
   const gb = grab ? `<a class="grab" data-grab="${b.lat},${b.lng}" data-name="${esc(name || '')}" data-from="${a.lat},${a.lng}">Grab</a>` : '';
   return `<span class="nav">${mode === 'public' ? gb : ''}<a href="${g}">Google 地图</a>${mode === 'public' ? '' : `<a href="${w}">Waze</a>${gb}`}</span>`;
 }
-function legHtml(it, f) {
+function legHtml(it, f, date) {
   const total = segMin(it.segs), kms = segKm(it.segs);
   if (!it.big) {
     const s = it.segs[0];
     const grab = s.type === 'grab' || (s.type === 'drive' && kms < 200);
     return `<div class="leg">${SEG[s.type][0]} ${SEG[s.type][1]}约 ${fmtDur(total)}${kms >= 1 ? ' · ' + kms + ' 公里' : ''}${s.type === 'walk' || (total < 15 && s.type !== 'grab') ? '' : navLinks(it.fromPt, it.toPt, f.mode, it.toPt.name, grab)}</div>`;
   }
-  const parts = it.segs.map(s => `${SEG[s.type][0]} ${s.type === 'flight' ? `飞往 ${esc(s.to)}（航程约 ${fmtDur(s.air)}）` : `${SEG[s.type][1]}${s.to ? '到 ' + esc(s.to) : ''} 约 ${fmtDur(s.min)}`}`).join('　→　');
-  const notes = [];
+  const parts = it.segs.map(s => `${SEG[s.type][0]} ${s.type === 'flight' ? `飞往 ${esc(s.to)}（航程约 ${fmtDur(s.air)}）`
+    : s.type === 'ferry' && s.route ? `${s.dep != null ? '<b>' + hhmm(s.dep) + '</b> 开船' : '渡轮'}到 ${esc(s.to)}（船程约 ${fmtDur(FR[s.route].mins)}）`
+    : `${SEG[s.type][1]}${s.to ? '到 ' + esc(s.to) : ''} 约 ${fmtDur(s.min)}`}`).join('　→　');
+  const notes = [], warns = [];
+  it.segs.filter(s => s.type === 'ferry' && s.route).forEach(s => {
+    const fe = FR[s.route];
+    if (s.season === 'closed') warns.push(`这段时间（季风期）${fe.name.split('⇄')[1] || ''}的船基本停航，这一段可能走不了，建议改期或换地方。`);
+    else if (s.season === 'monsoon') warns.push('季风期船班少，风浪大会取消，出发前一天确认。');
+    if (s.none) warns.push('到码头时当天已经没有船了，建议在码头附近住一晚，第二天坐早班船。');
+    else if (s.wait >= 15) notes.push(`到码头后等船约 ${fmtDur(s.wait)}。`);
+    else if (s.dep == null) notes.push('开船时间每天不同，点「船班和票价」看当天班次。');
+  });
   if (it.segs.some(s => s.type === 'flight')) notes.push(D.notes.flight);
-  if (it.segs.some(s => s.type === 'ferry')) notes.push(D.notes.ferry);
+  if (it.segs.some(s => s.type === 'ferry' && !s.route)) notes.push(D.notes.ferry);
+  const ferryBtn = it.segs.filter(s => s.type === 'ferry' && s.route).map(s => `<button data-ferry="${s.route}" data-day="${date ? +date : ''}">⛴ 船班和票价</button>`).join('');
   const fc = countryAt(it.fromPt), tc = countryAt(it.toPt);
   if (fc !== tc && !it.segs.some(s => s.type === 'flight')) { const k = [fc, tc].sort().join('-').replace('SG-MY', 'MY-SG').replace('TH-MY', 'MY-TH'); if (D.notes[k]) notes.push(D.notes[k]); }
   if (it.back && it.start >= 1200) notes.push('出发太晚了，可以多住一晚，第二天早上再回去。');
   const roadOnly = it.segs.every(s => s.type === 'drive' || s.type === 'bus' || s.type === 'grab');
-  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode, it.to, roadOnly && kms < 200)}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}</div>`;
+  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode, it.to, roadOnly && kms < 200)}${warns.map(n => `<span class="note warn">⚠ ${esc(n)}</span>`).join('')}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}${ferryBtn ? `<span class="btnrow" style="flex-basis:100%;margin:2px 0 0">${ferryBtn}</span>` : ''}</div>`;
 }
 function mealHtml(it, pl, di) {
   // nearby food spots that are open that day and suit the meal, not already in the plan
@@ -894,7 +963,7 @@ function renderDays() {
   $('daysBox').innerHTML = pl.days.map((d, di) => {
     const r = d.region ? R[d.region] : null;
     const items = d.items.map((it, ii) => {
-      if (it.type === 'leg') return legHtml(it, f);
+      if (it.type === 'leg') return legHtml(it, f, d.date);
       if (it.type === 'meal') return mealHtml(it, pl, di);
       if (it.type === 'free') return `<div class="leg">🕒 自由活动约 ${fmtDur(it.end - it.start)}（逛街、喝茶或回酒店休息）</div>`;
       const pp = PL[it.id], c = cost(pp, f.party, f.resident);
@@ -919,6 +988,8 @@ function renderDays() {
       ${sleep && di < pl.days.length - 1 ? `<div class="hotel">🏨 今晚住：${esc(sleep.name)}${sleep.country !== 'MY' ? '（' + COUNTRY[sleep.country] + '）' : ''}</div>` : ''}</div></div>`;
   }).join('');
   $('daysBox').onclick = e => {
+    const fb = e.target.closest('[data-ferry]');
+    if (fb) { openFerry(fb.dataset.ferry, fb.dataset.day ? new Date(+fb.dataset.day) : new Date()); return; }
     const dn = e.target.closest('[data-daynav]');
     if (dn) { openDayNav(+dn.dataset.daynav); return; }
     const o = e.target.closest('[data-open]');
@@ -1107,6 +1178,7 @@ function openPlace(id) {
     <p style="margin:12px 0 0">${esc(p.desc)}</p>
     ${p.tip ? `<div class="tip">💡 ${esc(p.tip)}</div>` : ''}
     <dl class="facts"><dt>开放时间</dt><dd>${esc(p.hours)}${p.closed.length ? days7(p) : ''}</dd>${p.closed.length ? `<dt>${p.closed.length >= 4 ? '开市日' : '休息日'}</dt><dd>${p.closed.length >= 4 ? '只在' + openDaysText(p) : p.closed.map(d => WD[d]).join('、')}</dd>` : ''}<dt>建议游玩</dt><dd>约 ${p.dur} 小时${p.slot === 'night' ? '（晚上去）' : p.slot === 'evening' ? '（傍晚去）' : p.slot === 'morning' ? '（早上去）' : p.slot === 'sunrise' ? '（清晨 / 日出）' : ''}</dd></dl>
+    ${ferriesForPlace(p).length ? '<h2>⛴ 怎么上岛 · 船班</h2><div id="ferryBox"></div>' : ''}
     ${p.spots ? spotsHtml(p) : ''}
     ${p.eat ? eatHtml(p) : ''}
     ${p.cat === 'food' && p.price && p.price.free ? '' : `<h2>门票</h2>${priceTable(p)}`}
@@ -1118,6 +1190,8 @@ function openPlace(id) {
     <button class="btn ghost" id="dMust" style="margin-top:10px">${must.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）'}</button>
     <h2>附近景点</h2><div class="cards" id="near"></div>
   </div>`;
+  const fbox = ov.body.querySelector('#ferryBox');
+  if (fbox) ferrySection(fbox, ferriesForPlace(p), new Date());
   const near = D.places.filter(x => x.id !== id && km(x, p) < 30).sort((a, b) => km(a, p) - km(b, p)).slice(0, 4);
   ov.body.querySelector('#near').innerHTML = near.length ? near.map(x => `<button class="pc" data-open="${x.id}"><div class="im">${photo(x, true)}</div><div class="bd"><b>${esc(x.name)}</b><small><span>${Math.round(km(x, p) * 10) / 10} 公里</span></small></div></button>`).join('') : '<div class="mini">附近 30 公里内没有收录其他景点</div>';
   ov.body.querySelector('#near').onclick = e => { const b = e.target.closest('[data-open]'); if (b) openPlace(b.dataset.open); };
@@ -1203,7 +1277,9 @@ document.addEventListener('click', e => {
     return;
   }
   const n = e.target.closest('[data-nav]');
-  if (n) { e.preventDefault(); openNavTo(n.dataset.nav); }
+  if (n) { e.preventDefault(); openNavTo(n.dataset.nav); return; }
+  const np = e.target.closest('[data-navpt]');
+  if (np) { e.preventDefault(); const [lat, lng] = np.dataset.navpt.split(',').map(Number); openNav({lat, lng, name: np.dataset.name || '码头', en: np.dataset.name || ''}); }
 });
 
 /* ---------------- my position ---------------- */
@@ -1478,6 +1554,67 @@ function openDayNav(di) {
   }, 240);
 }
 
+/* ---------------- ferry timetable cards ---------------- */
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function sameDay(a, b) { return ymd(a) === ymd(b); }
+function timesHtml(list, date) {
+  const now = new Date(), today = sameDay(date, now), nm = now.getHours() * 60 + now.getMinutes();
+  let marked = false;
+  return list.map(t => {
+    const past = today && toMin(t) < nm;
+    const next = !past && !marked && today;
+    if (next) marked = true;
+    return `<i class="${past ? 'past' : next ? 'next' : ''}">${t}</i>`;
+  }).join('');
+}
+function fareHtml(fe) {
+  const fr = fe.fares || {};
+  if (!fr.rows || !fr.rows.length) return '';
+  const hasChild = fr.rows.some(r => r[2] != null);
+  const cell = v => v == null ? '–' : esc(money(v, fr.cur)) + (fr.cur !== 'MYR' ? `<br><small class="mini">≈${rm(toRM(v, fr.cur))}</small>` : '');
+  return `<table class="pt"><tr><th>船票${fr.unit ? `<small class="mini"> · ${esc(fr.unit)}</small>` : ''}</th><th>成人</th>${hasChild ? '<th>儿童</th>' : ''}</tr>
+    ${fr.rows.map(r => `<tr><td>${esc(r[0])}</td><td>${cell(r[1])}</td>${hasChild ? `<td>${cell(r[2])}</td>` : ''}</tr>`).join('')}</table>`;
+}
+function ferryCard(fe, date) {
+  const st = ferryStatus(fe, date);
+  const out = sailings(fe.out, date), back = sailings(fe.back, date);
+  const short = s => s.replace(/（.*?）/g, '');
+  const col = (label, list) => `<div><div class="lbl" style="margin:0">${esc(label)}</div>${list.length ? `<div class="times">${timesHtml(list, date)}</div>` : '<div class="mini" style="margin-top:4px">时间每天不同，看下面说明</div>'}</div>`;
+  const today = sameDay(date, new Date());
+  const left = today ? out.filter(t => toMin(t) >= new Date().getHours() * 60 + new Date().getMinutes()).length : null;
+  return `<div class="card ferry">
+    <div class="fh"><b>⛴ ${esc(fe.name)}</b><div class="mini">${esc(fe.ops)} · 船程约 ${fmtDur(fe.mins)}</div></div>
+    ${st === 'closed' ? `<div class="warn">⚠ ${date.getMonth() + 1} 月是季风期，这条航线基本停航。</div>` : st === 'monsoon' ? '<div class="warn">⚠ 季风期：班次少，风浪大会取消，出发前一天一定要确认。</div>' : ''}
+    ${st !== 'closed' && today && out.length && left === 0 ? '<div class="warn">今天去程的船都开走了，看明天的班次。</div>' : ''}
+    <div class="fcols">${col('去程 · ' + short(fe.a.name) + ' 开', out)}${col('回程 · ' + short(fe.b.name) + ' 开', back)}</div>
+    ${fe.note ? `<p class="note" style="margin:0">${esc(fe.note)}</p>` : ''}
+    ${fe.approx && (out.length || back.length) ? '<p class="mini" style="margin:0">⚠ 开船时间是参考资料，可能有变，以码头公告为准。</p>' : ''}
+    ${fareHtml(fe)}
+    ${fe.extra ? `<p class="note" style="margin:0">${esc(fe.extra)}</p>` : ''}
+    <div class="btnrow" style="margin:0"><button data-navpt="${fe.a.lat},${fe.a.lng}" data-name="${esc(fe.a.name)}">🧭 导航到${esc(short(fe.a.name))}</button><button class="grab" data-grab="${fe.a.lat},${fe.a.lng}" data-name="${esc(short(fe.a.name))}">Grab 到码头</button>${fe.link ? `<a href="${esc(fe.link.url)}">${esc(fe.link.text)}</a>` : ''}</div>
+    <p class="src" style="margin:0">资料来源（${esc(fe.asof || '')}）：${fe.src.map(u => `<a href="${esc(u)}">${esc(u.replace(/^https?:\/\//, '').split('/')[0])}</a>`).join('、')}</p>
+  </div>`;
+}
+/** ferry section with a day picker; "box" is filled and re-filled when the day changes */
+function ferrySection(box, routes, date) {
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const d0 = new Date(date); d0.setHours(0, 0, 0, 0);
+  const chips = [0, 1, 2].map(i => { const d = new Date(t0); d.setDate(d.getDate() + i); return [d, ['今天', '明天', '后天'][i]]; });
+  box.innerHTML = `<div class="fdays">${chips.map(([d, n]) => `<button class="chip${sameDay(d, d0) ? ' on' : ''}" data-fd="${ymd(d)}">${n}</button>`).join('')}
+    <input type="date" value="${ymd(d0)}" data-fdate="1"><span class="mini">${d0.getMonth() + 1}月${d0.getDate()}日 ${WD[d0.getDay()]}</span></div>
+    <div class="stack">${routes.map(fe => ferryCard(fe, d0)).join('')}</div>`;
+  const go = v => { if (!v) return; const [y, m, d] = v.split('-').map(Number); ferrySection(box, routes, new Date(y, m - 1, d)); };
+  box.querySelectorAll('[data-fd]').forEach(b => b.onclick = () => go(b.dataset.fd));
+  box.querySelector('[data-fdate]').onchange = e => go(e.target.value);
+}
+function openFerry(id, date) {
+  const fe = FR[id];
+  if (!fe) return;
+  const ov = overlay('船班 · ' + fe.name);
+  ov.body.innerHTML = '<div class="dtl"><h1 style="font-size:20px">' + esc(fe.name) + '</h1><div id="fBox"></div></div>';
+  ferrySection(ov.body.querySelector('#fBox'), [fe], date || new Date());
+}
+
 /* ---------------- food tab ---------------- */
 let FD = {country: 'all', region: 'all', day: new Date().getDay()};
 function foodCard(p, wd) {
@@ -1582,6 +1719,7 @@ function runDemo(d) {
   if (k === 'nav') { while (OV.length) closeOverlay(); openNavTo(a); }
   if (k === 'grab') { const p = PL[a]; openGrab({lat: p.lat, lng: p.lng, name: p.en}); }
   if (k === 'daynav') { showTab('pPlan'); if (CUR_PLAN) openDayNav(+a || 0); }
+  if (k === 'ferry') { while (OV.length) closeOverlay(); openFerry(a, b ? new Date(b + 'T00:00:00') : new Date()); }
   if (k === 'follow') { const bt = document.querySelector('#nFollow'); if (bt) bt.click(); }
 }
 window.runDemo = runDemo;

@@ -62,6 +62,12 @@ shot 15-grab
 adb logcat -d -s Travel:* ActivityTaskManager:I > $OUT/grab-log.txt
 adb shell input keyevent KEYCODE_BACK
 sleep 2
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "place:tioman"
+sleep 6
+shot 16-island
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "ferry:batam-hf"
+sleep 5
+shot 17-ferry
 adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
 echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"
