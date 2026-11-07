@@ -19,6 +19,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -26,10 +27,17 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -70,6 +78,19 @@ public class MainActivity extends Activity {
                 open(u.toString());
                 return true;
             }
+
+            /** Map tiles: fetched by the app with its own name (OpenStreetMap's tile policy) and kept for 30 days. */
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
+                Uri u = req.getUrl();
+                if (!"tile.openstreetmap.org".equals(u.getHost())) return null;
+                byte[] b = tile(u);
+                Map<String, String> h = new HashMap<>();
+                h.put("Access-Control-Allow-Origin", "*");
+                h.put("Cache-Control", "max-age=604800");
+                if (b == null) return new WebResourceResponse("image/png", null, 404, "No tile", h, new ByteArrayInputStream(new byte[0]));
+                return new WebResourceResponse("image/png", null, 200, "OK", h, new ByteArrayInputStream(b));
+            }
         });
         web.addJavascriptInterface(new Bridge(), "A");
         setContentView(web);
@@ -82,6 +103,52 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         String d = intent.getStringExtra("demo");
         if (d != null) js("window.runDemo&&window.runDemo(" + JSONObject.quote(d) + ")");
+    }
+
+    byte[] tile(Uri u) {
+        List<String> seg = u.getPathSegments();
+        if (seg.size() != 3) return null;
+        File dir = new File(getCacheDir(), "tiles");
+        File f = new File(dir, seg.get(0) + "_" + seg.get(1) + "_" + seg.get(2).replaceAll("[^0-9.a-z]", ""));
+        if (f.exists() && System.currentTimeMillis() - f.lastModified() < 30L * 86400_000L) {
+            try (FileInputStream in = new FileInputStream(f)) {
+                byte[] b = new byte[(int) f.length()];
+                int n = 0, r;
+                while (n < b.length && (r = in.read(b, n, b.length - n)) > 0) n += r;
+                return b;
+            } catch (Exception ignored) { }
+        }
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(u.toString()).openConnection();
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(20000);
+            c.setRequestProperty("User-Agent", UA);
+            if (c.getResponseCode() != 200) { c.disconnect(); return null; }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (InputStream in = c.getInputStream()) {
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            } finally {
+                c.disconnect();
+            }
+            byte[] b = out.toByteArray();
+            dir.mkdirs();
+            try (FileOutputStream o = new FileOutputStream(f)) { o.write(b); } catch (Exception ignored) { }
+            return b;
+        } catch (Exception e) {
+            Log.w(TAG, "tile " + u, e);
+            // offline: an old copy is better than nothing
+            if (f.exists()) {
+                try (FileInputStream in = new FileInputStream(f)) {
+                    byte[] b = new byte[(int) f.length()];
+                    int n = 0, r;
+                    while (n < b.length && (r = in.read(b, n, b.length - n)) > 0) n += r;
+                    return b;
+                } catch (Exception ignored) { }
+            }
+            return null;
+        }
     }
 
     boolean dark() {

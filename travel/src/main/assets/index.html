@@ -69,7 +69,7 @@ h2{font-size:18px;margin:18px 0 8px}
 .chain b{color:var(--ink)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .stat{background:var(--soft);border-radius:12px;padding:8px 10px}
-.stat b{display:block;font-size:17px}
+.stat b{display:block;font-size:16px;white-space:nowrap}
 .stat small{color:var(--sub);font-size:12px}
 .day{padding:0;overflow:hidden}
 .dayhd{display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(90deg,var(--accSoft),transparent)}
@@ -107,7 +107,7 @@ h2{font-size:18px;margin:18px 0 8px}
 .cat.city{background:var(--c-city)}.cat.culture{background:var(--c-culture)}.cat.nature{background:var(--c-nature)}
 .cat.theme{background:var(--c-theme)}.cat.beach{background:var(--c-beach)}.cat.food{background:var(--c-food)}
 :root[data-theme="dark"] .cat{color:#10181a}
-.map{height:300px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--soft)}
+.map{height:300px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--soft);position:relative;isolation:isolate;z-index:0}
 .leaflet-container{font:inherit}
 .pin{width:26px;height:26px;border-radius:13px;color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .acts{display:flex;gap:10px;flex-wrap:wrap}
@@ -117,7 +117,7 @@ h2{font-size:18px;margin:18px 0 8px}
 .search input{flex:1;border:0;outline:0;background:none;min-width:0}
 .hscroll{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
 .hscroll::-webkit-scrollbar{display:none}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:12px}
 .pc{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);text-align:left;display:flex;flex-direction:column}
 .pc .im{aspect-ratio:4/3;background:var(--soft);position:relative;max-width:100%}
 .pc .im img{width:100%;height:100%;object-fit:cover;display:block}
@@ -274,7 +274,7 @@ function legPlan(from, to, mode) {
   const fr = from.rk ? R[from.rk] : null, tr = to.rk ? R[to.rk] : null;
   const fg = fr ? fr.group : 'main', tg = tr ? tr.group : 'main';
   const d = km(from, to);
-  const local = mode === 'public' && d < 15; // in town: Grab, taxi or the metro
+  const local = mode === 'public' && (d < 15 || (from.rk && from.rk === to.rk && d < 40)); // in town: Grab, taxi or the metro
   const road = (a, b, ak, bk) => {
     const m = roadBetween(a, b, ak, bk);
     if (mode !== 'public') return m;
@@ -442,18 +442,23 @@ function plan(f) {
     if (p.cat === 'food') { if (t >= 660 && t < 900) day.lunch = true; if (t >= 1020) day.dinner = true; }
     if (!day.lunch && t >= 690 && t < 900) meal(day, 'lunch');
     if (!day.dinner && t >= 1080) meal(day, 'dinner');
+    // sunrise spots: leave before dawn when it is the first thing of the day
+    const dawn = p.slot === 'sunrise' && t <= dayStart + 30 && !day.items.some(x => x.type !== 'meal');
     if (km(loc, pt) > 0.3) {
       const segs = legPlan(loc, pt, f.mode);
       const m = segMin(segs);
+      if (dawn) t = Math.max(150, 300 - m);
       day.items.push({type: 'leg', segs, start: t, end: t + m, small: true, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: pt});
       t += m;
-    }
+    } else if (dawn) t = 300;
     let st = t;
-    if (p.slot === 'sunrise') st = Math.min(t, 300);
     if (p.slot === 'night') st = Math.max(t, 1170);
     if (p.slot === 'evening') st = Math.max(t, Math.min(1050, dayEnd - p.dur * 60));
-    // waiting for an evening or night attraction: have dinner first
-    if (!day.dinner && p.cat !== 'food' && st >= 1110 && st - t >= 50) meal(day, 'dinner', st - 60);
+    // waiting for an evening or night attraction: free time, then dinner
+    const dinnerAt = !day.dinner && p.cat !== 'food' && st >= 1110 && st - t >= 50 ? st - 60 : null;
+    const freeEnd = dinnerAt != null ? dinnerAt : st;
+    if (freeEnd - t >= 90) day.items.push({type: 'free', start: t, end: freeEnd});
+    if (dinnerAt != null) meal(day, 'dinner', dinnerAt);
     const warn = [];
     if (!openOn(p, day.date)) warn.push(WD[day.date.getDay()] + '休息，建议改天去');
     const en = st + p.dur * 60;
@@ -468,14 +473,38 @@ function plan(f) {
   };
 
   if (fixed) {
-    // curated route: follow its days in order
-    fixed.forEach((ids, di) => {
-      if (di > 0) { newDay(); t = dayStart; }
-      ids.forEach((id, k) => {
+    // curated route: follow its days; within a day, morning spots first and evening ones last
+    const SLOT = {sunrise: 0, morning: 1, day: 2, evening: 3, night: 4};
+    // far from the start: if the first day's spots will not fit after the trip there, travel the day before
+    const firstP = PL[(fixed[0] || []).find(id => PL[id])];
+    if (firstP && firstP.region !== loc.rk && km(loc, firstP) > 25) {
+      const there = Object.assign({}, R[firstP.region], {rk: firstP.region});
+      // daytime spots must be done by about 17:30; evening ones just need an arrival before dusk
+      const need = fixed[0].reduce((a, id) => a + (PL[id] && PL[id].slot !== 'evening' && PL[id].slot !== 'night' ? PL[id].dur * 60 + 20 : 0), 0);
+      const arrive = dayStart + segMin(legPlan(loc, there, f.mode));
+      if (arrive + need + (need && arrive < 780 ? 60 : 0) > 1050 || arrive > 1020) {
+        addLeg(there, there.name);
+        newDay(); t = dayStart;
+        loc = Object.assign({}, there, {name: there.name});
+      }
+    }
+    fixed.forEach((ids0, di) => {
+      if (di > 0) {
+        newDay(); t = dayStart;
+        if (loc.rk) loc = Object.assign({}, R[loc.rk], {rk: loc.rk, name: R[loc.rk].name}); // from the hotel
+      }
+      // sort by time of day inside each run of spots in the same area (never jump between areas)
+      const ids = [];
+      ids0.filter(id => PL[id]).forEach(id => {
+        const last = ids[ids.length - 1];
+        if (last && PL[last[0]].region === PL[id].region) last.push(id); else ids.push([id]);
+      });
+      ids.forEach(run => run.sort((a, b) => (SLOT[PL[a].slot] - SLOT[PL[b].slot]) || run.indexOf(a) - run.indexOf(b)));
+      const order = [].concat(...ids);
+      order.forEach(id => {
         const p = PL[id];
-        if (!p) return;
-        const pt = {lat: p.lat, lng: p.lng, rk: p.region, name: p.name};
-        if (k === 0 && (km(loc, pt) > 40 || (R[p.region].group !== (loc.rk ? R[loc.rk].group : 'main')))) addLeg(Object.assign({}, R[p.region], {rk: p.region}), R[p.region].name);
+        // a new area (or an island) first gets the trip there
+        if (p.region !== loc.rk && km(loc, p) > 25) addLeg(Object.assign({}, R[p.region], {rk: p.region}), R[p.region].name);
         addStop(p);
       });
     });
@@ -523,7 +552,7 @@ function plan(f) {
         let st = t + tm;
         if (p.slot === 'night') { if (t < 1050 && options.some(o => o.slot !== 'night' && o.slot !== 'evening')) continue; st = Math.max(st, 1170); }
         if (p.slot === 'evening' && t < 900 && options.some(o => o.slot === 'day' || o.slot === 'morning')) continue;
-        if (p.slot === 'sunrise' && dayNow.items.some(x => x.type === 'stop')) continue;
+        if (p.slot === 'sunrise' && (dayNow.items.some(x => x.type !== 'meal') || t > dayStart + 30)) continue;
         if ((p.slot === 'morning') && t > dayStart + 120 && options.some(o => o.slot === 'day')) continue;
         if (p.dur >= 5 && st > 660 && p.slot !== 'night') continue; // full-day parks and tours start in the morning
         let limit = p.slot === 'night' ? endToday + 90 : p.slot === 'evening' ? endToday + 60 : endToday - 150;
@@ -563,6 +592,10 @@ function plan(f) {
     const seen = [];
     d.items.forEach(it => { if (it.type === 'stop' && seen[seen.length - 1] !== PL[it.id].region) seen.push(PL[it.id].region); });
     d.regions = seen.filter((k, j) => seen.indexOf(k) === j);
+    // a day spent on the road: show where it goes from and to
+    const big = d.items.find(x => x.type === 'leg' && x.big && !x.back);
+    if (!d.regions.length && big) d.regions = [nearestRegion(big.fromPt).r.key, nearestRegion(big.toPt).r.key].filter((k, j, a) => a.indexOf(k) === j);
+    d.travel = !seen.length && !!big;
   });
   return {input: f, days, made: Date.now()};
 }
@@ -710,6 +743,7 @@ function legHtml(it, f) {
   if (it.segs.some(s => s.type === 'ferry')) notes.push(D.notes.ferry);
   const fc = countryAt(it.fromPt), tc = countryAt(it.toPt);
   if (fc !== tc && !it.segs.some(s => s.type === 'flight')) { const k = [fc, tc].sort().join('-').replace('SG-MY', 'MY-SG').replace('TH-MY', 'MY-TH'); if (D.notes[k]) notes.push(D.notes[k]); }
+  if (it.back && it.start >= 1200) notes.push('出发太晚了，可以多住一晚，第二天早上再回去。');
   return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode)}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}</div>`;
 }
 function mealHtml(it, pl, di) {
@@ -749,7 +783,7 @@ function renderPlanResult() {
   const party = f.party.a + ' 大' + (f.party.c ? ' ' + f.party.c + ' 小' : '');
   p.innerHTML = `<div class="row" style="justify-content:space-between"><button class="btn ghost sm" id="rEdit">← 修改条件</button><span class="mini">${esc(party)} · ${f.resident === 'my' ? 'MyKad' : '外国游客'}</span></div>
   <div class="card sum" style="margin-top:12px">
-    <h3>${pl.days.length} 天 · ${esc(f.fixed ? f.routeName : regs.map(k => R[k].name).join(' → ') || '行程')}</h3>
+    <h3>${f.fixed ? esc(f.routeName) + (pl.days.length > f.fixed.length ? `（另加 ${pl.days.length - f.fixed.length} 天路程）` : '') : `${pl.days.length} 天 · ${esc(regs.map(k => R[k].name).join(' → ') || '行程')}`}</h3>
     <div class="chain"><span>从 <b>${esc(f.start.name)}</b> 出发</span>${regs.map(k => `<span>→ <b>${esc(R[k].name)}</b></span>`).join('')}${f.roundtrip ? '<span>→ 返回</span>' : ''}</div>
     <div class="stats">
       <div class="stat"><b>${tot.stops}</b><small>个景点</small></div>
@@ -780,6 +814,7 @@ function renderDays() {
     const items = d.items.map((it, ii) => {
       if (it.type === 'leg') return legHtml(it, f);
       if (it.type === 'meal') return mealHtml(it, pl, di);
+      if (it.type === 'free') return `<div class="leg">🕒 自由活动约 ${fmtDur(it.end - it.start)}（逛街、喝茶或回酒店休息）</div>`;
       const pp = PL[it.id], c = cost(pp, f.party, f.resident);
       return `<div class="stop"><div class="time">${hhmm(it.start)}<small>${hhmm(it.end)}</small></div>
         <button class="ph" data-open="${pp.id}">${photo(pp, true)}</button>
@@ -793,7 +828,7 @@ function renderDays() {
     const where = (d.regions && d.regions.length ? d.regions : d.region ? [d.region] : []).map(k => R[k].name).join(' → ');
     const sleep = d.sleep ? R[d.sleep] : null;
     return `<div class="card day"><div class="dayhd"><div class="dayno"><span>第</span><b>${di + 1}</b></div>
-      <div class="t"><b>${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}${where ? ' · ' + esc(where) : ''}</b><small>${stops ? stops + ' 个景点' : '自由活动 / 交通日'}</small></div>
+      <div class="t"><b>${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}${where ? ' · ' + esc(where) : ''}</b><small>${stops ? stops + ' 个景点' : d.travel ? '路程日，到了可以先休息' : '自由活动'}</small></div>
       <div class="wx" id="wx${di}"></div></div>
       <div class="tl">${items || '<div class="mini" style="padding:10px 0">这天没有排景点，可以休息、逛街或自由活动。</div>'}
       ${sleep && di < pl.days.length - 1 ? `<div class="hotel">🏨 今晚住：${esc(sleep.name)}${sleep.country !== 'MY' ? '（' + COUNTRY[sleep.country] + '）' : ''}</div>` : ''}</div></div>`;
@@ -823,7 +858,7 @@ function drawPlanMap(pl) {
   if (planMap) { planMap.remove(); planMap = null; }
   const m = L.map('planMap', {zoomControl: false, attributionControl: true});
   planMap = m;
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {maxZoom: 18, attribution: '© OpenStreetMap © CARTO'}).addTo(m);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap contributors'}).addTo(m);
   const pts = [];
   const st = pl.input.start;
   L.marker([st.lat, st.lng], {icon: L.divIcon({className: '', html: '<div class="pin" style="background:#1D2A2E">起</div>', iconSize: [26, 26]})}).addTo(m);
@@ -870,7 +905,7 @@ function planText(pl) {
     d.items.forEach(it => {
       if (it.type === 'stop') { const p = PL[it.id]; lines.push(`  ${hhmm(it.start)} ${p.name}（${cost(p, f.party, f.resident).text}）`); }
       else if (it.type === 'meal') lines.push(`  ${hhmm(it.start)} ${it.meal === 'lunch' ? '午餐' : '晚餐'}`);
-      else if (it.big) lines.push(`  ${hhmm(it.start)} ${it.segs.map(s => SEG[s.type][1] + (s.to ? '到' + s.to : '')).join(' → ')}，约 ${fmtDur(segMin(it.segs))}`);
+      else if (it.type === 'leg' && it.big) lines.push(`  ${hhmm(it.start)} ${it.back ? '返回' : '前往'}${it.to || ''}：${it.segs.map(s => SEG[s.type][1]).join(' → ')}，约 ${fmtDur(segMin(it.segs))}`);
     });
   });
   const t = planTotals(pl);
@@ -976,7 +1011,7 @@ function openPlace(id) {
   const ov = overlay(p.name);
   const favs = store.get('favs', []), must = store.get('must', []);
   const imgs = [p.img ? {url: p.img, c: p.credit} : null, ...(p.photos || []).map(x => ({url: x.url, c: x}))].filter(Boolean);
-  const credit = c => c ? `图片：${esc(c.artist || '佚名')} · ${esc(c.license || '')} · Wikimedia Commons` : '';
+  const credit = c => c ? `图片：${esc(c.artist || '佚名')} · ${esc(c.license || '')} · ${c.page ? `<a href="${esc(c.page)}">Wikimedia Commons</a>` : 'Wikimedia Commons'}` : '';
   ov.extra.innerHTML = `<button class="ib" id="dFav" style="color:${favs.includes(id) ? 'var(--acc2)' : 'inherit'}">${favs.includes(id) ? '♥' : '♡'}</button>`;
   ov.body.innerHTML = `${imgs.length ? `<div class="gal" id="gal">${imgs.map(x => `<img src="${esc(x.url)}" loading="lazy" alt="" onerror="this.remove()">`).join('')}</div><div class="credit" id="credit">${credit(imgs[0].c)}${imgs.length > 1 ? ` · 左右滑动看更多（共 ${imgs.length} 张）` : ''}</div>` : ''}
   <div class="dtl">
@@ -1021,8 +1056,8 @@ function renderMine() {
   <h2>保存的攻略</h2>${plans.length ? `<div class="stack">${plans.map(x => `<div class="card row"><div style="flex:1;min-width:0"><b>${esc(x.title)}</b><div class="mini">${esc(x.input.start.name)} 出发 · ${new Date(x.days[0].date).toLocaleDateString('zh-CN')}</div></div><button class="btn sm" data-plan="${x.id}">打开</button><button class="x" data-del="${x.id}">✕</button></div>`).join('')}</div>` : '<div class="mini">生成攻略后点「保存攻略」就会出现在这里</div>'}
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
-  <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(FX.src || '')}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，天气来自 Open-Meteo，地图 © OpenStreetMap · CARTO。<br>数据版本：${esc(D.built)}</div>`;
+  <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');

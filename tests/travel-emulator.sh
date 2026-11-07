@@ -38,6 +38,11 @@ shot 8-explore
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "plan:新山:5"
 sleep 12
 shot 9-plan-jb
+adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
+echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"
+sleep 6
+shot 10-route
 adb logcat -d > $OUT/logcat.txt
 grep -E "Travel|chromium" $OUT/logcat.txt | head -100 > $OUT/app-log.txt
 grep -E "FATAL EXCEPTION|AndroidRuntime" -A20 $OUT/logcat.txt | head -80 > $OUT/crash.txt

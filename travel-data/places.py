@@ -280,7 +280,11 @@ P("cenang", "langkawi", "珍南海滩", "Pantai Cenang", "Pantai Cenang", 6.2920
 P("eaglesq", "langkawi", "鹰广场", "Eagle Square", "Dataran Lang", 6.3150, 99.8510, "city", 3, 0.5,
   "全天", free(), "瓜镇码头旁 12 米高的红褐色巨鹰雕像，兰卡威的象征。")
 P("islandhop", "langkawi", "跳岛游（孕妇岛）", "Island hopping", "Pulau Dayang Bunting", 6.2050, 99.8130, "beach", 3, 4,
-  "约 9:00–17:00", None, "坐船游孕妇岛淡水湖、喂老鹰和在小岛白沙滩游泳。", "跳岛团价格各家不同，现场比较后再订。")
+  "约 9:00–17:00",
+  myr(loc=(350, None), intl=(350, None), group=8, approx=True,
+      note="包船价约 RM350 一艘（最多 8 人）；孕妇岛湖区另收门票成人 RM6、儿童 RM3。拼团每人更便宜，各家价格不同",
+      src="https://travelynnfamily.com/island-hopping-langkawi/", asof="2026-10"),
+  "坐船游孕妇岛淡水湖、喂老鹰和在小岛白沙滩游泳。", "跳岛团价格各家不同，现场比较后再订。")
 
 P("afamosa", "melaka", "圣地亚哥古城门 · 圣保罗山", "A Famosa & St Paul's Hill", "A Famosa", 2.1918, 102.2500, "culture", 5, 1,
   "全天", free(), "葡萄牙人 1511 年建的古堡仅存的城门，山顶有圣保罗教堂遗址。")
@@ -465,7 +469,10 @@ P("goldenmount", "bangkok", "金山寺", "Golden Mount (Wat Saket)", "Wat Saket"
 P("damnoen", "bangkok", "丹嫩沙多水上市场", "Damnoen Saduak Floating Market", "Damnoen Saduak Floating Market", 13.5190, 99.9590, "food", 3, 3,
   "约 7:00–14:00", free("免费入场；坐船游市场另付费"), "最有名的水上市场，小船载满水果和船面。", "离曼谷约 100 公里，越早到越好。", slot="morning")
 P("safariworld", "bangkok", "曼谷野生动物园", "Safari World", "Safari World", 13.8600, 100.7050, "theme", 3, 5,
-  "约 9:00–17:00", None, "开车穿越的野生动物园加海洋世界表演，适合亲子。")
+  "约 9:00–17:00",
+  fx("THB", 1500, 1400, note="野生动物园 + 海洋公园联票柜台价；网上预订约 ฿1,020。身高 100 厘米以下儿童免费",
+     src="https://thaiest.com/en/blog/safari-world-bangkok-schedule", asof="2026-06", approx=True),
+  "开车穿越的野生动物园加海洋世界表演，适合亲子。")
 P("ayutthaya", "ayutthaya", "大城历史公园", "Ayutthaya Historical Park", "Ayutthaya Historical Park", 14.3560, 100.5580, "culture", 5, 4,
   "约 8:30–17:00",
   fx("THB", 50, None, src="https://ayutthayatemple-guide.com/tickets/ayutthaya-temple-entrance-fees/", asof="2026",
@@ -490,7 +497,9 @@ P("doisuthep", "chiangmai", "双龙寺", "Wat Phra That Doi Suthep", "Wat Phra T
      note="各来源 ฿30–50 不等；登山缆车另付约 ฿20–50"),
   "山顶金色佛塔俯瞰清迈城，爬 306 级龙形阶梯上去。", "傍晚去可以看日落和城市灯光。")
 P("chediluang", "chiangmai", "契迪龙寺", "Wat Chedi Luang", "Wat Chedi Luang", 18.7869, 98.9866, "culture", 4, 1,
-  "约 8:00–17:00", None, "古城中心 14 世纪的巨大残塔，可以和僧侣聊天。")
+  "约 8:00–17:00",
+  fx("THB", 40, None, note="外国游客门票 ฿40，泰国人免费", src="https://www.phuket101.net/wat-chedi-luang/", asof="2026-06", approx=True),
+  "古城中心 14 世纪的巨大残塔，可以和僧侣聊天。")
 P("nightbazaar", "chiangmai", "清迈夜市 · 周日步行街", "Chiang Mai Night Bazaar", "Chiang Mai Night Bazaar", 18.7870, 99.0000, "food", 4, 2,
   "每晚；周日步行街在塔佩门一带", free(), "手工艺品、泰北小吃和现场音乐，周日步行街最热闹。", slot="night")
 P("elephantpark", "chiangmai", "大象自然公园", "Elephant Nature Park", "Elephant Nature Park", 19.2140, 98.8590, "nature", 4, 6,
@@ -573,7 +582,10 @@ P("kraton", "yogya", "日惹苏丹王宫", "Kraton Yogyakarta", "Kraton Ngayogya
   fx("IDR", 25000, 20000, src="https://www.indonesia.travel/my-zh-cn/destination/java/yogyakarta/karaton-ngayogyakarta"),
   "苏丹至今仍居住的王宫，上午常有爪哇传统音乐和舞蹈表演。", closed=[1], slot="morning")
 P("tamansari", "yogya", "水宫", "Taman Sari", "Taman Sari (Yogyakarta)", -7.8100, 110.3594, "culture", 4, 1,
-  "约 9:00–15:00", None, "苏丹昔日的皇家浴池和地下清真寺，就在王宫旁边。")
+  "约 9:00–15:00",
+  fx("IDR", 25000, 20000, note="外国游客价（2–12 岁算儿童）；印尼人成人 Rp15,000", approx=True,
+     src="https://www.detik.com/jogja/plesir/d-7091026/harga-tiket-masuk-taman-sari-yogyakarta-dan-daya-tariknya", asof="2023-12"),
+  "苏丹昔日的皇家浴池和地下清真寺，就在王宫旁边。")
 P("malioboro", "yogya", "马里奥波罗街", "Malioboro Street", "Malioboro", -7.7926, 110.3658, "food", 4, 2,
   "全天，晚上最热闹", free(), "日惹的主街，蜡染布、街头小吃和街头艺人。", slot="night")
 P("merapi", "yogya", "默拉皮火山吉普车", "Merapi Lava Tour", "Mount Merapi", -7.5407, 110.4457, "nature", 3, 3,
@@ -629,7 +641,7 @@ P("sipisopiso", "toba", "西皮索皮索瀑布", "Sipiso-piso Waterfall", "Sipis
 # ---------- curated routes: id, name, days, start region, note, [[place ids per day]]
 ROUTES = [
     ("klclassic", "吉隆坡经典 3 天", "kl", "第一次来吉隆坡：地标、黑风洞、布城和萤火虫。",
-     [["petronas", "aquaria", "merdeka", "petaling"], ["batucaves", "theanhou", "kltower", "bukitbintang"], ["putramosque", "putracruise", "melawati", "fireflies"]]),
+     [["petronas", "aquaria", "iamm", "merdeka", "petaling"], ["batucaves", "birdpark", "kltower", "theanhou", "bukitbintang"], ["putramosque", "putracruise", "melawati", "fireflies"]]),
     ("melaka2", "马六甲古城 2 天", "melaka", "慢游世界遗产古城，周五或周六出发能逛鸡场街夜市。",
      [["afamosa", "dutchsquare", "chenghoonteng", "babanyonya", "jonker"], ["tamingsari", "straitsmosque", "rivercruise"]]),
     ("highlands", "云顶 + 金马伦 3 天", "genting", "高原避暑：主题乐园、茶园和草莓园。",
@@ -641,7 +653,7 @@ ROUTES = [
     ("eastcoast", "东海岸海岛 4 天", "kt", "3–10 月出发：水晶清真寺和热浪岛。",
      [["crystalmosque", "ktchinatown"], ["redang"], ["redang"], ["sitikhadijah"]]),
     ("sg3", "新加坡 3 天", "sg", "滨海湾、环球影城和动物园。",
-     [["merlion", "gardensbay", "mbsskypark", "laupasat"], ["uss", "oceanarium", "sentosa"], ["sgzoo", "riverwonders", "nightsafari"]]),
+     [["chinatownsg", "littleindia", "gardensbay", "merlion", "laupasat"], ["uss", "sentosa"], ["sgzoo", "riverwonders", "nightsafari"]]),
     ("hatyai2", "合艾自驾 2 天", "hatyai", "从北马开车过境，吃喝逛买。",
      [["kimyong", "hatyaipark", "hatyaifloating"], ["samila", "watHatYaiNai"]]),
     ("bangkok4", "曼谷 + 大城 4 天", "bangkok", "大皇宫、郑王庙、水上市场和古都。",
@@ -721,19 +733,17 @@ PHOTO = {
     "babanyonya": "Baba Nyonya Heritage Museum Melaka",
     "desaru": "Desaru beach",
     "ktchinatown": "Kampung Cina Kuala Terengganu",
-    "watmachim": "Wat Machimmaram Tumpat",
     "mbsskypark": "Marina Bay Sands SkyPark",
     "hatyaipark": "Hat Yai Municipal Park",
     "samila": "Samila Beach Songkhla mermaid",
-    "watHatYaiNai": "Hat Yai reclining Buddha",
+    "watHatYaiNai": "Wat Hatyai Nai",
     "skywalk": "King Power Mahanakhon",
     "ayutthaya": "Wat Phra Si Sanphet Ayutthaya",
     "bigbuddha": "Big Buddha Phuket",
     "phukettown": "Thalang Road Phuket",
     "promthep": "Promthep Cape",
     "tigercave": "Wat Tham Suea Krabi",
-    "monas": "Monumen Nasional",
-    "istiqlal": "Masjid Istiqlal",
+    "monas": "Tugu Monas",
     "ancol": "Ancol Jakarta beach",
     "tegallalang": "Tegallalang rice terraces",
     "lempuyang": "Pura Lempuyang gate",
