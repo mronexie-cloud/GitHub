@@ -36,30 +36,74 @@ def km(a, b, c, d):
     return 12742 * math.asin(math.sqrt(x))
 
 
+def api_all(base, params):
+    """MediaWiki query with continuation; merges page props across batches."""
+    pages, extra = {}, {}
+    cont = {}
+    for _ in range(30):
+        q = dict(params, action="query", format="json", **cont)
+        d = get(base + "?" + urllib.parse.urlencode(q))
+        if not d:
+            break
+        qq = d.get("query", {})
+        for k in ("normalized", "redirects"):
+            extra.setdefault(k, []).extend(qq.get(k, []))
+        for pid, pg in qq.get("pages", {}).items():
+            cur = pages.setdefault(pid, {})
+            for k, v in pg.items():
+                if isinstance(v, list):
+                    cur.setdefault(k, []).extend(v)
+                else:
+                    cur[k] = v
+        if "continue" not in d:
+            break
+        cont = d["continue"]
+        time.sleep(0.5)
+    return pages, extra
+
+
 def wiki_pages(titles):
-    """title -> {lat, lng, image (file name)} using the English Wikipedia API, following redirects."""
+    """title -> {lat, lng, image (lead file name), images (all .jpg files in the article)} from English Wikipedia."""
     out = {}
     titles = sorted(set(titles))
-    for i in range(0, len(titles), 40):
-        chunk = titles[i:i + 40]
-        q = urllib.parse.urlencode({"action": "query", "format": "json", "redirects": 1, "prop": "pageimages|coordinates|images",
-                                    "piprop": "name", "imlimit": "max", "titles": "|".join(chunk)})
-        d = get("https://en.wikipedia.org/w/api.php?" + q)
-        if not d:
-            continue
-        q_ = d.get("query", {})
+    for i in range(0, len(titles), 20):
+        chunk = titles[i:i + 20]
+        pages, ex = api_all("https://en.wikipedia.org/w/api.php", {
+            "redirects": 1, "prop": "pageimages|coordinates|images", "piprop": "name", "pilicense": "any", "pilimit": "max",
+            "colimit": "max", "imlimit": "max", "titles": "|".join(chunk)})
         back = {t: t for t in chunk}
-        for n in q_.get("normalized", []):
-            back[n["to"]] = n["from"]
-        for r in q_.get("redirects", []):
+        for n in ex.get("normalized", []):
+            back[n["to"]] = back.get(n["from"], n["from"])
+        for r in ex.get("redirects", []):
             back[r["to"]] = back.get(r["from"], r["from"])
-        for p in q_.get("pages", {}).values():
+        for p in pages.values():
             t = back.get(p.get("title"), p.get("title"))
             c = (p.get("coordinates") or [{}])[0]
             imgs = [x["title"][5:] for x in p.get("images", []) if x["title"].lower().endswith((".jpg", ".jpeg"))]
             out[t] = {"lat": c.get("lat"), "lng": c.get("lon"), "image": p.get("pageimage"), "images": imgs, "missing": "missing" in p}
         time.sleep(1)
     return out
+
+
+def commons_search(query, n=12):
+    """Commons file search -> list of file infos (landscape-ish bitmaps first)."""
+    pages, _ = api_all("https://commons.wikimedia.org/w/api.php", {
+        "generator": "search", "gsrsearch": query + " filetype:bitmap", "gsrnamespace": 6, "gsrlimit": n,
+        "prop": "imageinfo", "iiprop": "url|size|extmetadata", "iiurlwidth": 1280})
+    res = []
+    for p in sorted(pages.values(), key=lambda x: x.get("index", 99)):
+        ii = (p.get("imageinfo") or [None])[0]
+        if not ii or SKIP_IMG.search(p["title"]):
+            continue
+        md = ii.get("extmetadata", {})
+        res.append({"name": p["title"][5:], "url": ii.get("thumburl") or ii.get("url"), "w": ii.get("width"), "h": ii.get("height"),
+                    "artist": re.sub(r"<[^>]+>", "", md.get("Artist", {}).get("value", "")).strip()[:80],
+                    "license": md.get("LicenseShortName", {}).get("value", ""), "page": ii.get("descriptionurl", "")})
+    return res
+
+
+def good_shape(e, minw=900):
+    return e and e.get("url") and e.get("w") and e.get("h") and e["w"] >= minw and 1.15 <= e["w"] / e["h"] <= 2.1
 
 
 def file_info(names, width):
@@ -126,30 +170,50 @@ def main():
             lead_names.append(w["image"])
         extra_names += [n for n in (w.get("images") or [])[:25] if not SKIP_IMG.search(n)]
     lead = file_info(lead_names, 1280)
-    extra = file_info([n for n in extra_names if n not in lead], 800)
+    extra = file_info(extra_names, 960)
 
-    # 2) photos: the lead image is stored with the app; up to two more are linked from Wikimedia
+    # 2) photos: the lead image is stored with the app; up to two more are linked from Wikimedia.
+    #    Order: Commons search override (places.PHOTO) -> article lead image -> another article photo -> Commons search by name.
     sheet = []
+    for f in os.listdir(IMG):
+        os.remove(os.path.join(IMG, f))
     for p in places:
         w = p.pop("_w")
         name = w.get("image")
-        info = lead.get(name) if name else None
+        chosen, why = None, ""
+        if p["id"] in P.PHOTO:
+            cands = [e for e in commons_search(P.PHOTO[p["id"]]) if good_shape(e)]
+            if cands:
+                chosen, why = cands[0], "search:" + P.PHOTO[p["id"]]
+        if not chosen and name and not SKIP_IMG.search(name) and lead.get(name, {}).get("url"):
+            chosen, why = dict(lead[name], name=name), "lead"
+        if not chosen:
+            for n in (w.get("images") or []):
+                e = extra.get(n)
+                if good_shape(e, 1000):
+                    chosen, why = dict(e, name=n), "article"
+                    break
+        if not chosen:
+            cands = [e for e in commons_search(p["en"]) if good_shape(e)]
+            if cands:
+                chosen, why = cands[0], "search:" + p["en"]
         p["photos"] = []
-        if info and info.get("url"):
-            if save_photo(info["url"], p["id"]):
-                p["img"] = "img/%s.jpg" % p["id"]
-                p["thumb"] = "img/%s_s.jpg" % p["id"]
-                p["credit"] = {"artist": info["artist"], "license": info["license"], "page": info["page"]}
-                sheet.append(p["id"])
+        if chosen and save_photo(chosen["url"], p["id"]):
+            p["img"] = "img/%s.jpg" % p["id"]
+            p["thumb"] = "img/%s_s.jpg" % p["id"]
+            p["credit"] = {"artist": chosen["artist"], "license": chosen["license"], "page": chosen["page"]}
+            sheet.append(p["id"])
+            print("  photo %-14s %-8s %s" % (p["id"], why.split(":")[0], chosen.get("name", "")[:90]), flush=True)
+        else:
+            print("  photo %-14s NONE lead=%s images=%d missing=%s" % (p["id"], name, len(w.get("images") or []), w.get("missing")), flush=True)
+        used = chosen.get("name") if chosen else None
         for n in (w.get("images") or []):
             if len(p["photos"]) >= 2:
                 break
-            e = extra.get(n)
-            if not e or n == name or not e.get("w") or e["w"] < 1000 or not e.get("h"):
+            e = extra.get(n) or lead.get(n)
+            if n == used or not good_shape(e, 1000):
                 continue
-            ratio = e["w"] / e["h"]
-            if 1.2 <= ratio <= 2.0:
-                p["photos"].append({"url": e["url"], "artist": e["artist"], "license": e["license"], "page": e["page"]})
+            p["photos"].append({"url": e["url"], "artist": e["artist"], "license": e["license"], "page": e["page"]})
         time.sleep(0.3)
     print("photos stored:", len(sheet), "of", len(places), flush=True)
     missing = [p["id"] for p in places if not p.get("img")]
