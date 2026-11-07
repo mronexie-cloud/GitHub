@@ -394,7 +394,10 @@ function plan(f) {
   newDay();
   const fixed = f.fixed; // curated route: [[ids]]
   const exhausted = new Set(); // areas where nothing more fits into a day
-  const cand = rk => exhausted.has(rk) ? [] : D.places.filter(p => p.region === rk && !used.has(p.id) && score(p, f) >= 3.2);
+  let stayDay = -1;              // the day we decided to stay put (nothing better within reach)
+  const loose = new Set();     // areas where we also take spots outside the chosen interests
+  const cand = rk => exhausted.has(rk) ? [] : D.places.filter(p => p.region === rk && !used.has(p.id) && score(p, f) >= (loose.has(rk) ? 0.8 : 3.2));
+  const moreHere = rk => !loose.has(rk) && D.places.some(p => p.region === rk && !used.has(p.id));
   const regionValue = (rk, daysAvail) => {
     const ps = cand(rk).sort((a, b) => score(b, f) - score(a, f));
     let h = 0, v = 0;
@@ -518,7 +521,7 @@ function plan(f) {
       const daytime = rk => cand(rk).some(p => p.slot !== 'evening' && p.slot !== 'night' || f.must.includes(p.id));
       // move on when the area is done, or only evening spots are left while most of the day is still ahead
       const hurry = region && !mustIn(region) && mustLeft().length && daysLeft <= needDays() + 0.35;
-      if (!region || hurry || cand(region).length === 0 || (!daytime(region) && t < 870 && !dayNow0.ended)) {
+      if (!region || hurry || cand(region).length === 0 || (!daytime(region) && t < 870 && !dayNow0.ended && stayDay !== days.length)) {
         let best = null, bestEff = -1;
         for (const r of D.regions) {
           if (!countries.has(r.country) || r.key === region) continue;
@@ -527,6 +530,8 @@ function plan(f) {
           const travelH = segMin(segs) / 60;
           const retH = returnMin(rp) / 60;
           const avail = daysLeft - travelH / dayHours - retH / dayHours;
+          // not worth it when most of the remaining time would be spent getting there and back
+          if (region && !mustIn(r.key) && (travelH + retH) > Math.max(daysLeft, 0.5) * dayHours * 0.5) continue;
           const hasMust = mustIn(r.key);
           if (avail < (hasMust ? 0.15 : 0.45)) continue;
           const {v} = regionValue(r.key, Math.min(avail, 3));
@@ -535,7 +540,11 @@ function plan(f) {
           const mustBoost = hasMust ? 100 : 1;
           if (eff * mustBoost > bestEff) { bestEff = eff * mustBoost; best = rp; }
         }
-        if (!best) break;
+        if (!best) {
+          if (region && moreHere(region)) { loose.add(region); stayDay = days.length; continue; } // nothing better nearby: see more here
+          if (region && cand(region).length) { stayDay = days.length; continue; } // stay and enjoy the evening here
+          break;
+        }
         if (region || km(loc, best) > 30) addLeg(best, best.name);
         region = best.key;
         if (days.length > f.days) break;
@@ -564,7 +573,10 @@ function plan(f) {
       }
       if (pick) { addStop(pick); continue; }
       // a fresh morning and still nothing fits: this area is done
-      if (!dayNow.items.some(x => x.type === 'stop') && t <= dayStart + 180) { exhausted.add(region); continue; }
+      if (!dayNow.items.some(x => x.type === 'stop') && t <= dayStart + 180) {
+        if (moreHere(region)) loose.add(region); else exhausted.add(region);
+        continue;
+      }
       // nothing fits today: next day (or finish)
       if (days.length >= f.days) break;
       dayNow.region = dayNow.region || region;
