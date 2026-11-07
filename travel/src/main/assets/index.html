@@ -1438,7 +1438,7 @@ function openNav(dest) {
     B.querySelectorAll('#nSteps li').forEach(li => li.classList.toggle('now', +li.dataset.s === k));
   }
   fromChoices();
-  if (LASTPOS && Date.now() - LASTPOS.t < 10 * 60e3) setFrom('here', {lat: LASTPOS.lat, lng: LASTPOS.lng, name: '我的位置', here: true});
+  if (LASTPOS && Date.now() - LASTPOS.t < 60e3) setFrom('here', {lat: LASTPOS.lat, lng: LASTPOS.lng, name: '我的位置', here: true});
   else useHere();
   return st;
 }
