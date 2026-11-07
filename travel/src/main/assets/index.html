@@ -1836,7 +1836,8 @@ function transitPlan(from, to, when) {
   return getJSON(TRANSIT_API + '?' + q).then(j => {
     const v = (j.itineraries || []).filter(it => it.legs && it.legs.some(l => !/WALK/.test(l.mode || ''))).map(it => ({
       start: it.startTime, end: it.endTime, min: Math.round((Date.parse(it.endTime) - Date.parse(it.startTime)) / 60000), transfers: it.transfers || 0,
-      legs: it.legs.map(l => ({mode: (l.mode || 'WALK').toUpperCase(), line: l.displayName || l.routeShortName || '', head: l.headsign || '', agency: l.agencyName || '',
+      legs: it.legs.map(l => ({mode: /keretapi|ktm/i.test(l.agencyName || '') && !/WALK|BUS/i.test(l.mode || '') ? 'RAIL' : (l.mode || 'WALK').toUpperCase(),
+        line: l.displayName || l.routeShortName || '', head: (l.headsign || '').replace(/^from\s.+?\sto\s(.+)$/i, '$1'), agency: l.agencyName || '',
         color: /^[0-9a-f]{6}$/i.test(l.routeColor || '') ? '#' + l.routeColor : '', text: /^[0-9a-f]{6}$/i.test(l.routeTextColor || '') ? '#' + l.routeTextColor : '#fff',
         from: tName(l.from), to: tName(l.to), dep: l.from && (l.from.departure || l.from.scheduledDeparture), arr: l.to && (l.to.arrival || l.to.scheduledArrival),
         min: Math.round((l.duration || 0) / 60), m: Math.round(l.distance || 0), stops: Array.isArray(l.intermediateStops) ? l.intermediateStops.length : 0,
@@ -1879,7 +1880,7 @@ function transitSheet(from, to, when, title) {
     if (Math.abs(soon - when) < 864e5) { none('这一段查不到公交班次：这一带可能没有公开的时刻表，或者走路、坐 Grab 更方便。'); return; }
     return transitPlan(from, to, soon).then(its2 => its2.length ? show(its2, `出发那天的时刻表还查不到，下面是 ${soon.getMonth() + 1}月${soon.getDate()}日同一时间的班次，供参考。`)
       : none('这一段查不到公交班次：这一带可能没有公开的时刻表，或者走路、坐 Grab 更方便。'));
-  }).catch(() => none('现在查不到公交（网络不通，或者查询服务忙）。'));
+  }).catch(err => { if (A && A.log) A.log('transit failed: ' + err); none('现在查不到公交（网络不通，或者查询服务忙）。'); });
 }
 
 /* ---------------- route navigation ---------------- */
@@ -2049,7 +2050,7 @@ function openNav(dest) {
           bindFollow();
         };
         pick(0);
-      }).catch(err => { if (seq !== st.seq) return; console.warn(err); est(); });
+      }).catch(err => { if (A && A.log) A.log('transit failed: ' + err); if (seq !== st.seq) return; est(); });
       return;
     }
     if (d < 0.05) { $q('#nSum').innerHTML = '<b>你已经在这里了 🎉</b>'; return; }
@@ -2311,6 +2312,7 @@ window.onAndroidBack = () => {
 // used by automatic tests: "plan:<town>:<days>", "tab:<id>", "place:<id>", "route:<id>"
 function runDemo(d) {
   const [k, a, b] = d.split(':');
+  closeSheet();
   if (k === 'plan') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.days = +b || 3; F.fixed = null; renderPlanForm(); go(); } }
   if (k === 'tab') { while (OV.length) closeOverlay(); showTab(a); }
   if (k === 'place') openPlace(a);
