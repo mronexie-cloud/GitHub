@@ -254,7 +254,31 @@ def main():
     else:
         print("OSRM failed; the app will estimate from straight-line distance", flush=True)
 
-    data = {"built": time.strftime("%Y-%m-%d"), "regions": regions, "places": places,
+    # 4) ferries: pier positions checked against OpenStreetMap (moved only if close to our estimate)
+    ferries = []
+    for f in P.FERRIES:
+        g = dict(f)
+        for k in ("a", "b"):
+            name, lat, lng, q = f[k]
+            d = get("https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode({"q": q, "format": "json", "limit": 1}))
+            time.sleep(1.2)
+            if d:
+                la, ln = float(d[0]["lat"]), float(d[0]["lon"])
+                dist = km(lat, lng, la, ln)
+                if dist < 3:
+                    print("  pier %-14s %s moved %.2f km (%s)" % (f["id"], k, dist, d[0].get("display_name", "")[:50]), flush=True)
+                    lat, lng = round(la, 5), round(ln, 5)
+                else:
+                    print("  pier %-14s %s too far (%.0f km) - keeping ours" % (f["id"], k, dist), flush=True)
+            else:
+                print("  pier %-14s %s not found" % (f["id"], k), flush=True)
+            g[k] = {"name": name, "lat": lat, "lng": lng}
+        g["out"] = [[x[0], x[1]] for x in f.get("out", [])]
+        g["back"] = [[x[0], x[1]] for x in f.get("back", [])]
+        g["link"] = {"text": f["link"][0], "url": f["link"][1]} if f.get("link") else None
+        ferries.append(g)
+
+    data = {"built": time.strftime("%Y-%m-%d"), "regions": regions, "places": places, "ferries": ferries,
             "routes": [dict(id=r[0], name=r[1], start=r[2], note=r[3], days=r[4]) for r in P.ROUTES],
             "towns": [dict(name=t[0], lat=t[1], lng=t[2]) for t in P.TOWNS], "fx": P.FX, "notes": P.NOTES, "matrix": matrix}
     ids = {p["id"] for p in places}
