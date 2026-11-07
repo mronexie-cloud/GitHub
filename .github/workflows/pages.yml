@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "ios/**"
+      - "travel/src/main/assets/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -28,8 +29,13 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Add the travel guide (same page as the Android app)
+        run: |
+          mkdir -p _site
+          cp -r ios/. _site/
+          cp -r travel/src/main/assets _site/travel
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ios
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

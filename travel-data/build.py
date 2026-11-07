@@ -69,7 +69,7 @@ def wiki_pages(titles):
     for i in range(0, len(titles), 20):
         chunk = titles[i:i + 20]
         pages, ex = api_all("https://en.wikipedia.org/w/api.php", {
-            "redirects": 1, "prop": "pageimages|coordinates|images", "piprop": "name", "pilicense": "any", "pilimit": "max",
+            "redirects": 1, "prop": "pageimages|coordinates|images", "piprop": "name", "pilimit": "max",
             "colimit": "max", "imlimit": "max", "titles": "|".join(chunk)})
         back = {t: t for t in chunk}
         for n in ex.get("normalized", []):
@@ -174,7 +174,7 @@ def main():
 
     # 2) photos: the lead image is stored with the app; up to two more are linked from Wikimedia.
     #    Order: Commons search override (places.PHOTO) -> article lead image -> another article photo -> Commons search by name.
-    sheet = []
+    sheet, taken = [], set()
     for f in os.listdir(IMG):
         os.remove(os.path.join(IMG, f))
     for p in places:
@@ -182,7 +182,7 @@ def main():
         name = w.get("image")
         chosen, why = None, ""
         if p["id"] in P.PHOTO:
-            cands = [e for e in commons_search(P.PHOTO[p["id"]]) if good_shape(e)]
+            cands = [e for e in commons_search(P.PHOTO[p["id"]]) if good_shape(e) and e["name"] not in taken]
             if cands:
                 chosen, why = cands[0], "search:" + P.PHOTO[p["id"]]
         if not chosen and name and not SKIP_IMG.search(name) and lead.get(name, {}).get("url"):
@@ -194,7 +194,7 @@ def main():
                     chosen, why = dict(e, name=n), "article"
                     break
         if not chosen:
-            cands = [e for e in commons_search(p["en"]) if good_shape(e)]
+            cands = [e for e in commons_search(p["en"]) if good_shape(e) and e["name"] not in taken]
             if cands:
                 chosen, why = cands[0], "search:" + p["en"]
         p["photos"] = []
@@ -203,6 +203,7 @@ def main():
             p["thumb"] = "img/%s_s.jpg" % p["id"]
             p["credit"] = {"artist": chosen["artist"], "license": chosen["license"], "page": chosen["page"]}
             sheet.append(p["id"])
+            taken.add(chosen.get("name"))
             print("  photo %-14s %-8s %s" % (p["id"], why.split(":")[0], chosen.get("name", "")[:90]), flush=True)
         else:
             print("  photo %-14s NONE lead=%s images=%d missing=%s" % (p["id"], name, len(w.get("images") or []), w.get("missing")), flush=True)

@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>东南亚旅游攻略</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="旅游攻略">
+<meta name="theme-color" content="#F6F2EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F171A" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="lib/leaflet.css">
+<style>
+:root{
+  --bg:#F6F2EA;--card:#FFFFFF;--soft:#EEE7DA;--line:#E2D8C8;--ink:#1D2A2E;--sub:#66737A;--faint:#9AA3A6;
+  --acc:#0E7672;--accSoft:#DDF0EC;--acc2:#E8622F;--accInk:#FFFFFF;--warn:#B54708;--warnBg:#FDF0E2;
+  --shadow:0 6px 22px rgba(40,30,15,.10);
+  --c-city:#4F5BD5;--c-culture:#B4441B;--c-nature:#2F7D3A;--c-theme:#C2307A;--c-beach:#0B7E9C;--c-food:#A86F00;
+}
+:root[data-theme="dark"]{
+  --bg:#0F171A;--card:#162125;--soft:#1E2C30;--line:#28393E;--ink:#E8EFEE;--sub:#9AA9AC;--faint:#6A7A7E;
+  --acc:#3DB5AD;--accSoft:#173A38;--acc2:#FF875A;--accInk:#062221;--warn:#F5A55B;--warnBg:#33240F;
+  --shadow:0 6px 22px rgba(0,0,0,.4);color-scheme:dark;
+  --c-city:#8F99FF;--c-culture:#F08A5D;--c-nature:#6CCB7A;--c-theme:#F07AB6;--c-beach:#4CC6E0;--c-food:#E9B949;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;overscroll-behavior:none}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+svg{width:20px;height:20px;fill:currentColor;flex:none}
+a{color:var(--acc)}
+.view{padding:calc(12px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-left)) calc(88px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right));max-width:760px;margin:0 auto}
+h1{font-size:26px;line-height:1.2;margin:6px 0 2px;letter-spacing:.3px;text-wrap:balance}
+h2{font-size:18px;margin:18px 0 8px}
+.lead{color:var(--sub);margin:0 0 14px}
+.card{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center;gap:10px}
+.lbl{font-size:12.5px;font-weight:700;color:var(--sub);letter-spacing:.4px;margin-bottom:6px}
+.field{display:flex;flex-direction:column}
+.inp{height:44px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;background:var(--bg);outline:0;min-width:0;width:100%}
+.inp:focus{border-color:var(--acc)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:34px;padding:0 13px;border-radius:17px;background:var(--soft);font-size:14px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.chip.on{background:var(--acc);color:var(--accInk);font-weight:700}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:3px}
+.seg button{flex:1;height:36px;border-radius:9px;font-size:14px}
+.seg button.on{background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.12);font-weight:700;color:var(--acc)}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:34px;height:34px;border-radius:17px;background:var(--soft);font-size:18px;font-weight:700}
+.step b{min-width:28px;text-align:center;font-size:17px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{height:50px;border-radius:14px;background:var(--acc);color:var(--accInk);font-weight:800;font-size:16px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.ghost{background:var(--soft);color:var(--ink);font-weight:700}
+.btn.sm{height:38px;font-size:14px;border-radius:12px;width:auto;padding:0 14px}
+.sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);z-index:30;max-height:260px;overflow:auto}
+.sug button{display:block;width:100%;text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+.sug small{color:var(--sub)}
+.switch{width:46px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:11px;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch.on{background:var(--acc)}.switch.on::after{transform:translateX(18px)}
+/* plan result */
+.sum h3{margin:0 0 6px;font-size:19px;text-wrap:balance}
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:14px;color:var(--sub)}
+.chain b{color:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--soft);border-radius:12px;padding:8px 10px}
+.stat b{display:block;font-size:17px}
+.stat small{color:var(--sub);font-size:12px}
+.day{padding:0;overflow:hidden}
+.dayhd{display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(90deg,var(--accSoft),transparent)}
+.dayno{width:40px;height:40px;border-radius:12px;background:var(--acc);color:var(--accInk);display:grid;place-items:center;font-weight:800;line-height:1;text-align:center;font-size:12px}
+.dayno b{font-size:17px;display:block}
+.dayhd .t{flex:1;min-width:0}
+.dayhd .t b{display:block}
+.dayhd .t small{color:var(--sub)}
+.wx{font-size:13px;color:var(--sub);text-align:right;white-space:nowrap}
+.wx b{font-size:15px;color:var(--ink)}
+.tl{padding:4px 14px 12px}
+.stop{display:flex;gap:12px;padding:10px 0;align-items:flex-start}
+.time{width:46px;flex:none;font-size:13px;font-weight:700;color:var(--acc);padding-top:2px;font-variant-numeric:tabular-nums;line-height:1.3}
+.time small{display:block;color:var(--faint);font-weight:500}
+.ph{width:64px;height:64px;border-radius:12px;flex:none;overflow:hidden;background:var(--soft);position:relative}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .ico{position:absolute;inset:0;display:grid;place-items:center;color:var(--faint)}
+.sbody{flex:1;min-width:0}
+.sbody b{font-size:15.5px;display:block;line-height:1.35}
+.meta{font-size:12.5px;color:var(--sub);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px}
+.price{font-weight:700;color:var(--ink)}
+.price.free{color:var(--c-nature)}
+.price.unk{color:var(--faint);font-weight:500}
+.warn{margin-top:6px;font-size:12.5px;background:var(--warnBg);color:var(--warn);border-radius:8px;padding:5px 8px}
+.meal .ph{display:grid;place-items:center;font-size:26px;background:var(--warnBg)}
+.meal .meta a{cursor:pointer;text-decoration:underline}
+.x{width:32px;height:32px;border-radius:16px;color:var(--faint);display:grid;place-items:center;flex:none}
+.leg{display:flex;align-items:center;gap:10px;margin-left:58px;padding:4px 0;color:var(--sub);font-size:13px;border-left:2px dashed var(--line);padding-left:12px;flex-wrap:wrap}
+.leg.big{margin-left:0;border:0;padding:10px 12px;background:var(--soft);border-radius:12px;color:var(--ink);margin:6px 0}
+.leg .nav{display:flex;gap:6px;margin-left:auto}
+.leg .nav a{font-size:12px;padding:3px 9px;border-radius:10px;background:var(--card);text-decoration:none;color:var(--acc);border:1px solid var(--line)}
+.leg.big .note{flex-basis:100%;font-size:12.5px;color:var(--sub)}
+.hotel{margin:2px 0 0;font-size:13px;color:var(--sub);display:flex;gap:6px;align-items:center;border-top:1px solid var(--line);padding-top:10px}
+.cat{font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;color:#fff;display:inline-block}
+.cat.city{background:var(--c-city)}.cat.culture{background:var(--c-culture)}.cat.nature{background:var(--c-nature)}
+.cat.theme{background:var(--c-theme)}.cat.beach{background:var(--c-beach)}.cat.food{background:var(--c-food)}
+:root[data-theme="dark"] .cat{color:#10181a}
+.map{height:300px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--soft)}
+.leaflet-container{font:inherit}
+.pin{width:26px;height:26px;border-radius:13px;color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.acts .btn{flex:1;min-width:140px}
+/* explore */
+.search{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:0 12px;height:46px;box-shadow:var(--shadow)}
+.search input{flex:1;border:0;outline:0;background:none;min-width:0}
+.hscroll{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.hscroll::-webkit-scrollbar{display:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:12px}
+.pc{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);text-align:left;display:flex;flex-direction:column}
+.pc .im{aspect-ratio:4/3;background:var(--soft);position:relative;max-width:100%}
+.pc .im img{width:100%;height:100%;object-fit:cover;display:block}
+.pc .im .cat{position:absolute;left:8px;top:8px}
+.pc .im .ico,.rc .im .ico{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;opacity:.7}
+.rc .im{position:relative}
+.pc .bd{padding:8px 10px 10px;min-width:0}
+.pc .bd b{display:block;font-size:14.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .bd small{color:var(--sub);font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.stars{color:#E6A700;letter-spacing:1px;font-size:12px}
+.rc{display:flex;gap:12px;padding:0;overflow:hidden;text-align:left;width:100%}
+.rc .im{width:110px;flex:none;background:var(--soft)}
+.rc .im img{width:100%;height:100%;object-fit:cover;display:block}
+.rc .bd{padding:12px 12px 12px 0;min-width:0;flex:1}
+.rc b{display:block;font-size:16px}
+.rc small{color:var(--sub);display:block;margin-top:2px}
+.empty{text-align:center;color:var(--sub);padding:40px 10px}
+/* overlay pages */
+.ov{position:fixed;inset:0;background:var(--bg);z-index:40;overflow-y:auto;animation:up .22s ease}
+@keyframes up{from{transform:translateY(24px);opacity:.5}to{transform:none;opacity:1}}
+.ovtop{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left));background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px)}
+.ovtop b{flex:1;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:40px;height:40px;border-radius:20px;display:grid;place-items:center;background:var(--card);box-shadow:var(--shadow)}
+.gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:0;background:#111;aspect-ratio:16/10;max-height:56vh;max-width:100%}
+.gal img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center}
+.credit{font-size:11px;color:var(--faint);padding:4px 16px 0;word-break:break-word}
+.dtl{padding:12px max(16px,env(safe-area-inset-left)) calc(40px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right));max-width:760px;margin:0 auto}
+.dtl h1{font-size:24px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px;margin:12px 0}
+.facts dt{color:var(--sub)}
+.facts dd{margin:0}
+table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+.pt th,.pt td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+.pt th{color:var(--sub);font-weight:600;font-size:12.5px}
+.note{font-size:13px;color:var(--sub);margin-top:8px;line-height:1.6}
+.tip{background:var(--accSoft);border-radius:12px;padding:10px 12px;font-size:14px;margin-top:12px}
+.src{font-size:12px;color:var(--faint);margin-top:8px;word-break:break-all}
+/* bottom nav */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);display:flex;border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;color:var(--faint);padding:4px 0}
+.tabs button svg{width:24px;height:24px}
+.tabs button.on{color:var(--acc);font-weight:700}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(20,30,32,.92);color:#fff;padding:9px 16px;border-radius:18px;font-size:14px;z-index:90;max-width:88vw;text-align:center}
+.spin{width:22px;height:22px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.mini{font-size:12px;color:var(--faint)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--card);border-radius:18px 18px 0 0;padding:14px max(16px,env(safe-area-inset-left)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right));box-shadow:0 -6px 30px rgba(0,0,0,.25);max-height:80vh;overflow:auto}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55}
+</style>
+</head>
+<body>
+<main id="pPlan" class="view"></main>
+<main id="pRoutes" class="view" hidden></main>
+<main id="pExplore" class="view" hidden></main>
+<main id="pMine" class="view" hidden></main>
+<nav class="tabs" id="tabs">
+  <button data-p="pPlan" class="on"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5.2-7 13-7 13S5 14.2 5 9a7 7 0 0 1 7-7zm0 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>规划</button>
+  <button data-p="pRoutes"><svg viewBox="0 0 24 24"><path d="M6 3a3 3 0 0 1 1 5.83V11h7a3 3 0 0 1 3 3v1.17a3 3 0 1 1-2 0V14a1 1 0 0 0-1-1H7v2.17a3 3 0 1 1-2 0V8.83A3 3 0 0 1 6 3z"/></svg>线路</button>
+  <button data-p="pExplore"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm3 11 3-4 2.5 3 2-2.5L17 16H7zm2-8.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>景点</button>
+  <button data-p="pMine"><svg viewBox="0 0 24 24"><path d="M12 21 10.6 19.7C5.6 15.2 2.5 12.4 2.5 8.9 2.5 6.1 4.7 4 7.4 4c1.6 0 3.1.7 4.1 1.9C12.5 4.7 14 4 15.6 4c2.8 0 4.9 2.1 4.9 4.9 0 3.5-3.1 6.3-8.1 10.8L12 21z"/></svg>我的</button>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script src="lib/leaflet.js"></script>
+<script src="data.js"></script>
+<script>
+'use strict';
+const A = window.A || null;           // Android bridge (absent on the web version)
+const D = window.DATA;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const R = {}; D.regions.forEach(r => R[r.key] = r);
+const PL = {}; D.places.forEach(p => PL[p.id] = p);
+const COUNTRY = {MY:'西马', SG:'新加坡', TH:'泰国', ID:'印尼'};
+const CAT = {city:'城市地标', culture:'文化古迹', nature:'自然风光', theme:'主题乐园', beach:'海岛海滩', food:'美食夜市'};
+const CUR = {MYR:'RM', SGD:'S$', THB:'฿', IDR:'Rp', USD:'US$'};
+const WD = ['周日','周一','周二','周三','周四','周五','周六'];
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('tg_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('tg_' + k, JSON.stringify(v)); } catch (e) {} },
+};
+function setDark(d) { document.documentElement.dataset.theme = d ? 'dark' : 'light'; }
+window.setDark = setDark;
+setDark(A && A.dark ? A.dark() : matchMedia('(prefers-color-scheme: dark)').matches);
+function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2400); }
+function openUrl(u) { if (A && A.open) A.open(u); else window.open(u, '_blank'); }
+/* network: through the app on Android (no CORS limits, proper user agent), plain fetch on the web */
+const HTTP = {}; let httpSeq = 0;
+window.onHttp = (tag, text, err) => {
+  const p = HTTP[tag]; if (!p) return; delete HTTP[tag];
+  if (err || text == null) p.rej(new Error(err || 'network')); else { try { p.res(JSON.parse(text)); } catch (e) { p.rej(e); } }
+};
+function getJSON(url) {
+  if (A && A.httpGet) return new Promise((res, rej) => { const tag = 'h' + (++httpSeq); HTTP[tag] = {res, rej}; A.httpGet(url, tag); });
+  return fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href^="http"]');
+  if (a && A && A.open) { e.preventDefault(); A.open(a.href); }
+});
+
+/* ---------------- geography & time ---------------- */
+function km(a, b) {
+  const r = Math.PI / 180, x = Math.sin((b.lat - a.lat) * r / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin((b.lng - a.lng) * r / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(x));
+}
+const MX = {}; (D.matrix.ids || []).forEach((id, i) => MX[id] = i);
+function roadFromMatrix(a, b) {
+  if (!D.matrix.min || MX[a] === undefined || MX[b] === undefined) return null;
+  const m = D.matrix.min[MX[a]][MX[b]], k = D.matrix.km[MX[a]][MX[b]];
+  // the public routing server snaps some points to the wrong roads; ignore answers that cannot be right
+  const straight = km(MXPT[a], MXPT[b]);
+  if (m == null || k == null || k < straight * 0.95 || k > straight * 3 + 30 || m < k / 110 * 60) return null;
+  return {min: m, km: k};
+}
+const MXPT = {}; D.regions.forEach(r => { MXPT[r.key] = r; if (r.ferry) MXPT['ferry:' + r.key] = r.ferry; });
+/* road time between two points: OSRM times between region centres (scaled to the real points), or an estimate */
+function roadBetween(a, b, ak, bk) {
+  if (ak && bk && ak !== bk) {
+    const m = roadFromMatrix(ak, bk);
+    if (m) {
+      const base = km(MXPT[ak], MXPT[bk]);
+      const ratio = base > 1 ? Math.min(1.35, Math.max(0.7, km(a, b) / base)) : 1;
+      return {min: Math.round(m.min * ratio + 5), km: Math.round(m.km * ratio)};
+    }
+  }
+  return roadEst(a, b);
+}
+function roadEst(a, b) {
+  const d = km(a, b) * 1.3;
+  return {min: Math.round(d / (d > 60 ? 78 : d > 15 ? 45 : 28) * 60 + 8), km: Math.round(d)};
+}
+function fmtDur(m) {
+  m = Math.round(m);
+  if (m < 60) return m + ' 分钟';
+  const h = Math.floor(m / 60), r = m % 60;
+  return h + ' 小时' + (r >= 5 ? ' ' + r + ' 分' : '');
+}
+const hhmm = m => { m = Math.round(m); const h = Math.floor(m / 60) % 24; return String(h).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+function nearestRegion(pt, filter) {
+  let best = null, bd = 1e9;
+  for (const r of D.regions) { if (filter && !filter(r)) continue; const d = km(pt, r); if (d < bd) { bd = d; best = r; } }
+  return {r: best, d: bd};
+}
+function nearestTown(pt) {
+  let best = null, bd = 1e9;
+  for (const t of D.towns) { const d = km(pt, t); if (d < bd) { bd = d; best = t; } }
+  return {t: best, d: bd};
+}
+
+/* Transport between two points (each {lat,lng} with optional region key "rk").
+   Returns segments: drive / bus / ferry / flight, each with minutes and km. */
+function legPlan(from, to, mode) {
+  const fr = from.rk ? R[from.rk] : null, tr = to.rk ? R[to.rk] : null;
+  const fg = fr ? fr.group : 'main', tg = tr ? tr.group : 'main';
+  const d = km(from, to);
+  const local = mode === 'public' && d < 15; // in town: Grab, taxi or the metro
+  const road = (a, b, ak, bk) => {
+    const m = roadBetween(a, b, ak, bk);
+    if (mode !== 'public') return m;
+    return local ? {min: Math.round(m.min * 1.1 + 8), km: m.km} : {min: Math.round(m.min * 1.25 + 20), km: m.km};
+  };
+  const roadType = mode === 'public' ? (local ? 'grab' : 'bus') : 'drive';
+  if (d < 1.2) return [{type: 'walk', min: Math.round(d / 4.5 * 60) + 3, km: Math.round(d * 10) / 10}];
+  // islands reached by ferry
+  if (tr && tr.ferry && fg !== tg) {
+    const pier = {lat: tr.ferry.lat, lng: tr.ferry.lng};
+    const r1 = road(from, pier, from.rk, 'ferry:' + tr.key);
+    const fl = flightOption(from, to, fr, tr);
+    const ferryMin = r1.min + tr.ferry.hours * 60 + 40;
+    if (fl && fl.total < ferryMin - 60) return fl.segs;
+    return [{type: roadType, min: r1.min, km: r1.km, to: tr.ferry.name}, {type: 'ferry', min: Math.round(tr.ferry.hours * 60 + 40), km: Math.round(km(pier, to)), to: tr.name}];
+  }
+  if (fr && fr.ferry && fg !== tg) {
+    const pier = {lat: fr.ferry.lat, lng: fr.ferry.lng};
+    const r1 = road(pier, to, 'ferry:' + fr.key, to.rk);
+    const fl = flightOption(from, to, fr, tr);
+    const ferryMin = fr.ferry.hours * 60 + 40 + r1.min;
+    if (fl && fl.total < ferryMin - 60) return fl.segs;
+    return [{type: 'ferry', min: Math.round(fr.ferry.hours * 60 + 40), km: Math.round(km(from, pier)), to: fr.ferry.name}, {type: roadType, min: r1.min, km: r1.km, to: tr ? tr.name : ''}];
+  }
+  if (fg !== tg) {
+    const fl = flightOption(from, to, fr, tr);
+    if (fl) return fl.segs;
+  }
+  const rd = road(from, to, from.rk, to.rk);
+  if (rd.min > 420) { // over 7 hours on the road: fly if possible
+    const fl = flightOption(from, to, fr, tr);
+    if (fl && fl.total < rd.min) return fl.segs;
+  }
+  return [{type: roadType, min: rd.min, km: rd.km}];
+}
+function airportNear(pt, group) {
+  const c = nearestRegion(pt, r => r.airport && (!group || r.group === group || (group === 'main' && r.group === 'main')));
+  return c.r;
+}
+function flightOption(from, to, fr, tr) {
+  const a1 = fr && fr.airport ? fr : airportNear(from, fr ? fr.group : 'main');
+  const a2 = tr && tr.airport ? tr : airportNear(to, tr ? tr.group : 'main');
+  if (!a1 || !a2 || a1 === a2) return null;
+  const segs = [];
+  let total = 0;
+  if (km(from, a1) > 25) { const m = roadEst(from, a1); segs.push({type: 'drive', min: m.min, km: m.km, to: a1.name + '机场'}); total += m.min; }
+  const fk = km(a1, a2), fm = Math.round(150 + fk / 700 * 60 + 60);
+  segs.push({type: 'flight', min: fm, km: Math.round(fk), from: a1.airport, to: a2.name + ' ' + a2.airport, air: Math.round(fk / 700 * 60 + 25)});
+  total += fm;
+  if (km(a2, to) > 25) { const m = roadEst(a2, to); segs.push({type: 'drive', min: m.min, km: m.km, to: tr ? tr.name : ''}); total += m.min; }
+  return {segs, total};
+}
+const segMin = segs => segs.reduce((a, s) => a + s.min, 0);
+const segKm = segs => segs.reduce((a, s) => a + (s.km || 0), 0);
+
+/* ---------------- money ---------------- */
+let FX = Object.assign({}, D.fx, store.get('fx', {}));
+function refreshFx(force) {
+  const last = store.get('fxAt', 0);
+  if (!force && Date.now() - last < 12 * 3600e3) return;
+  getJSON('https://open.er-api.com/v6/latest/MYR').then(j => {
+    if (j.result !== 'success') return;
+    const o = {asof: (j.time_last_update_utc || '').slice(5, 16), src: 'open.er-api.com'};
+    for (const c of ['SGD', 'THB', 'IDR', 'USD']) if (j.rates[c]) o[c] = 1 / j.rates[c];
+    FX = Object.assign({}, D.fx, o); FX.MYR = 1;
+    store.set('fx', o); store.set('fxAt', Date.now());
+    if (force) { toast('汇率已更新'); renderMine(); }
+  }).catch(() => { if (force) toast('网络不通，暂用内置汇率'); });
+}
+const toRM = (v, cur) => v * (FX[cur] || 1);
+function money(v, cur) {
+  if (cur === 'IDR') return 'Rp' + Math.round(v).toLocaleString('en');
+  return (CUR[cur] || cur + ' ') + (Number.isInteger(v) ? v : v.toFixed(2).replace(/\.?0+$/, ''));
+}
+const rm = v => 'RM' + (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10);
+/** Ticket cost for the party: {local, rm, cur, text, unknown, free, assumedChild}. */
+function cost(p, party, resident) {
+  const pr = p.price;
+  if (!pr) return {unknown: true, text: '价格未核实'};
+  if (pr.free) return {free: true, rm: 0, text: '免费'};
+  let tier = pr.intl;
+  if (pr.cur === 'MYR' && resident === 'my' && pr.loc) tier = pr.loc;
+  if (!tier) tier = pr.loc || pr.intl;
+  let a = tier[0], c = tier[1], assumed = false;
+  if (c == null) { c = a; assumed = party.c > 0; }
+  let local;
+  if (pr.group) local = Math.ceil((party.a + party.c) / pr.group) * a;
+  else local = a * party.a + c * party.c;
+  const r = toRM(local, pr.cur);
+  return {local, cur: pr.cur, rm: r, approx: pr.approx, assumedChild: assumed,
+    text: (pr.approx ? '约 ' : '') + money(local, pr.cur) + (pr.cur !== 'MYR' ? '（≈' + rm(r) + '）' : '')};
+}
+
+/* ---------------- planner ---------------- */
+const PACE = {relax: [570, 1050, 7], normal: [540, 1140, 9], tight: [480, 1260, 11]};
+const CAP = {relax: 4, normal: 5, tight: 7}; // most attractions a day
+function score(p, f) {
+  let s = Math.pow(p.rank, 1.7);
+  if (!f.interests.includes(p.cat)) s *= p.rank >= 5 ? 0.6 : 0.3;
+  if (f.must.includes(p.id)) s *= 6;
+  return s;
+}
+function dateAt(f, i) { const d = new Date(f.date + 'T00:00:00'); d.setDate(d.getDate() + i); return d; }
+function openOn(p, date) { return !p.closed.includes(date.getDay()); }
+
+function plan(f) {
+  const [dayStart, dayEnd, dayHours] = PACE[f.pace];
+  const start = {lat: f.start.lat, lng: f.start.lng, name: f.start.name};
+  const sr = nearestRegion(start);
+  if (sr.d < 35) start.rk = sr.r.key;
+  const countries = new Set(f.countries);
+  const used = new Set();
+  const days = [];
+  let loc = Object.assign({}, start), t = dayStart, region = null;
+  const ctx = {f, dayStart, dayEnd, dayHours};
+  const newDay = () => days.push({date: dateAt(f, days.length), items: [], region: null});
+  newDay();
+  const fixed = f.fixed; // curated route: [[ids]]
+  const exhausted = new Set(); // areas where nothing more fits into a day
+  const cand = rk => exhausted.has(rk) ? [] : D.places.filter(p => p.region === rk && !used.has(p.id) && score(p, f) >= 3.2);
+  const regionValue = (rk, daysAvail) => {
+    const ps = cand(rk).sort((a, b) => score(b, f) - score(a, f));
+    let h = 0, v = 0;
+    for (const p of ps) { if (h + p.dur > daysAvail * dayHours) break; h += p.dur + 0.5; v += score(p, f); }
+    return {v, h};
+  };
+  const returnMin = from => f.roundtrip ? segMin(legPlan(from, start, f.mode)) : 0;
+  // must-go places ("必去清单") in the chosen countries that are not planned yet
+  const mustLeft = () => f.must.filter(id => PL[id] && !used.has(id) && countries.has(R[PL[id].region].country));
+  const mustIn = rk => mustLeft().some(id => PL[id].region === rk);
+  /** days still needed to reach the remaining must-go places elsewhere and get back */
+  const needDays = () => {
+    const rs = [...new Set(mustLeft().map(id => PL[id].region))].filter(rk => rk !== region);
+    if (!rs.length) return 0;
+    let h = 0, at = loc;
+    for (const rk of rs) {
+      const rp = Object.assign({}, R[rk], {rk});
+      h += segMin(legPlan(at, rp, f.mode)) / 60 + mustLeft().filter(id => PL[id].region === rk).reduce((a, id) => a + PL[id].dur, 0);
+      at = rp;
+    }
+    return (h + returnMin(at) / 60) / dayHours;
+  };
+  const addLeg = (to, label) => {
+    const segs = legPlan(loc, to, f.mode);
+    const total = segMin(segs);
+    const big = segs.some(s => s.type === 'flight' || s.type === 'ferry') || total > 150;
+    // long trips start on a fresh morning if the day is mostly gone
+    if (big && t > dayStart + 120 && dayEnd - t < total * 0.6) { days[days.length - 1].region = days[days.length - 1].region || region; newDay(); t = dayStart; }
+    const day = days[days.length - 1];
+    day.items.push({type: 'leg', segs, start: t, end: t + total, from: loc.name || '', to: to.name || label || '', big, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: {lat: to.lat, lng: to.lng}});
+    t += total;
+    loc = Object.assign({}, to);
+    while (t > dayEnd + 120) { t = t - (dayEnd - dayStart) - 720; newDay(); if (t < dayStart) t = dayStart; }
+  };
+  const meal = (day, kind, at) => {
+    const s0 = at == null ? t : at;
+    day.items.push({type: 'meal', meal: kind, start: s0, end: s0 + 60, rk: loc.rk || region});
+    if (at == null) t += 60;
+    day[kind] = true;
+  };
+  const addStop = p => {
+    const day = days[days.length - 1];
+    const pt = {lat: p.lat, lng: p.lng, rk: p.region, name: p.name};
+    // meals: lunch once it is past 11:30, dinner after 18:00 (a food stop counts as the meal)
+    if (p.cat === 'food') { if (t >= 660 && t < 900) day.lunch = true; if (t >= 1020) day.dinner = true; }
+    if (!day.lunch && t >= 690 && t < 900) meal(day, 'lunch');
+    if (!day.dinner && t >= 1080) meal(day, 'dinner');
+    if (km(loc, pt) > 0.3) {
+      const segs = legPlan(loc, pt, f.mode);
+      const m = segMin(segs);
+      day.items.push({type: 'leg', segs, start: t, end: t + m, small: true, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: pt});
+      t += m;
+    }
+    let st = t;
+    if (p.slot === 'sunrise') st = Math.min(t, 300);
+    if (p.slot === 'night') st = Math.max(t, 1170);
+    if (p.slot === 'evening') st = Math.max(t, Math.min(1050, dayEnd - p.dur * 60));
+    // waiting for an evening or night attraction: have dinner first
+    if (!day.dinner && p.cat !== 'food' && st >= 1110 && st - t >= 50) meal(day, 'dinner', st - 60);
+    const warn = [];
+    if (!openOn(p, day.date)) warn.push(WD[day.date.getDay()] + '休息，建议改天去');
+    const en = st + p.dur * 60;
+    day.items.push({type: 'stop', id: p.id, start: st, end: en, warn});
+    used.add(p.id);
+    t = en;
+    loc = pt;
+    day.region = day.region || p.region;
+    if (st <= 750 && en >= 800) day.lunch = true;     // eats inside (theme parks, islands)
+    if (st <= 1110 && en >= 1170) day.dinner = true;
+    if (p.slot === 'night' || en >= 1290) day.ended = true;
+  };
+
+  if (fixed) {
+    // curated route: follow its days in order
+    fixed.forEach((ids, di) => {
+      if (di > 0) { newDay(); t = dayStart; }
+      ids.forEach((id, k) => {
+        const p = PL[id];
+        if (!p) return;
+        const pt = {lat: p.lat, lng: p.lng, rk: p.region, name: p.name};
+        if (k === 0 && (km(loc, pt) > 40 || (R[p.region].group !== (loc.rk ? R[loc.rk].group : 'main')))) addLeg(Object.assign({}, R[p.region], {rk: p.region}), R[p.region].name);
+        addStop(p);
+      });
+    });
+  } else {
+    let guard = 0;
+    while (days.length <= f.days && guard++ < 400) {
+      const di = days.length - 1, last = di === f.days - 1;
+      const daysLeft = f.days - di - (t - dayStart) / (dayEnd - dayStart);
+      // choose a region when we have none or it ran out of good places
+      const dayNow0 = days[days.length - 1];
+      const daytime = rk => cand(rk).some(p => p.slot !== 'evening' && p.slot !== 'night' || f.must.includes(p.id));
+      // move on when the area is done, or only evening spots are left while most of the day is still ahead
+      const hurry = region && !mustIn(region) && mustLeft().length && daysLeft <= needDays() + 0.35;
+      if (!region || hurry || cand(region).length === 0 || (!daytime(region) && t < 870 && !dayNow0.ended)) {
+        let best = null, bestEff = -1;
+        for (const r of D.regions) {
+          if (!countries.has(r.country) || r.key === region) continue;
+          const rp = Object.assign({}, r, {rk: r.key});
+          const segs = legPlan(loc, rp, f.mode);
+          const travelH = segMin(segs) / 60;
+          const retH = returnMin(rp) / 60;
+          const avail = daysLeft - travelH / dayHours - retH / dayHours;
+          const hasMust = mustIn(r.key);
+          if (avail < (hasMust ? 0.15 : 0.45)) continue;
+          const {v} = regionValue(r.key, Math.min(avail, 3));
+          if (v <= 0) continue;
+          const eff = v / (travelH * 1.4 + 2.5);
+          const mustBoost = hasMust ? 100 : 1;
+          if (eff * mustBoost > bestEff) { bestEff = eff * mustBoost; best = rp; }
+        }
+        if (!best) break;
+        if (region || km(loc, best) > 30) addLeg(best, best.name);
+        region = best.key;
+        if (days.length > f.days) break;
+      }
+      // fill the rest of today
+      const dayNow = days[days.length - 1];
+      const endToday = (days.length === f.days ? dayEnd - Math.min(returnMin(loc), dayEnd - dayStart - 120) : dayEnd) + 150;
+      const full = dayNow.ended || dayNow.items.filter(x => x.type === 'stop').length >= CAP[f.pace];
+      const options = full ? [] : cand(region).filter(p => openOn(p, dayNow.date) || f.must.includes(p.id));
+      let pick = null, pv = -1;
+      for (const p of options) {
+        const pt = {lat: p.lat, lng: p.lng};
+        const tm = segMin(legPlan(loc, Object.assign({rk: p.region}, pt), f.mode));
+        let st = t + tm;
+        if (p.slot === 'night') { if (t < 1050 && options.some(o => o.slot !== 'night' && o.slot !== 'evening')) continue; st = Math.max(st, 1170); }
+        if (p.slot === 'evening' && t < 900 && options.some(o => o.slot === 'day' || o.slot === 'morning')) continue;
+        if (p.slot === 'sunrise' && dayNow.items.some(x => x.type === 'stop')) continue;
+        if ((p.slot === 'morning') && t > dayStart + 120 && options.some(o => o.slot === 'day')) continue;
+        if (p.dur >= 5 && st > 660 && p.slot !== 'night') continue; // full-day parks and tours start in the morning
+        let limit = p.slot === 'night' ? endToday + 90 : p.slot === 'evening' ? endToday + 60 : endToday - 150;
+        if (p.dur >= 6) limit = Math.max(limit, Math.min(endToday - 90, dayEnd + 60)); // day tours: back by evening
+        // a must-go place may run into the evening (and push the trip home later)
+        if (st + p.dur * 60 > (f.must.includes(p.id) && p.slot !== 'night' ? Math.max(limit, dayEnd + 60) : limit)) continue;
+        const v = score(p, f) / (1 + tm / 40);
+        if (v > pv) { pv = v; pick = p; }
+      }
+      if (pick) { addStop(pick); continue; }
+      // a fresh morning and still nothing fits: this area is done
+      if (!dayNow.items.some(x => x.type === 'stop') && t <= dayStart + 180) { exhausted.add(region); continue; }
+      // nothing fits today: next day (or finish)
+      if (days.length >= f.days) break;
+      dayNow.region = dayNow.region || region;
+      newDay(); t = dayStart;
+      loc = Object.assign({}, R[region], {rk: region, name: R[region].name});
+    }
+  }
+  while (days.length > f.days && !days[days.length - 1].items.length) days.pop();
+  while (days.length < (f.fixed ? f.fixed.length : f.days)) newDay();
+  if (f.roundtrip && km(loc, start) > 3) {
+    const last = days[days.length - 1];
+    if (t < dayStart) t = dayStart;
+    const segs = legPlan(loc, start, f.mode);
+    last.items.push({type: 'leg', segs, start: t, end: t + segMin(segs), from: loc.name, to: start.name, big: true, back: true, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: start});
+  }
+  days.forEach((d, i) => {
+    if (!d.region) { const s = d.items.find(x => x.type === 'stop'); d.region = s ? PL[s.id].region : (i ? days[i - 1].region : (start.rk || null)); }
+    // where the night is spent: the last place reached that day
+    let sleep = null;
+    for (const it of d.items) {
+      if (it.type === 'stop') sleep = PL[it.id].region;
+      else if (it.type === 'leg' && !it.back) sleep = nearestRegion(it.toPt).r.key;
+    }
+    d.sleep = sleep || d.region;
+    const seen = [];
+    d.items.forEach(it => { if (it.type === 'stop' && seen[seen.length - 1] !== PL[it.id].region) seen.push(PL[it.id].region); });
+    d.regions = seen.filter((k, j) => seen.indexOf(k) === j);
+  });
+  return {input: f, days, made: Date.now()};
+}
+
+/* ---------------- planner form ---------------- */
+function tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
+let F = Object.assign({start: null, date: tomorrow(), days: 3, countries: ['MY', 'SG', 'TH', 'ID'], interests: ['city', 'culture', 'nature', 'food'],
+  mode: 'car', pace: 'normal', party: {a: 2, c: 0}, resident: 'my', roundtrip: true, must: []}, store.get('form', {}));
+if (F.date < new Date().toISOString().slice(0, 10)) F.date = tomorrow();
+F.must = store.get('must', []);
+let CUR_PLAN = null;
+const saveForm = () => { const o = Object.assign({}, F); delete o.fixed; delete o.must; store.set('form', o); };
+
+function renderPlanForm() {
+  const p = $('pPlan');
+  const chips = (list, sel, key) => list.map(([k, v]) => `<button class="chip${sel.includes(k) ? ' on' : ''}" data-${key}="${k}">${esc(v)}</button>`).join('');
+  p.innerHTML = `<h1>想去哪里玩？</h1><p class="lead">输入出发地和天数，自动排好每天的行程、车程和门票。</p>
+  <div class="card stack">
+    <div class="field" style="position:relative"><div class="lbl">出发地</div>
+      <div class="row"><input class="inp" id="fStart" placeholder="例如：吉隆坡、新山、槟城" autocomplete="off" value="${esc(F.start ? F.start.name : '')}">
+      <button class="btn ghost sm" id="fLoc" style="flex:none">📍 定位</button></div>
+      <div class="sug" id="fSug" hidden></div></div>
+    <div class="grid2">
+      <div class="field"><div class="lbl">出发日期</div><input class="inp" type="date" id="fDate" value="${F.date}"></div>
+      <div class="field"><div class="lbl">玩几天</div><div class="step" style="height:44px"><button data-step="-1">−</button><b id="fDays">${F.days}</b><button data-step="1">+</button><span class="mini">天</span></div></div>
+    </div>
+    <div class="field"><div class="lbl">可以去的地方</div><div class="chips">${chips(Object.entries(COUNTRY), F.countries, 'ct')}</div></div>
+    <div class="field"><div class="lbl">喜欢玩什么</div><div class="chips">${chips(Object.entries(CAT), F.interests, 'it')}</div></div>
+    <div class="field"><div class="lbl">交通方式</div><div class="seg" data-seg="mode"><button data-v="car">🚗 自驾</button><button data-v="public">🚌 公共交通</button></div><div class="mini" style="margin-top:4px">太远或要过海时会自动安排飞机或渡轮</div></div>
+    <div class="field"><div class="lbl">行程节奏</div><div class="seg" data-seg="pace"><button data-v="relax">轻松</button><button data-v="normal">适中</button><button data-v="tight">紧凑</button></div></div>
+    <div class="grid2">
+      <div class="field"><div class="lbl">大人</div><div class="step"><button data-pa="-1">−</button><b id="fA">${F.party.a}</b><button data-pa="1">+</button></div></div>
+      <div class="field"><div class="lbl">小孩（12 岁以下）</div><div class="step"><button data-pc="-1">−</button><b id="fC">${F.party.c}</b><button data-pc="1">+</button></div></div>
+    </div>
+    <div class="field"><div class="lbl">门票身份（大马景点有本地价）</div><div class="seg" data-seg="resident"><button data-v="my">马来西亚公民 MyKad</button><button data-v="intl">外国游客</button></div></div>
+    <button class="row" id="fRound" style="justify-content:space-between;width:100%;text-align:left"><span>最后回到出发地</span><i class="switch${F.roundtrip ? ' on' : ''}"></i></button>
+    ${F.must.length ? `<div class="mini">必去清单：${F.must.map(id => esc(PL[id] ? PL[id].name : id)).join('、')}（在「我的」里管理）</div>` : ''}
+    <button class="btn" id="fGo">生成我的攻略</button>
+  </div>
+  <p class="mini" style="margin-top:14px">门票价格于 2026 年 11 月整理，每个景点都附来源；价格常有变动，出发前请以官方为准。</p>`;
+  p.querySelectorAll('[data-seg]').forEach(s => {
+    const k = s.dataset.seg;
+    s.querySelectorAll('button').forEach(b => { b.classList.toggle('on', F[k] === b.dataset.v); b.onclick = () => { F[k] = b.dataset.v; saveForm(); renderPlanForm(); }; });
+  });
+  p.querySelectorAll('[data-ct]').forEach(b => b.onclick = () => { toggleIn(F.countries, b.dataset.ct); if (!F.countries.length) F.countries.push('MY'); saveForm(); renderPlanForm(); });
+  p.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { toggleIn(F.interests, b.dataset.it); if (!F.interests.length) F.interests.push('city'); saveForm(); renderPlanForm(); });
+  p.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { F.days = Math.max(1, Math.min(14, F.days + +b.dataset.step)); $('fDays').textContent = F.days; saveForm(); });
+  p.querySelectorAll('[data-pa]').forEach(b => b.onclick = () => { F.party.a = Math.max(1, Math.min(20, F.party.a + +b.dataset.pa)); $('fA').textContent = F.party.a; saveForm(); });
+  p.querySelectorAll('[data-pc]').forEach(b => b.onclick = () => { F.party.c = Math.max(0, Math.min(20, F.party.c + +b.dataset.pc)); $('fC').textContent = F.party.c; saveForm(); });
+  $('fDate').onchange = e => { F.date = e.target.value || tomorrow(); saveForm(); };
+  $('fRound').onclick = () => { F.roundtrip = !F.roundtrip; saveForm(); renderPlanForm(); };
+  $('fLoc').onclick = locate;
+  const inp = $('fStart');
+  inp.oninput = () => suggest(inp.value);
+  inp.onfocus = () => { if (!inp.value) suggest(''); };
+  $('fGo').onclick = () => {
+    if (!F.start) {
+      const m = matchTowns(inp.value)[0];
+      if (m) F.start = m; else { toast('请先选择出发地'); inp.focus(); return; }
+    }
+    F.fixed = null;
+    go();
+  };
+}
+function toggleIn(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
+function matchTowns(q) {
+  q = q.trim().toLowerCase();
+  const out = [];
+  for (const t of D.towns) if (!q || t.name.toLowerCase().includes(q)) out.push({name: t.name, lat: t.lat, lng: t.lng});
+  if (q) for (const p of D.places) if (p.name.toLowerCase().includes(q) || p.en.toLowerCase().includes(q)) out.push({name: p.name, lat: p.lat, lng: p.lng, sub: R[p.region].name});
+  return out.slice(0, 12);
+}
+function suggest(q) {
+  const box = $('fSug');
+  const list = matchTowns(q);
+  F.start = null;
+  box.innerHTML = list.map((t, i) => `<button data-i="${i}">${esc(t.name)}${t.sub ? ` <small>· ${esc(t.sub)}</small>` : ''}</button>`).join('') +
+    (q.trim().length >= 2 ? `<button data-online="1">🔎 在线搜索「${esc(q.trim())}」</button>` : '');
+  box.hidden = !box.innerHTML;
+  box.onclick = e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.online) { geocode(q.trim()); return; }
+    pickStart(list[+b.dataset.i]);
+  };
+}
+function pickStart(t) {
+  F.start = {name: t.name, lat: t.lat, lng: t.lng};
+  $('fStart').value = t.name;
+  $('fSug').hidden = true;
+  saveForm();
+}
+function geocode(q) {
+  const box = $('fSug');
+  box.innerHTML = '<button disabled>搜索中…</button>';
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=zh,en&countrycodes=my,sg,th,id&q=' + encodeURIComponent(q);
+  const done = j => {
+    const list = (j || []).map(x => ({name: x.display_name.split(',').slice(0, 2).join(','), lat: +x.lat, lng: +x.lon}));
+    box.innerHTML = list.length ? list.map((t, i) => `<button data-i="${i}">${esc(t.name)}</button>`).join('') : '<button disabled>没有找到，换个写法试试</button>';
+    box.onclick = e => { const b = e.target.closest('button[data-i]'); if (b) pickStart(list[+b.dataset.i]); };
+  };
+  getJSON(url).then(done).catch(() => { box.innerHTML = '<button disabled>网络不通，请检查网络后再试</button>'; });
+}
+function locate() {
+  toast('正在定位…');
+  const ok = (lat, lng) => {
+    const n = nearestTown({lat, lng});
+    pickStart({name: '我的位置' + (n.t && n.d < 40 ? '（' + n.t.name.split(' ')[0] + '附近）' : ''), lat, lng});
+    toast('已定位');
+  };
+  if (A && A.locate) { window.onLocate = (lat, lng, err) => err ? toast(err) : ok(lat, lng); A.locate(); return; }
+  if (!navigator.geolocation) { toast('这台设备不能定位'); return; }
+  navigator.geolocation.getCurrentPosition(p => ok(p.coords.latitude, p.coords.longitude), () => toast('定位失败，请手动输入出发地'), {timeout: 15000});
+}
+function go() {
+  const btn = $('fGo');
+  if (btn) btn.innerHTML = '<span class="spin"></span> 正在规划…';
+  setTimeout(() => {
+    try { CUR_PLAN = plan(Object.assign({}, F, {must: store.get('must', [])})); }
+    catch (e) { console.error(e); toast('规划失败：' + e.message); renderPlanForm(); return; }
+    store.set('last', serialize(CUR_PLAN));
+    renderPlanResult();
+    window.scrollTo(0, 0);
+  }, 30);
+}
+const serialize = pl => ({input: pl.input, made: pl.made, days: pl.days.map(d => ({date: +d.date, region: d.region, sleep: d.sleep, regions: d.regions, items: d.items}))});
+const deserialize = o => ({input: o.input, made: o.made, days: o.days.map(d => ({date: new Date(d.date), region: d.region, sleep: d.sleep || d.region, regions: d.regions || [], items: d.items}))});
+
+/* ---------------- plan result ---------------- */
+const SEG = {drive: ['🚗', '开车'], bus: ['🚌', '长途巴士 / 火车'], grab: ['🚕', 'Grab / 地铁'], walk: ['🚶', '步行'], ferry: ['⛴', '渡轮'], flight: ['✈️', '飞机']};
+function navLinks(a, b, mode) {
+  const g = `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}&travelmode=${mode === 'public' ? 'transit' : 'driving'}`;
+  const w = `https://waze.com/ul?ll=${b.lat},${b.lng}&navigate=yes`;
+  return `<span class="nav"><a href="${g}">Google 地图</a>${mode === 'public' ? '' : `<a href="${w}">Waze</a>`}</span>`;
+}
+function legHtml(it, f) {
+  const total = segMin(it.segs), kms = segKm(it.segs);
+  if (!it.big) {
+    const s = it.segs[0];
+    return `<div class="leg">${SEG[s.type][0]} ${SEG[s.type][1]}约 ${fmtDur(total)}${kms >= 1 ? ' · ' + kms + ' 公里' : ''}${s.type === 'walk' || total < 15 ? '' : navLinks(it.fromPt, it.toPt, f.mode)}</div>`;
+  }
+  const parts = it.segs.map(s => `${SEG[s.type][0]} ${s.type === 'flight' ? `飞往 ${esc(s.to)}（航程约 ${fmtDur(s.air)}）` : `${SEG[s.type][1]}${s.to ? '到 ' + esc(s.to) : ''} 约 ${fmtDur(s.min)}`}`).join('　→　');
+  const notes = [];
+  if (it.segs.some(s => s.type === 'flight')) notes.push(D.notes.flight);
+  if (it.segs.some(s => s.type === 'ferry')) notes.push(D.notes.ferry);
+  const fc = countryAt(it.fromPt), tc = countryAt(it.toPt);
+  if (fc !== tc && !it.segs.some(s => s.type === 'flight')) { const k = [fc, tc].sort().join('-').replace('SG-MY', 'MY-SG').replace('TH-MY', 'MY-TH'); if (D.notes[k]) notes.push(D.notes[k]); }
+  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode)}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}</div>`;
+}
+function mealHtml(it, pl, di) {
+  // suggest food spots in the same area that are not already in the plan
+  const inPlan = new Set(); pl.days.forEach(d => d.items.forEach(x => x.type === 'stop' && inPlan.add(x.id)));
+  const near = D.places.filter(p => p.cat === 'food' && p.region === it.rk && !inPlan.has(p.id)).slice(0, 2);
+  return `<div class="stop meal"><div class="time">${hhmm(it.start)}</div><div class="ph"><span class="ico">${it.meal === 'lunch' ? '🍜' : '🍲'}</span></div>
+    <div class="sbody"><b>${it.meal === 'lunch' ? '午餐' : '晚餐'}</b><div class="meta"><span>约 1 小时${near.length ? ' · 附近可以去：' : ' · 在附近找吃的'}</span>${near.map(p => `<a data-open="${p.id}">${esc(p.name)}</a>`).join('、')}</div></div></div>`;
+}
+function countryAt(pt) { const n = nearestRegion(pt); return n.r ? n.r.country : 'MY'; }
+function photo(p, small) {
+  const src = small ? p.thumb : p.img;
+  return src ? `<img loading="lazy" src="${src}" alt="">` : `<span class="ico">${catIcon(p.cat)}</span>`;
+}
+function catIcon(c) { return {city: '🏙', culture: '🛕', nature: '🌿', theme: '🎢', beach: '🏝', food: '🍜'}[c] || '📍'; }
+function planTotals(pl) {
+  const f = pl.input;
+  let rmSum = 0, unknown = 0, approx = false, drive = 0, flights = 0, ferries = 0, stops = 0;
+  pl.days.forEach(d => d.items.forEach(it => {
+    if (it.type === 'stop') {
+      stops++;
+      const c = cost(PL[it.id], f.party, f.resident);
+      if (c.unknown) unknown++; else rmSum += c.rm || 0;
+      if (c.approx) approx = true;
+    } else if (it.type === 'leg') {
+      it.segs.forEach(s => { if (s.type === 'drive' || s.type === 'bus' || s.type === 'grab') drive += s.km || 0; if (s.type === 'flight') flights++; if (s.type === 'ferry') ferries++; });
+    }
+  }));
+  return {rmSum, unknown, approx, drive, flights, ferries, stops};
+}
+function renderPlanResult() {
+  const pl = CUR_PLAN, f = pl.input;
+  const p = $('pPlan');
+  const regs = [];
+  pl.days.forEach(d => (d.regions && d.regions.length ? d.regions : d.region ? [d.region] : []).forEach(k => { if (regs[regs.length - 1] !== k) regs.push(k); }));
+  const tot = planTotals(pl);
+  const party = f.party.a + ' 大' + (f.party.c ? ' ' + f.party.c + ' 小' : '');
+  p.innerHTML = `<div class="row" style="justify-content:space-between"><button class="btn ghost sm" id="rEdit">← 修改条件</button><span class="mini">${esc(party)} · ${f.resident === 'my' ? 'MyKad' : '外国游客'}</span></div>
+  <div class="card sum" style="margin-top:12px">
+    <h3>${pl.days.length} 天 · ${esc(f.fixed ? f.routeName : regs.map(k => R[k].name).join(' → ') || '行程')}</h3>
+    <div class="chain"><span>从 <b>${esc(f.start.name)}</b> 出发</span>${regs.map(k => `<span>→ <b>${esc(R[k].name)}</b></span>`).join('')}${f.roundtrip ? '<span>→ 返回</span>' : ''}</div>
+    <div class="stats">
+      <div class="stat"><b>${tot.stops}</b><small>个景点</small></div>
+      <div class="stat"><b>${tot.approx ? '约 ' : ''}${rm(tot.rmSum)}</b><small>门票合计${tot.unknown ? `（另有 ${tot.unknown} 个未定价）` : ''}</small></div>
+      <div class="stat"><b>${Math.round(tot.drive)} 公里</b><small>${f.mode === 'car' ? '开车' : '陆路'}${tot.flights ? ` · ${tot.flights} 段飞机` : ''}${tot.ferries ? ` · ${tot.ferries} 段渡轮` : ''}</small></div>
+    </div>
+  </div>
+  <div class="map" id="planMap" style="margin-top:12px"></div>
+  <div class="stack" id="daysBox" style="margin-top:12px"></div>
+  <div class="acts" style="margin-top:16px"><button class="btn" id="rSave">保存攻略</button><button class="btn ghost" id="rShare">分享文字版</button></div>
+  <p class="mini" style="margin-top:12px">车程按道路距离估算，实际以导航为准；门票为 ${esc(f.party.a)} 大${f.party.c ? ' ' + f.party.c + ' 小' : ''} 的合计，外币按 1 ${'SGD'} ≈ RM${(FX.SGD || 0).toFixed(2)}、100 THB ≈ RM${((FX.THB || 0) * 100).toFixed(2)} 换算。</p>`;
+  $('rEdit').onclick = () => { CUR_PLAN = null; renderPlanForm(); window.scrollTo(0, 0); };
+  $('rSave').onclick = () => {
+    const list = store.get('plans', []);
+    list.unshift(Object.assign({id: 'p' + Date.now(), title: p.querySelector('h3').textContent}, serialize(pl)));
+    store.set('plans', list.slice(0, 30));
+    toast('已保存到「我的」');
+  };
+  $('rShare').onclick = () => shareText(planText(pl));
+  renderDays();
+  drawPlanMap(pl);
+  loadWeather(pl);
+}
+function renderDays() {
+  const pl = CUR_PLAN, f = pl.input;
+  $('daysBox').innerHTML = pl.days.map((d, di) => {
+    const r = d.region ? R[d.region] : null;
+    const items = d.items.map((it, ii) => {
+      if (it.type === 'leg') return legHtml(it, f);
+      if (it.type === 'meal') return mealHtml(it, pl, di);
+      const pp = PL[it.id], c = cost(pp, f.party, f.resident);
+      return `<div class="stop"><div class="time">${hhmm(it.start)}<small>${hhmm(it.end)}</small></div>
+        <button class="ph" data-open="${pp.id}">${photo(pp, true)}</button>
+        <div class="sbody"><b data-open="${pp.id}">${esc(pp.name)}</b>
+          <div class="meta"><span class="cat ${pp.cat}">${CAT[pp.cat]}</span><span>约 ${pp.dur} 小时</span><span class="price${c.free ? ' free' : c.unknown ? ' unk' : ''}">${esc(c.text)}</span></div>
+          ${it.warn && it.warn.length ? `<div class="warn">⚠ ${esc(it.warn.join('；'))}</div>` : ''}
+          ${pp.tip ? `<div class="mini" style="margin-top:4px">💡 ${esc(pp.tip)}</div>` : ''}
+        </div><button class="x" data-rm="${di}:${ii}" aria-label="删除">✕</button></div>`;
+    }).join('');
+    const stops = d.items.filter(x => x.type === 'stop').length;
+    const where = (d.regions && d.regions.length ? d.regions : d.region ? [d.region] : []).map(k => R[k].name).join(' → ');
+    const sleep = d.sleep ? R[d.sleep] : null;
+    return `<div class="card day"><div class="dayhd"><div class="dayno"><span>第</span><b>${di + 1}</b></div>
+      <div class="t"><b>${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}${where ? ' · ' + esc(where) : ''}</b><small>${stops ? stops + ' 个景点' : '自由活动 / 交通日'}</small></div>
+      <div class="wx" id="wx${di}"></div></div>
+      <div class="tl">${items || '<div class="mini" style="padding:10px 0">这天没有排景点，可以休息、逛街或自由活动。</div>'}
+      ${sleep && di < pl.days.length - 1 ? `<div class="hotel">🏨 今晚住：${esc(sleep.name)}${sleep.country !== 'MY' ? '（' + COUNTRY[sleep.country] + '）' : ''}</div>` : ''}</div></div>`;
+  }).join('');
+  $('daysBox').onclick = e => {
+    const o = e.target.closest('[data-open]');
+    if (o) { openPlace(o.dataset.open); return; }
+    const x = e.target.closest('[data-rm]');
+    if (x) {
+      const [di, ii] = x.dataset.rm.split(':').map(Number);
+      const day = CUR_PLAN.days[di];
+      const it = day.items[ii];
+      // drop the stop and the short hop that led to it
+      day.items.splice(ii, 1);
+      if (ii > 0 && day.items[ii - 1] && day.items[ii - 1].type === 'leg' && day.items[ii - 1].small) day.items.splice(ii - 1, 1);
+      toast('已删除「' + PL[it.id].name + '」');
+      store.set('last', serialize(CUR_PLAN));
+      renderDays();
+      drawPlanMap(CUR_PLAN);
+    }
+  };
+}
+let planMap = null;
+const DAYC = ['#0E7672', '#E8622F', '#4F5BD5', '#C2307A', '#2F7D3A', '#A86F00', '#0B7E9C', '#B4441B'];
+function drawPlanMap(pl) {
+  if (!window.L) { $('planMap').hidden = true; return; }
+  if (planMap) { planMap.remove(); planMap = null; }
+  const m = L.map('planMap', {zoomControl: false, attributionControl: true});
+  planMap = m;
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {maxZoom: 18, attribution: '© OpenStreetMap © CARTO'}).addTo(m);
+  const pts = [];
+  const st = pl.input.start;
+  L.marker([st.lat, st.lng], {icon: L.divIcon({className: '', html: '<div class="pin" style="background:#1D2A2E">起</div>', iconSize: [26, 26]})}).addTo(m);
+  pts.push([st.lat, st.lng]);
+  let n = 0, prev = [st.lat, st.lng];
+  pl.days.forEach((d, di) => {
+    const col = DAYC[di % DAYC.length];
+    const line = [prev];
+    d.items.forEach(it => {
+      if (it.type !== 'stop') return;
+      const p = PL[it.id];
+      n++;
+      L.marker([p.lat, p.lng], {icon: L.divIcon({className: '', html: `<div class="pin" style="background:${col}">${n}</div>`, iconSize: [26, 26]})})
+        .addTo(m).bindPopup(`<b>${esc(p.name)}</b><br>第 ${di + 1} 天 ${hhmm(it.start)}`);
+      line.push([p.lat, p.lng]); pts.push([p.lat, p.lng]); prev = [p.lat, p.lng];
+    });
+    if (line.length > 1) L.polyline(line, {color: col, weight: 3, opacity: .8, dashArray: '6 6'}).addTo(m);
+  });
+  if (pl.input.roundtrip) L.polyline([prev, [st.lat, st.lng]], {color: '#888', weight: 2, dashArray: '2 6'}).addTo(m);
+  m.fitBounds(L.latLngBounds(pts).pad(0.15));
+}
+const WMO = c => c === 0 ? ['☀️', '晴'] : c <= 2 ? ['🌤', '多云'] : c === 3 ? ['☁️', '阴'] : c <= 48 ? ['🌫', '雾'] : c <= 67 ? ['🌧', '雨'] : c <= 77 ? ['🌨', '雪'] : c <= 82 ? ['🌦', '阵雨'] : ['⛈', '雷雨'];
+function loadWeather(pl) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  pl.days.forEach((d, i) => {
+    const diff = (d.date - today) / 864e5;
+    if (diff < 0 || diff > 15 || !d.region) return;
+    const r = R[d.region], ds = d.date.getFullYear() + '-' + String(d.date.getMonth() + 1).padStart(2, '0') + '-' + String(d.date.getDate()).padStart(2, '0');
+    getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${r.lat}&longitude=${r.lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${ds}&end_date=${ds}`)
+      .then(j => {
+        const dd = j.daily; if (!dd || !dd.time) return;
+        const w = WMO(dd.weather_code[0]);
+        const el = $('wx' + i);
+        if (el) el.innerHTML = `<b>${w[0]} ${Math.round(dd.temperature_2m_max[0])}°</b><br>${w[1]} · 降雨 ${dd.precipitation_probability_max[0] ?? '–'}%`;
+      }).catch(() => {});
+  });
+}
+function planText(pl) {
+  const f = pl.input, lines = [];
+  lines.push(`【${pl.days.length} 天旅游攻略】从 ${f.start.name} 出发`);
+  pl.days.forEach((d, i) => {
+    lines.push('');
+    lines.push(`第 ${i + 1} 天 ${d.date.getMonth() + 1}/${d.date.getDate()} ${WD[d.date.getDay()]}${(d.regions || []).length ? ' · ' + d.regions.map(k => R[k].name).join(' → ') : d.region ? ' · ' + R[d.region].name : ''}`);
+    d.items.forEach(it => {
+      if (it.type === 'stop') { const p = PL[it.id]; lines.push(`  ${hhmm(it.start)} ${p.name}（${cost(p, f.party, f.resident).text}）`); }
+      else if (it.type === 'meal') lines.push(`  ${hhmm(it.start)} ${it.meal === 'lunch' ? '午餐' : '晚餐'}`);
+      else if (it.big) lines.push(`  ${hhmm(it.start)} ${it.segs.map(s => SEG[s.type][1] + (s.to ? '到' + s.to : '')).join(' → ')}，约 ${fmtDur(segMin(it.segs))}`);
+    });
+  });
+  const t = planTotals(pl);
+  lines.push('', `门票合计约 ${rm(t.rmSum)}（${f.party.a} 大 ${f.party.c} 小）`, '— 东南亚旅游攻略 App');
+  return lines.join('\n');
+}
+function shareText(text) {
+  if (A && A.share) { A.share(text); return; }
+  if (navigator.share) { navigator.share({text}).catch(() => {}); return; }
+  navigator.clipboard.writeText(text).then(() => toast('已复制，可以粘贴给朋友')).catch(() => toast('复制失败'));
+}
+
+/* ---------------- routes ---------------- */
+function renderRoutes() {
+  const p = $('pRoutes');
+  p.innerHTML = `<h1>经典线路</h1><p class="lead">挑一条喜欢的，按你的出发地和日期排好时间。</p>
+  <div class="stack">${D.routes.map(r => {
+    const first = PL[r.days[0][0]], reg = R[r.start];
+    const n = r.days.reduce((a, d) => a + d.length, 0);
+    return `<button class="card rc" data-route="${r.id}"><div class="im">${photo(first, true)}</div><div class="bd"><b>${esc(r.name)}</b>
+      <small>${COUNTRY[reg.country]} · ${r.days.length} 天 · ${n} 个景点</small><small>${esc(r.note)}</small></div></button>`;
+  }).join('')}</div>`;
+  p.onclick = e => { const b = e.target.closest('[data-route]'); if (b) openRoute(b.dataset.route); };
+}
+function openRoute(id) {
+  const r = D.routes.find(x => x.id === id);
+  const ov = overlay(r.name);
+  ov.body.innerHTML = `<div class="dtl"><h1>${esc(r.name)}</h1><p class="lead">${esc(r.note)}</p>
+    ${r.days.map((d, i) => `<div class="card" style="margin-bottom:10px"><b>第 ${i + 1} 天</b>
+      ${d.map(id => { const p = PL[id]; return `<div class="stop"><button class="ph" data-open="${id}">${photo(p, true)}</button><div class="sbody"><b data-open="${id}">${esc(p.name)}</b><div class="meta"><span class="cat ${p.cat}">${CAT[p.cat]}</span><span>${esc(R[p.region].name)}</span><span class="price">${esc(cost(p, F.party, F.resident).text)}</span></div></div></div>`; }).join('')}</div>`).join('')}
+    <button class="btn" id="useRoute">按这条线路生成我的攻略</button>
+    <p class="mini" style="margin-top:8px">会从「规划」页填写的出发地（${esc(F.start ? F.start.name : '未填写')}）出发，日期和人数也用那里的设置。</p></div>`;
+  ov.body.onclick = e => { const o = e.target.closest('[data-open]'); if (o) openPlace(o.dataset.open); };
+  $('useRoute').onclick = () => {
+    if (!F.start) { toast('先在「规划」页选出发地'); closeOverlay(); showTab('pPlan'); return; }
+    F.fixed = r.days; F.routeName = r.name;
+    closeOverlay(); showTab('pPlan');
+    CUR_PLAN = plan(Object.assign({}, F, {must: []}));
+    store.set('last', serialize(CUR_PLAN));
+    renderPlanResult();
+    window.scrollTo(0, 0);
+  };
+}
+
+/* ---------------- explore ---------------- */
+let EX = {country: 'all', region: 'all', cat: 'all', q: ''};
+function renderExplore() {
+  const p = $('pExplore');
+  const regs = D.regions.filter(r => EX.country === 'all' || r.country === EX.country);
+  p.innerHTML = `<h1>景点</h1><p class="lead">${D.places.length} 个景点，附实拍照片和门票。</p>
+  <div class="search"><svg viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 0 1 5.2 10.4l4.2 4.2-1.4 1.4-4.2-4.2A6.5 6.5 0 1 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><input id="exQ" placeholder="搜索景点或城市" value="${esc(EX.q)}"></div>
+  <div class="hscroll" style="margin-top:12px">${[['all', '全部'], ...Object.entries(COUNTRY)].map(([k, v]) => `<button class="chip${EX.country === k ? ' on' : ''}" data-c="${k}">${v}</button>`).join('')}</div>
+  <div class="hscroll">${[['all', '全部地区'], ...regs.map(r => [r.key, r.name])].map(([k, v]) => `<button class="chip${EX.region === k ? ' on' : ''}" data-r="${k}">${esc(v)}</button>`).join('')}</div>
+  <div class="hscroll" style="margin-bottom:10px">${[['all', '全部类型'], ...Object.entries(CAT)].map(([k, v]) => `<button class="chip${EX.cat === k ? ' on' : ''}" data-k="${k}">${v}</button>`).join('')}</div>
+  <div class="cards" id="exList"></div>`;
+  listExplore();
+  $('exQ').oninput = e => { EX.q = e.target.value; listExplore(); };
+  p.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { EX.country = b.dataset.c; EX.region = 'all'; renderExplore(); });
+  p.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { EX.region = b.dataset.r; renderExplore(); });
+  p.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { EX.cat = b.dataset.k; renderExplore(); });
+  $('exList').onclick = e => { const b = e.target.closest('[data-open]'); if (b) openPlace(b.dataset.open); };
+}
+function listExplore() {
+  const q = EX.q.trim().toLowerCase();
+  const list = D.places.filter(p => (EX.country === 'all' || R[p.region].country === EX.country) && (EX.region === 'all' || p.region === EX.region)
+    && (EX.cat === 'all' || p.cat === EX.cat) && (!q || (p.name + p.en + R[p.region].name).toLowerCase().includes(q)))
+    .sort((a, b) => b.rank - a.rank);
+  $('exList').innerHTML = list.length ? list.map(p => {
+    const c = cost(p, {a: 1, c: 0}, F.resident);
+    return `<button class="pc" data-open="${p.id}"><div class="im">${photo(p, true)}<span class="cat ${p.cat}">${CAT[p.cat]}</span></div>
+      <div class="bd"><b>${esc(p.name)}</b><small><span>${esc(R[p.region].name)}</span><span class="price${c.free ? ' free' : c.unknown ? ' unk' : ''}">${esc(c.free ? '免费' : c.unknown ? '未定价' : (c.approx ? '约' : '') + money(c.local, c.cur))}</span></small></div></button>`;
+  }).join('') : '<div class="empty">没有符合的景点</div>';
+}
+
+/* ---------------- place detail ---------------- */
+let OV = [];
+function overlay(title) {
+  const el = document.createElement('div');
+  el.className = 'ov';
+  el.innerHTML = `<div class="ovtop"><button class="ib" data-close="1"><svg viewBox="0 0 24 24"><path d="M15.4 5 8.4 12l7 7-1.4 1.4L5.6 12 14 3.6z"/></svg></button><b>${esc(title)}</b><span class="extra"></span></div><div class="body"></div>`;
+  document.body.appendChild(el);
+  el.querySelector('[data-close]').onclick = closeOverlay;
+  const o = {el, body: el.querySelector('.body'), extra: el.querySelector('.extra')};
+  OV.push(o);
+  return o;
+}
+function closeOverlay() { const o = OV.pop(); if (o) o.el.remove(); return !!o; }
+function priceTable(p) {
+  const pr = p.price;
+  if (!pr) return '<p class="note">暂时没有找到可靠的票价资料，请以现场或官网为准。</p>';
+  if (pr.free) return `<p><b class="price free">免费</b>${pr.note ? `<span class="note"> · ${esc(pr.note)}</span>` : ''}</p>`;
+  const cell = (v, cur) => v == null ? '–' : esc(money(v, cur)) + (cur !== 'MYR' ? `<br><small class="mini">≈${rm(toRM(v, cur))}</small>` : '');
+  const rows = [];
+  if (pr.loc) rows.push(['马来西亚公民 MyKad', pr.loc]);
+  if (pr.intl) rows.push([pr.cur === 'MYR' ? '外国游客' : '外国游客（含马来西亚人）', pr.intl]);
+  return `<table class="pt"><tr><th></th><th>成人${pr.group ? ' / 每船' : ''}</th><th>儿童</th></tr>${rows.map(([n, t]) => `<tr><td>${n}</td><td>${cell(t[0], pr.cur)}</td><td>${cell(t[1], pr.cur)}</td></tr>`).join('')}</table>
+    ${pr.note ? `<p class="note">${esc(pr.note)}</p>` : ''}
+    ${pr.approx ? '<p class="note">⚠ 这是参考价（转售平台、博客或旅行社资料），未能在官网核实。</p>' : ''}
+    <p class="src">价格来源${pr.asof ? '（资料日期 ' + esc(pr.asof) + '）' : ''}：<a href="${esc(pr.src)}">${esc(pr.src.replace(/^https?:\/\//, '').slice(0, 60))}</a></p>`;
+}
+function openPlace(id) {
+  const p = PL[id], r = R[p.region];
+  const ov = overlay(p.name);
+  const favs = store.get('favs', []), must = store.get('must', []);
+  const imgs = [p.img ? {url: p.img, c: p.credit} : null, ...(p.photos || []).map(x => ({url: x.url, c: x}))].filter(Boolean);
+  const credit = c => c ? `图片：${esc(c.artist || '佚名')} · ${esc(c.license || '')} · Wikimedia Commons` : '';
+  ov.extra.innerHTML = `<button class="ib" id="dFav" style="color:${favs.includes(id) ? 'var(--acc2)' : 'inherit'}">${favs.includes(id) ? '♥' : '♡'}</button>`;
+  ov.body.innerHTML = `${imgs.length ? `<div class="gal" id="gal">${imgs.map(x => `<img src="${esc(x.url)}" loading="lazy" alt="" onerror="this.remove()">`).join('')}</div><div class="credit" id="credit">${credit(imgs[0].c)}${imgs.length > 1 ? ` · 左右滑动看更多（共 ${imgs.length} 张）` : ''}</div>` : ''}
+  <div class="dtl">
+    <div class="row" style="gap:8px;flex-wrap:wrap"><span class="cat ${p.cat}">${CAT[p.cat]}</span><span class="mini">${COUNTRY[r.country]} · ${esc(r.name)}</span><span class="stars">${'★'.repeat(p.rank)}${'☆'.repeat(5 - p.rank)}</span></div>
+    <h1>${esc(p.name)}</h1><div class="mini">${esc(p.en)}</div>
+    <p style="margin:12px 0 0">${esc(p.desc)}</p>
+    ${p.tip ? `<div class="tip">💡 ${esc(p.tip)}</div>` : ''}
+    <dl class="facts"><dt>开放时间</dt><dd>${esc(p.hours)}</dd>${p.closed.length ? `<dt>休息日</dt><dd>${p.closed.map(d => WD[d]).join('、')}</dd>` : ''}<dt>建议游玩</dt><dd>约 ${p.dur} 小时${p.slot === 'night' ? '（晚上去）' : p.slot === 'evening' ? '（傍晚去）' : p.slot === 'morning' ? '（早上去）' : p.slot === 'sunrise' ? '（清晨 / 日出）' : ''}</dd></dl>
+    <h2>门票</h2>${priceTable(p)}
+    <div class="acts" style="margin-top:16px">
+      <a class="btn sm" style="text-decoration:none;flex:1" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}">Google 地图</a>
+      <a class="btn sm ghost" style="text-decoration:none;flex:1" href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze 导航</a>
+    </div>
+    <button class="btn ghost" id="dMust" style="margin-top:10px">${must.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）'}</button>
+    <h2>附近景点</h2><div class="cards" id="near"></div>
+  </div>`;
+  const near = D.places.filter(x => x.id !== id && km(x, p) < 30).sort((a, b) => km(a, p) - km(b, p)).slice(0, 4);
+  ov.body.querySelector('#near').innerHTML = near.length ? near.map(x => `<button class="pc" data-open="${x.id}"><div class="im">${photo(x, true)}</div><div class="bd"><b>${esc(x.name)}</b><small><span>${Math.round(km(x, p) * 10) / 10} 公里</span></small></div></button>`).join('') : '<div class="mini">附近 30 公里内没有收录其他景点</div>';
+  ov.body.querySelector('#near').onclick = e => { const b = e.target.closest('[data-open]'); if (b) openPlace(b.dataset.open); };
+  const gal = ov.body.querySelector('#gal');
+  if (gal) gal.onscroll = () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); const c = imgs[i]; if (c) ov.body.querySelector('#credit').innerHTML = credit(c.c) + ` · ${i + 1}/${imgs.length}`; };
+  ov.extra.querySelector('#dFav').onclick = e => {
+    const f = store.get('favs', []); toggleIn(f, id); store.set('favs', f);
+    e.currentTarget.textContent = f.includes(id) ? '♥' : '♡'; e.currentTarget.style.color = f.includes(id) ? 'var(--acc2)' : 'inherit';
+    toast(f.includes(id) ? '已收藏' : '已取消收藏');
+  };
+  ov.body.querySelector('#dMust').onclick = e => {
+    const m = store.get('must', []); toggleIn(m, id); store.set('must', m); F.must = m;
+    e.currentTarget.textContent = m.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）';
+    if (m.includes(id) && !F.countries.includes(r.country)) { F.countries.push(r.country); saveForm(); }
+    toast(m.includes(id) ? '已加入必去清单' : '已移除');
+  };
+}
+
+/* ---------------- mine ---------------- */
+function renderMine() {
+  const p = $('pMine');
+  const plans = store.get('plans', []), favs = store.get('favs', []).filter(id => PL[id]), must = store.get('must', []).filter(id => PL[id]);
+  const mini = ids => ids.length ? `<div class="cards">${ids.map(id => { const x = PL[id]; return `<button class="pc" data-open="${id}"><div class="im">${photo(x, true)}</div><div class="bd"><b>${esc(x.name)}</b><small><span>${esc(R[x.region].name)}</span></small></div></button>`; }).join('')}</div>` : '<div class="mini">还没有</div>';
+  const fxLine = c => `1 ${c} ≈ RM${(FX[c] || 0).toFixed(c === 'IDR' ? 6 : 4)}`;
+  p.innerHTML = `<h1>我的</h1>
+  <h2>保存的攻略</h2>${plans.length ? `<div class="stack">${plans.map(x => `<div class="card row"><div style="flex:1;min-width:0"><b>${esc(x.title)}</b><div class="mini">${esc(x.input.start.name)} 出发 · ${new Date(x.days[0].date).toLocaleDateString('zh-CN')}</div></div><button class="btn sm" data-plan="${x.id}">打开</button><button class="x" data-del="${x.id}">✕</button></div>`).join('')}</div>` : '<div class="mini">生成攻略后点「保存攻略」就会出现在这里</div>'}
+  <h2>必去清单</h2>${mini(must)}
+  <h2>收藏的景点</h2>${mini(favs)}
+  <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(FX.src || '')}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，天气来自 Open-Meteo，地图 © OpenStreetMap · CARTO。<br>数据版本：${esc(D.built)}</div>`;
+  p.onclick = e => {
+    const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
+    const pl = e.target.closest('[data-plan]');
+    if (pl) { const x = store.get('plans', []).find(y => y.id === pl.dataset.plan); if (x) { CUR_PLAN = deserialize(x); showTab('pPlan'); renderPlanResult(); window.scrollTo(0, 0); } return; }
+    const d = e.target.closest('[data-del]');
+    if (d) { store.set('plans', store.get('plans', []).filter(y => y.id !== d.dataset.del)); renderMine(); return; }
+    if (e.target.id === 'fxNow') refreshFx(true);
+  };
+}
+
+/* ---------------- tabs & back ---------------- */
+function showTab(id) {
+  ['pPlan', 'pRoutes', 'pExplore', 'pMine'].forEach(k => $(k).hidden = k !== id);
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.p === id));
+  if (id === 'pRoutes') renderRoutes();
+  if (id === 'pExplore') renderExplore();
+  if (id === 'pMine') renderMine();
+  if (id === 'pPlan' && !CUR_PLAN) renderPlanForm();
+  if (id === 'pPlan' && CUR_PLAN && planMap) setTimeout(() => planMap.invalidateSize(), 50);
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { while (OV.length) closeOverlay(); showTab(b.dataset.p); });
+window.onAndroidBack = () => {
+  if (closeOverlay()) return true;
+  if ($('pPlan').hidden) { showTab('pPlan'); return true; }
+  if (CUR_PLAN) { CUR_PLAN = null; renderPlanForm(); return true; }
+  return false;
+};
+
+/* ---------------- start ---------------- */
+(function start() {
+  const last = store.get('last', null);
+  renderPlanForm();
+  if (last && last.days && last.days.length) { try { CUR_PLAN = deserialize(last); renderPlanResult(); } catch (e) { CUR_PLAN = null; renderPlanForm(); } }
+  refreshFx(false);
+  const demo = A && A.demo ? A.demo() : decodeURIComponent((location.hash || '').slice(1));
+  if (demo) runDemo(demo);
+})();
+// used by automatic tests: "plan:<town>:<days>", "tab:<id>", "place:<id>", "route:<id>"
+function runDemo(d) {
+  const [k, a, b] = d.split(':');
+  if (k === 'plan') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.days = +b || 3; F.fixed = null; renderPlanForm(); go(); } }
+  if (k === 'tab') { while (OV.length) closeOverlay(); showTab(a); }
+  if (k === 'place') openPlace(a);
+  if (k === 'route') { showTab('pRoutes'); openRoute(a); }
+  if (k === 'locate') { while (OV.length) closeOverlay(); CUR_PLAN = null; showTab('pPlan'); renderPlanForm(); locate(); }
+  if (k === 'go') { while (OV.length) closeOverlay(); if (F.start) { F.days = +a || F.days; F.fixed = null; go(); } }
+  if (k === 'scroll') window.scrollTo(0, +a || 0);
+}
+window.runDemo = runDemo;
+if (!A && location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
