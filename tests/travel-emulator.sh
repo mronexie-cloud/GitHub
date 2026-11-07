@@ -108,6 +108,35 @@ sleep 2
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "addplace:sunwaylagoon"
 sleep 4
 shot 28-add-place
+# v1.4: public transport from Transitous (navigation page from KL Sentral, and a leg of a public-transport plan)
+adb emu geo fix 101.6869 3.1340
+sleep 2
+adb emu geo fix 101.6870 3.1341
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "navt:petronas"
+sleep 15
+shot 30-nav-transit
+adb shell input swipe 540 1700 540 700 400
+sleep 2
+shot 31-nav-transit-list
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "planpub:吉隆坡:2"
+sleep 12
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "transit"
+sleep 12
+shot 32-plan-transit
+adb logcat -d -s Travel:* | grep -i transit > $OUT/transit-log.txt
+echo "transit answers: $(grep -c 'transit ' $OUT/transit-log.txt)" >> $OUT/results.txt
+# v1.5: the place in Google Maps (rating, reviews, photos)
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "place:jonker"
+sleep 5
+adb shell input swipe 540 1700 540 900 400
+sleep 2
+shot 33-place-google-button
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "gmaps:petronas"
+sleep 10
+shot 34-google-maps
+adb logcat -d -s ActivityTaskManager:I | grep -iE "google|maps|chrome" | tail -5 > $OUT/gmaps-log.txt
+adb shell input keyevent KEYCODE_BACK
+sleep 2
 adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
 echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"

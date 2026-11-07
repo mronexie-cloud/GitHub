@@ -194,6 +194,25 @@ table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 .costs small{display:block;color:var(--sub);font-size:12px;font-weight:400}
 .stat.tap{text-align:left;cursor:pointer}
 .stat.tap small::after{content:' ›'}
+/* Google Maps place button */
+.gmb{margin-top:10px;width:100%;text-decoration:none;height:44px;font-size:14.5px}
+.gmb b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:11px;background:#4285F4;color:#fff;font-size:13px;font-weight:800}
+/* public transport routes */
+.leg .nav a.trbtn{background:var(--accSoft)!important;color:var(--acc)!important;border-color:var(--accSoft)!important;font-weight:700}
+.trc{background:var(--soft);border-radius:12px;padding:10px 12px;margin-top:8px;cursor:pointer}
+.trc.sel{box-shadow:0 0 0 2px var(--acc)}
+.trh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.trh b{font-size:16px;font-variant-numeric:tabular-nums}
+.trh span{font-size:12.5px;color:var(--sub)}
+.trs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
+.trs i{font-style:normal;color:var(--faint);font-size:12px}
+.tl2{font-size:12px;font-weight:700;padding:2px 7px;border-radius:7px;background:var(--acc);color:var(--accInk);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tw{font-size:12px;color:var(--sub)}
+.trl{list-style:none;margin:8px 0 0;padding:0;display:none}
+.trc.open .trl{display:block}
+.trl li{display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.55}
+.trl li i{font-style:normal;width:22px;flex:none;text-align:center}
+.trl li small{display:block;color:var(--sub);font-size:11.5px}
 /* food, navigation, Grab */
 .days7{display:flex;gap:3px;margin-top:6px}
 .days7 i{font-style:normal;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11.5px;background:var(--soft);color:var(--faint);text-decoration:line-through}
@@ -221,6 +240,7 @@ table.eat{width:100%;border-collapse:collapse;font-size:14px}
 .nextbar small{display:block;font-weight:500;opacity:.9}
 .me{width:18px;height:18px;border-radius:9px;background:#1A73E8;border:3px solid #fff;box-shadow:0 0 0 6px rgba(26,115,232,.25)}
 .navsum b{font-size:20px}
+.navsum .trc b{font-size:inherit}.navsum .trh b{font-size:16px}
 .spot{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
 .spot .wd{width:42px;font-weight:700;color:var(--acc)}
 .spot .nm{flex:1;min-width:0}
@@ -1000,18 +1020,24 @@ const deserialize = o => ({input: o.input, made: o.made, days: o.days.map(d => (
 
 /* ---------------- plan result ---------------- */
 const SEG = {drive: ['🚗', '开车'], bus: ['🚌', '长途巴士 / 火车'], grab: ['🚕', 'Grab / 地铁'], walk: ['🚶', '步行'], ferry: ['⛴', '渡轮'], flight: ['✈️', '飞机']};
-function navLinks(a, b, mode, name, grab) {
+function navLinks(a, b, mode, name, grab, when) {
   const g = `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}&travelmode=${mode === 'public' ? 'transit' : 'driving'}`;
   const w = `https://waze.com/ul?ll=${b.lat},${b.lng}&navigate=yes`;
   const gb = grab ? `<a class="grab" data-grab="${b.lat},${b.lng}" data-name="${esc(name || '')}" data-from="${a.lat},${a.lng}">Grab</a>` : '';
-  return `<span class="nav">${mode === 'public' ? gb : ''}<a href="${g}">Google 地图</a>${mode === 'public' ? '' : `<a href="${w}">Waze</a>${gb}`}</span>`;
+  // public transport: the real lines and times for this leg (Transitous)
+  const tr = mode === 'public' && when && km(a, b) > 0.8 ? `<a class="trbtn" data-transit="${a.lat},${a.lng},${b.lat},${b.lng},${when}" data-name="${esc(name || '')}">🚇 公交</a>` : '';
+  return `<span class="nav">${mode === 'public' ? tr + gb : ''}<a href="${g}">Google 地图</a>${mode === 'public' ? '' : `<a href="${w}">Waze</a>${gb}`}</span>`;
+}
+/** when a leg of the plan starts (ms), in the local time of where it starts */
+function legWhen(it, date) {
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - tzAt(it.fromPt)[1] * 3600e3 + it.start * 60e3;
 }
 function legHtml(it, f, date) {
   const total = segMin(it.segs), kms = segKm(it.segs);
   if (!it.big) {
     const s = it.segs[0];
     const grab = s.type === 'grab' || (s.type === 'drive' && kms < 200);
-    return `<div class="leg">${SEG[s.type][0]} ${SEG[s.type][1]}约 ${fmtDur(total)}${kms >= 1 ? ' · ' + kms + ' 公里' : ''}${s.type === 'walk' || (total < 15 && s.type !== 'grab') ? '' : navLinks(it.fromPt, it.toPt, f.mode, it.toPt.name, grab)}</div>`;
+    return `<div class="leg">${SEG[s.type][0]} ${SEG[s.type][1]}约 ${fmtDur(total)}${kms >= 1 ? ' · ' + kms + ' 公里' : ''}${s.type === 'walk' || (total < 15 && s.type !== 'grab') ? '' : navLinks(it.fromPt, it.toPt, f.mode, it.toPt.name, grab, date ? legWhen(it, date) : 0)}</div>`;
   }
   const parts = it.segs.map(s => `${SEG[s.type][0]} ${s.type === 'flight' ? `飞往 ${esc(s.to)}（航程约 ${fmtDur(s.air)}）`
     : s.type === 'ferry' && s.route ? `${s.dep != null ? '<b>' + hhmm(s.dep) + '</b> 开船' : '渡轮'}到 ${esc(s.to)}（船程约 ${fmtDur(FR[s.route].mins)}）`
@@ -1032,7 +1058,7 @@ function legHtml(it, f, date) {
   if (fc !== tc && !it.segs.some(s => s.type === 'flight')) { const k = [fc, tc].sort().join('-').replace('SG-MY', 'MY-SG').replace('TH-MY', 'MY-TH'); if (D.notes[k]) notes.push(D.notes[k]); }
   if (it.back && it.start >= 1200) notes.push('出发太晚了，可以多住一晚，第二天早上再回去。');
   const roadOnly = it.segs.every(s => s.type === 'drive' || s.type === 'bus' || s.type === 'grab');
-  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode, it.to, roadOnly && kms < 200)}${warns.map(n => `<span class="note warn">⚠ ${esc(n)}</span>`).join('')}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}${ferryBtn ? `<span class="btnrow" style="flex-basis:100%;margin:2px 0 0">${ferryBtn}</span>` : ''}</div>`;
+  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode, it.to, roadOnly && kms < 200, roadOnly && date ? legWhen(it, date) : 0)}${warns.map(n => `<span class="note warn">⚠ ${esc(n)}</span>`).join('')}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}${ferryBtn ? `<span class="btnrow" style="flex-basis:100%;margin:2px 0 0">${ferryBtn}</span>` : ''}</div>`;
 }
 function mealHtml(it, pl, di) {
   // nearby food spots that are open that day and suit the meal, not already in the plan
@@ -1141,6 +1167,8 @@ function renderDays() {
     if (fb) { openFerry(fb.dataset.ferry, fb.dataset.day ? new Date(+fb.dataset.day) : new Date()); return; }
     const dn = e.target.closest('[data-daynav]');
     if (dn) { openDayNav(+dn.dataset.daynav); return; }
+    const tb = e.target.closest('[data-transit]');
+    if (tb) { const v = tb.dataset.transit.split(',').map(Number); transitSheet({lat: v[0], lng: v[1]}, {lat: v[2], lng: v[3]}, v[4], '坐公交 / 地铁去 ' + (tb.dataset.name || '')); return; }
     const o = e.target.closest('[data-open]');
     if (o) { openPlace(o.dataset.open); return; }
     const ed = e.target.closest('[data-edit]');
@@ -1444,9 +1472,7 @@ function openCost(cur) {
     每人每餐：大马 RM15、新加坡 S$10、泰国 ฿120、印尼 Rp50,000（小贩中心、小吃店的价钱），小孩按大人算。外币按「我的」里的汇率换算。</p>`);
   b.onclick = e => {
     const k = e.target.closest('[data-cur]');
-    if (k) { openCost(k.dataset.cur); return; }
-    const a = e.target.closest('a[href]');
-    if (a && A) { e.preventDefault(); openUrl(a.href); }
+    if (k) openCost(k.dataset.cur);
   };
 }
 
@@ -1474,7 +1500,7 @@ function calEvents(pl) {
       pt = p; title = p.name;
       desc.push(`门票：${p.cat === 'food' && c.free ? '不用门票' : c.text}`, `开放：${p.hours}`);
       if (p.tip) desc.push(p.tip);
-      desc.push(`地图：https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`);
+      desc.push(`谷歌地图：${gmapsPlace(p)}`);
     } else if (it.type === 'leg' && (it.big || it.back)) {
       pt = it.fromPt;
       title = `${it.back ? '返程' : '前往'} ${it.to || ''}（${it.segs.map(s => SEG[s.type][1]).join(' → ')}）`;
@@ -1645,7 +1671,8 @@ function openPlace(id) {
       <button class="btn sm" style="flex:1" data-nav="${p.id}">🧭 路线导航</button>
       <button class="btn sm grab" style="flex:1" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">🚕 叫 Grab</button>
     </div>
-    <div class="btnrow"><a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}">Google 地图</a><a href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze</a></div>
+    <a class="btn ghost sm gmb" href="${gmapsPlace(p)}"><b>G</b> 在谷歌地图看评分、评论、照片和营业时间</a>
+    <div class="btnrow"><a href="${gmapsPlace(p)}">Google 地图</a><a href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze</a></div>
     ${CUR_PLAN ? (stopDay(id) >= 0 ? `<div class="tip" style="margin-top:12px">📅 已排在当前行程的第 ${stopDay(id) + 1} 天</div>` : `<button class="btn" id="dAdd" style="margin-top:12px">＋ 加入当前行程</button>`) : ''}
     <button class="btn ghost" id="dMust" style="margin-top:10px">${must.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）'}</button>
     <h2>附近景点</h2><div class="cards" id="near"></div>
@@ -1705,6 +1732,18 @@ function sheet(html) {
   return b;
 }
 function closeSheet() { if (!SHEET) return false; SHEET.s.remove(); SHEET.b.remove(); SHEET = null; return true; }
+
+/* ---------------- Google Maps place page ----------------
+   Opens the place itself in Google Maps (its rating, reviews, photos and opening hours) by searching its
+   English name, town and country. Nothing from Google is stored in the app. */
+const CTRY_EN = {MY: 'Malaysia', SG: 'Singapore', TH: 'Thailand', ID: 'Indonesia'};
+function gmapsPlace(p) {
+  const t = nearestTown(p);
+  const town = t.t && t.d < 40 ? t.t.name.replace(/^[^A-Za-z]*/, '').replace(/\s*\(.*\)$/, '') : '';
+  const parts = [p.en];
+  for (const x of [town, CTRY_EN[R[p.region].country]]) if (x && !parts.some(y => y.toLowerCase().includes(x.toLowerCase()))) parts.push(x);
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(parts.join(', '));
+}
 
 /* ---------------- Grab ---------------- */
 // The Grab app opens on its booking screen with the drop-off (and pick-up, when given) already filled in.
@@ -1768,6 +1807,79 @@ function stopWatch() {
   if (A && A.watch) A.watch(false);
   else if (WATCH.id != null && navigator.geolocation) navigator.geolocation.clearWatch(WATCH.id);
   WATCH = null;
+}
+
+/* ---------------- public transport (Transitous) ----------------
+   Transitous (transitous.org) is a free, volunteer-run public transport router over open timetables:
+   Kuala Lumpur rail and buses, Penang and Kuantan buses, KTMB trains, Singapore (LTA), Jakarta (Transjakarta, KRL)
+   and some of Thailand. Asked only when the person opens a transit route, and kept for 10 minutes. */
+const TRANSIT_API = 'https://api.transitous.org/api/v6/plan';
+const TRANSIT_SRC = 'https://transitous.org/sources/';
+const TCACHE = {};
+const TMODE = m => /WALK/.test(m) ? ['🚶', '步行'] : /SUBWAY|METRO/.test(m) ? ['🚇', '地铁'] : /TRAM/.test(m) ? ['🚊', '轻轨'] : /FERRY/.test(m) ? ['⛴', '渡轮']
+  : /RAIL|SUBURBAN|LONG_DISTANCE/.test(m) ? ['🚆', '火车'] : /COACH/.test(m) ? ['🚌', '长途巴士'] : /BUS/.test(m) ? ['🚌', '巴士'] : /AIR/.test(m) ? ['✈️', '飞机'] : ['🚍', '公交'];
+/** local clock time of an ISO time at a place */
+const tClock = (iso, pt) => { const ms = Date.parse(iso); if (!ms) return ''; return hhmm(((ms / 60000 + tzAt(pt)[1] * 60) % 1440 + 1440) % 1440); };
+function decodePoly(str, prec) {
+  const f = Math.pow(10, prec || 6), out = [];
+  let i = 0, lat = 0, lng = 0;
+  const next = () => { let b, sh = 0, r = 0; do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32 && i < str.length); return (r & 1) ? ~(r >> 1) : (r >> 1); };
+  while (i < str.length) { lat += next(); lng += next(); out.push([lat / f, lng / f]); }
+  return out;
+}
+const tName = pl => { const n = (pl && pl.name) || ''; return n === 'START' ? '出发地' : n === 'END' ? '目的地' : n; };
+/** routes by public transport leaving around "when" (Date); [] when Transitous has no timetable there */
+function transitPlan(from, to, when) {
+  const q = `fromPlace=${from.lat.toFixed(6)},${from.lng.toFixed(6)}&toPlace=${to.lat.toFixed(6)},${to.lng.toFixed(6)}&time=${encodeURIComponent(new Date(when).toISOString())}&numItineraries=5&directModes=WALK`;
+  const hit = TCACHE[q];
+  if (hit && Date.now() - hit.t < 600e3) return Promise.resolve(hit.v);
+  return getJSON(TRANSIT_API + '?' + q).then(j => {
+    const v = (j.itineraries || []).filter(it => it.legs && it.legs.some(l => !/WALK/.test(l.mode || ''))).map(it => ({
+      start: it.startTime, end: it.endTime, min: Math.round((Date.parse(it.endTime) - Date.parse(it.startTime)) / 60000), transfers: it.transfers || 0,
+      legs: it.legs.map(l => ({mode: (l.mode || 'WALK').toUpperCase(), line: l.displayName || l.routeShortName || '', head: l.headsign || '', agency: l.agencyName || '',
+        color: /^[0-9a-f]{6}$/i.test(l.routeColor || '') ? '#' + l.routeColor : '', text: /^[0-9a-f]{6}$/i.test(l.routeTextColor || '') ? '#' + l.routeTextColor : '#fff',
+        from: tName(l.from), to: tName(l.to), dep: l.from && (l.from.departure || l.from.scheduledDeparture), arr: l.to && (l.to.arrival || l.to.scheduledArrival),
+        min: Math.round((l.duration || 0) / 60), m: Math.round(l.distance || 0), stops: Array.isArray(l.intermediateStops) ? l.intermediateStops.length : 0,
+        geo: l.legGeometry && l.legGeometry.points ? decodePoly(l.legGeometry.points, l.legGeometry.precision) : null}))
+    })).sort((a, b) => Date.parse(a.end) - Date.parse(b.end)).slice(0, 4);
+    TCACHE[q] = {t: Date.now(), v};
+    if (A && A.log) A.log(`transit ${(j.itineraries || []).length} → ${v.length}: ` + v.map(x => x.legs.map(l => l.mode + ':' + l.line).join('+')).join(' | '));
+    return v;
+  });
+}
+const lineChip = l => /WALK/.test(l.mode) ? `<span class="tw">🚶${l.min ? l.min + '分' : ''}</span>`
+  : `<span class="tl2" style="${l.color ? `background:${l.color};color:${l.text}` : ''}">${TMODE(l.mode)[0]} ${esc(l.line || TMODE(l.mode)[1])}</span>`;
+function transitCard(it, pt, open) {
+  const legs = it.legs.filter(l => !/WALK/.test(l.mode) || l.min >= 1);
+  return `<div class="trc${open ? ' open' : ''}">
+    <div class="trh"><b>${tClock(it.start, pt)} → ${tClock(it.end, pt)}</b><span>${fmtDur(it.min)}${it.transfers ? ` · 换乘 ${it.transfers} 次` : ' · 不用换乘'}</span></div>
+    <div class="trs">${legs.map(lineChip).join('<i>›</i>')}</div>
+    <ol class="trl">${legs.map(l => /WALK/.test(l.mode)
+      ? `<li><i>🚶</i><span>步行 ${l.m >= 50 ? fmtM(l.m) + ' · ' : ''}约 ${Math.max(1, l.min)} 分钟${l.to ? '，到 ' + esc(l.to) : ''}</span></li>`
+      : `<li><i>${TMODE(l.mode)[0]}</i><span><b>${tClock(l.dep, pt)}</b> 在 <b>${esc(l.from)}</b> 上车：${esc(l.line || TMODE(l.mode)[1])}${l.head ? `（往 ${esc(l.head)}）` : ''}${l.stops ? ` · 坐 ${l.stops + 1} 站` : ''}<br><b>${tClock(l.arr, pt)}</b> 在 <b>${esc(l.to)}</b> 下车${l.agency ? `<small>${esc(l.agency)}</small>` : ''}</span></li>`).join('')}</ol></div>`;
+}
+const transitCredit = () => `<p class="mini" style="margin-top:8px">公交时刻来自 <a href="${TRANSIT_SRC}">Transitous</a>（各地公开时刻表，志愿者维护），实际以车站公告为准。</p>`;
+/** a sheet with public transport for one leg of the plan, at the planned time */
+function transitSheet(from, to, when, title) {
+  const pt = from;
+  const b = sheet(`<h3 style="margin:0 0 2px">${esc(title || '坐公交 / 地铁')}</h3><div class="mini">${esc(new Date(when).getMonth() + 1 + '月' + new Date(when).getDate() + '日')} ${tClock(new Date(when).toISOString(), pt)} 左右出发</div>
+    <div id="trBox" style="margin-top:10px"><div class="row"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在查公交和地铁…</div></div>`);
+  const box = b.querySelector('#trBox');
+  const g = `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}&travelmode=transit`;
+  const none = msg => { box.innerHTML = `<div class="note" style="margin-top:0">${msg}</div><div class="btnrow"><a href="${g}">用 Google 地图查公交</a></div>`; };
+  const show = (its, note) => {
+    box.innerHTML = (note ? `<div class="note warn" style="margin:0 0 8px">${note}</div>` : '') + its.map((it, i) => transitCard(it, pt, i === 0)).join('') + transitCredit() + `<div class="btnrow"><a href="${g}">在 Google 地图里看</a></div>`;
+    box.onclick = e => { const c = e.target.closest('.trc'); if (c && !e.target.closest('a')) c.classList.toggle('open'); };
+  };
+  transitPlan(from, to, when).then(its => {
+    if (its.length) { show(its); return; }
+    // that day's timetable may not be out yet: look at the same time today (or tomorrow)
+    const soon = new Date(); soon.setHours(new Date(when).getHours(), new Date(when).getMinutes(), 0, 0);
+    if (soon < new Date()) soon.setDate(soon.getDate() + 1);
+    if (Math.abs(soon - when) < 864e5) { none('这一段查不到公交班次：这一带可能没有公开的时刻表，或者走路、坐 Grab 更方便。'); return; }
+    return transitPlan(from, to, soon).then(its2 => its2.length ? show(its2, `出发那天的时刻表还查不到，下面是 ${soon.getMonth() + 1}月${soon.getDate()}日同一时间的班次，供参考。`)
+      : none('这一段查不到公交班次：这一带可能没有公开的时刻表，或者走路、坐 Grab 更方便。'));
+  }).catch(() => none('现在查不到公交（网络不通，或者查询服务忙）。'));
 }
 
 /* ---------------- route navigation ---------------- */
@@ -1867,7 +1979,7 @@ function openNav(dest) {
     st.map = mapIn($q('#nMap'));
     st.map.setView([dest.lat, dest.lng], 14);
     L.marker([dest.lat, dest.lng], {icon: pinIcon('终', '#E8622F')}).addTo(st.map);
-    if (st.last) draw(st.last[0], st.last[1]);
+    if (st.redraw) st.redraw(); else if (st.last) draw(st.last[0], st.last[1]);
     if (WATCH && LASTPOS) follow(LASTPOS);
   }, 240);
 
@@ -1893,7 +2005,7 @@ function openNav(dest) {
   }
   function calc() {
     const seq = ++st.seq;
-    st.route = null; st.cum = null;
+    st.route = null; st.cum = null; st.redraw = null;
     $q('#nSteps').innerHTML = ''; $q('#nNext').innerHTML = '';
     if (!st.from) { $q('#nSum').innerHTML = '<div class="mini">先选出发地。</div>'; return; }
     const from = st.from, d = km(from, dest);
@@ -1908,9 +2020,36 @@ function openNav(dest) {
     }
     if (st.mode === 'transit') {
       const segs = legPlan(from, dest, 'public');
-      $q('#nSum').innerHTML = `<b>约 ${fmtDur(segMin(segs))}</b><span class="mini">（估算）</span><div class="note">公交、地铁和巴士的班次请用 Google 地图查看，会给你具体坐哪一路车。</div>` + links();
+      const est = () => { $q('#nSum').innerHTML = `<b>约 ${fmtDur(segMin(segs))}</b><span class="mini">（估算）</span><div class="note">这一段查不到公交班次（这一带可能没有公开的时刻表）。可以用 Google 地图查，或者坐 Grab。</div>` + links(); bindFollow(); };
       draw([[from.lat, from.lng], [dest.lat, dest.lng]], true);
-      bindFollow();
+      if (d < 0.6) { est(); return; }
+      $q('#nSum').innerHTML = '<div class="row"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在查公交和地铁…</div>';
+      transitPlan(from, dest, Date.now()).then(its => {
+        if (seq !== st.seq) return;
+        if (!its.length) { est(); return; }
+        const pick = i => {
+          const it = its[i];
+          $q('#nSum').innerHTML = `<div class="mini">🚇 公交 / 地铁 · 现在出发</div>${its.map((x, j) => transitCard(x, from, j === i).replace('class="trc', `data-it="${j}" class="trc${j === i ? ' sel' : ''}`)).join('')}${transitCredit()}` + links();
+          $q('#nSum').onclick = e => { const c = e.target.closest('[data-it]'); if (c && !e.target.closest('a,button')) pick(+c.dataset.it); };
+          // the chosen route on the map: rides in their line colour, walks dashed
+          st.redraw = () => {
+            if (!st.map) return;
+            if (st.layer) st.layer.remove();
+            st.layer = L.layerGroup().addTo(st.map);
+            const all = [[from.lat, from.lng]];
+            it.legs.forEach(l => {
+              if (!l.geo || !l.geo.length) return;
+              L.polyline(l.geo, /WALK/.test(l.mode) ? {color: '#666', weight: 4, dashArray: '4 7'} : {color: l.color || '#0E7672', weight: 6, opacity: .9}).addTo(st.layer);
+              all.push(...l.geo);
+            });
+            L.marker([from.lat, from.lng], {icon: pinIcon(from.here ? '我' : '起', '#1D2A2E')}).addTo(st.layer);
+            st.map.fitBounds(L.latLngBounds(all.concat([[dest.lat, dest.lng]])).pad(0.12));
+          };
+          st.redraw();
+          bindFollow();
+        };
+        pick(0);
+      }).catch(err => { if (seq !== st.seq) return; console.warn(err); est(); });
       return;
     }
     if (d < 0.05) { $q('#nSum').innerHTML = '<b>你已经在这里了 🎉</b>'; return; }
@@ -2088,7 +2227,7 @@ function foodCard(p, wd) {
       ${p.closed.length ? days7(p, wd) : ''}
       ${p.eat ? `<div class="dish">🍴 ${p.eat.slice(0, 3).map(e => esc(e.name) + (e.price ? ` <b>${esc(e.price)}</b>` : '')).join(' · ')}</div>` : ''}
       ${p.spots ? `<div class="dish">📍 ${WD[wd]}在：${esc((p.spots.find(x => x.day === wd) || {}).name || '—')}</div>` : ''}
-      <div class="btnrow"><button data-nav="${p.id}">🧭 导航</button><button class="grab" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">Grab</button></div>
+      <div class="btnrow"><button data-nav="${p.id}">🧭 导航</button><button class="grab" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">Grab</button><a href="${gmapsPlace(p)}">⭐ 谷歌评价</a></div>
     </div></div>`;
 }
 function renderFood() {
@@ -2128,7 +2267,7 @@ function renderMine() {
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
   <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.3 · 数据版本：${esc(D.built)}</div>`;
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.5 · 数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');
@@ -2203,6 +2342,11 @@ function runDemo(d) {
     if (k === 'caladd' && A) A.calendar(JSON.stringify({tag: 'plan-' + CUR_PLAN.made, events: calEvents(CUR_PLAN)}));
     if (k === 'calshare' && A) A.shareFile(`trip-${ymd(CUR_PLAN.days[0].date)}.ics`, 'text/calendar', icsText(CUR_PLAN));
   }
+  // public transport (v1.4): navigation by transit, and the transit sheet of the first long-enough leg of a public-transport plan
+  if (k === 'navt') { while (OV.length) closeOverlay(); store.set('navMode', 'transit'); openNavTo(a); }
+  if (k === 'planpub') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.days = +b || 2; F.mode = 'public'; F.fixed = null; renderPlanForm(); go(); } }
+  if (k === 'transit') { const tb = document.querySelector('[data-transit]'); if (tb) { tb.scrollIntoView({block: 'center'}); tb.click(); } }
+  if (k === 'gmaps') openUrl(gmapsPlace(PL[a]));
   if (k === 'addplace') { openPlace(a); if (CUR_PLAN && stopDay(a) < 0) chooseDay(a, -1); }
 }
 window.runDemo = runDemo;
