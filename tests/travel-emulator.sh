@@ -38,6 +38,30 @@ shot 8-explore
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "plan:新山:5"
 sleep 12
 shot 9-plan-jb
+# food tab, navigation from the GPS position (KL) to the Petronas towers, following, Grab
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "tab:pFood"
+sleep 6
+shot 11-food
+adb emu geo fix 101.7120 3.1505
+sleep 2
+adb emu geo fix 101.7121 3.1506
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "nav:petronas"
+sleep 15
+shot 12-nav
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "follow"
+sleep 3
+adb emu geo fix 101.7116 3.1530
+sleep 5
+shot 13-follow
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "place:yaowarat"
+sleep 5
+shot 14-food-place
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "grab:petronas"
+sleep 6
+shot 15-grab
+adb logcat -d -s Travel:* ActivityTaskManager:I > $OUT/grab-log.txt
+adb shell input keyevent KEYCODE_BACK
+sleep 2
 adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
 echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"

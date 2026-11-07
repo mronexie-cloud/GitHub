@@ -179,7 +179,7 @@ def main():
         if d:
             lat, lng = float(d[0]["lat"]), float(d[0]["lon"])
             dist = km(p["lat"], p["lng"], lat, lng)
-            if dist < 15:
+            if dist < 2.5:
                 print("  geo %-14s moved %.2f km  (%s)" % (p["id"], dist, d[0].get("display_name", "")[:60]), flush=True)
                 p["lat"], p["lng"] = round(lat, 5), round(lng, 5)
             else:
@@ -200,9 +200,11 @@ def main():
         chosen, why = None, ""
         skip = P.PHOTO.get(p["id"]) == ""
         if p["id"] in P.PHOTO and not skip:
-            cands = [e for e in commons_search(P.PHOTO[p["id"]]) if good_shape(e) and e["name"] not in taken]
-            if cands:
-                chosen, why = cands[0], "search:" + P.PHOTO[p["id"]]
+            for q in P.PHOTO[p["id"]].split("|"):  # alternatives, best first
+                cands = [e for e in commons_search(q) if good_shape(e) and e["name"] not in taken]
+                if cands:
+                    chosen, why = cands[0], "search:" + q
+                    break
         if skip:
             w = {}
         if not chosen and not skip and name and not SKIP_IMG.search(name) and lead.get(name, {}).get("url"):

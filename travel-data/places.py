@@ -693,7 +693,7 @@ P("newlane", "penang", "新巷小贩中心（Lorong Baru）", "New Lane Hawker S
        ("一般小吃", "", "RM5–10")], src="https://thebackpackingfamily.com/?p=5641", asof="2025-12")
 P("airitamlaksa", "penang", "亚依淡叻沙", "Air Itam Laksa", "", 5.4005, 100.2782, "food", 3, 1,
   "白天（以现场为准）", free(), "极乐寺山脚的老字号亚参叻沙，酸辣鱼汤配粗米粉、黄梨和薄荷叶。", "和极乐寺一起安排最顺路。",
-  geo="Pasar Air Itam, Penang", eat=[("亚参叻沙", "罗望子鱼汤，酸辣开胃", "")], src=PGF, asof="2025-08")
+  eat=[("亚参叻沙", "罗望子鱼汤，酸辣开胃", "")], src=PGF, asof="2025-08")
 P("cendol", "penang", "槟城路驰名潮州煎蕊", "Penang Road Famous Teochew Chendul", "", 5.4172, 100.3305, "food", 3, 0.5,
   "白天（以现场为准）", free(), "1932 年开到现在的街边煎蕊摊，椰浆、椰糖、红豆和斑兰绿条，排队也值得。",
   geo="Lebuh Keng Kwee, George Town", eat=[("煎蕊", "椰糖浆 + 椰浆 + 红豆", ""), ("亚参叻沙", "对面小档", "")], src=PGF, asof="2025-08")
@@ -793,7 +793,7 @@ P("gianyar", "bali", "吉安雅夜市", "Gianyar Night Market", "", -8.5420, 115
   src="https://forevervacation.com/the-vacationer/best-night-markets-in-bali", asof="2026")
 P("sindhu", "bali", "沙努尔 Sindhu 夜市", "Sindhu Night Market, Sanur", "", -8.6835, 115.2620, "food", 3, 1,
   "每天 17:00–22:00", free(), "沙努尔海边小镇的小夜市，适合住在沙努尔的人散步过去吃晚餐。", slot="night",
-  geo="Jalan Danau Tamblingan, Sanur",
+  geo="Sindhu Night Market, Sanur",
   eat=[("巴厘沙爹（Sate Lilit）", "", "Rp15,000–25,000"), ("炒饭 · 炒面", "", "")],
   src="https://forevervacation.com/the-vacationer/best-night-markets-in-bali", asof="2026")
 P("jimbaran", "bali", "金巴兰海滩海鲜晚餐", "Jimbaran Seafood Dinner", "Jimbaran", -8.7780, 115.1650, "food", 4, 2,
@@ -874,26 +874,26 @@ NOTES = {
 # ---------- photo choice: a Commons search used when the article's lead photo is missing or unsuitable
 # (e.g. a map or satellite picture). The build logs which photo each place ends up with.
 PHOTO = {
-    "connaught": "Taman Connaught night market",
-    "newlane": "Lorong Baru hawker Penang",
+    "connaught": "Pasar malam Kuala Lumpur|Pasar malam Cheras|Pasar malam",
+    "newlane": "Char kway teow Penang|Penang hawker food|Char kway teow",
     "airitamlaksa": "Penang asam laksa",
-    "cendol": "Penang Road Teochew Chendul",
+    "cendol": "Cendol Penang|Cendol",
     "lineclear": "Nasi kandar Penang",
     "ipohcoffee": "Ipoh white coffee",
-    "ipohtauge": "Ipoh bean sprout chicken",
+    "ipohtauge": "Tauge ayam|Ipoh bean sprouts|Bean sprout chicken",
     "ricebal": "Chicken rice balls Malacca",
     "pasirpenambang": "Kuala Selangor seafood restaurant",
-    "langkawinight": "Langkawi night market",
+    "langkawinight": "Pasar malam Langkawi|Pasar malam Malaysia|Pasar malam",
     "joddfairs": "Jodd Fairs",
     "greenway": "Hat Yai night market",
     "sundaywalk": "Sunday Walking Street Chiang Mai",
     "saturdaywalk": "Wualai Saturday walking street",
-    "phuketsunday": "Phuket Old Town walking street",
+    "phuketsunday": "Lard Yai|Phuket Sunday market|Phuket Old Town night",
     "krabinight": "Krabi night market",
-    "aonangnight": "Ao Nang night market",
-    "thepprasit": "Pattaya night market",
-    "gianyar": "Gianyar night market",
-    "sindhu": "Sanur night market",
+    "aonangnight": "Ao Nang night market|Ao Nang night|Ao Nang",
+    "thepprasit": "Thepprasit|Pattaya night market food|Thai night market food",
+    "gianyar": "Pasar Gianyar|Gianyar market|Babi guling",
+    "sindhu": "Sanur night market|Sate lilit|Sanur",
     "jimbaran": "Jimbaran seafood",
     "gudeg": "Gudeg Yogyakarta",
     "watmachim": "",  # no reliable photo found: show the icon instead of a wrong picture

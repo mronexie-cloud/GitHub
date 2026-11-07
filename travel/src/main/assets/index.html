@@ -31,7 +31,7 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;overscroll-behavior:none}
 button,input,select{font:inherit;color:inherit}
 button{background:none;border:0;padding:0;cursor:pointer}
-svg{width:20px;height:20px;fill:currentColor;flex:none}
+button svg,.search svg{width:20px;height:20px;fill:currentColor;flex:none}
 a{color:var(--acc)}
 .view{padding:calc(12px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-left)) calc(88px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right));max-width:760px;margin:0 auto}
 h1{font-size:26px;line-height:1.2;margin:6px 0 2px;letter-spacing:.3px;text-wrap:balance}
@@ -166,17 +166,49 @@ table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 .mini{font-size:12px;color:var(--faint)}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--card);border-radius:18px 18px 0 0;padding:14px max(16px,env(safe-area-inset-left)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right));box-shadow:0 -6px 30px rgba(0,0,0,.25);max-height:80vh;overflow:auto}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55}
+/* food, navigation, Grab */
+.days7{display:flex;gap:3px;margin-top:6px}
+.days7 i{font-style:normal;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11.5px;background:var(--soft);color:var(--faint);text-decoration:line-through}
+.days7 i.on{background:var(--accSoft);color:var(--acc);font-weight:700;text-decoration:none}
+.days7 i.today{box-shadow:0 0 0 2px var(--acc2)}
+table.eat{width:100%;border-collapse:collapse;font-size:14px}
+.eat td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.eat td.p{text-align:right;white-space:nowrap;font-weight:700;padding-left:10px}
+.eat small{display:block;color:var(--sub);font-size:12px}
+.fc{display:flex;gap:12px;text-align:left;width:100%}
+.fc .ph{width:84px;height:84px}
+.fc .dish{font-size:12.5px;color:var(--sub);margin-top:5px;line-height:1.5}
+.badge{font-size:11px;font-weight:800;padding:2px 7px;border-radius:8px;background:var(--acc2);color:#fff;white-space:nowrap}
+.btnrow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.btnrow a,.btnrow button{font-size:13px;padding:6px 12px;border-radius:12px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600}
+.grab,.btnrow .grab,.leg .nav a.grab{background:#00B14F!important;color:#fff!important;border-color:#00B14F!important}
+.btn.grab{background:#00B14F;color:#fff}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:flex;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line);font-size:14px;align-items:flex-start}
+.steps li i{font-style:normal;width:24px;text-align:center;font-weight:800;color:var(--acc);flex:none}
+.steps li span{flex:1;min-width:0}
+.steps li small{color:var(--sub);white-space:nowrap}
+.steps li.now{background:var(--accSoft);border-radius:10px}
+.nextbar{position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:4;background:var(--acc);color:var(--accInk);border-radius:14px;padding:10px 14px;margin-top:12px;font-weight:700;box-shadow:var(--shadow)}
+.nextbar small{display:block;font-weight:500;opacity:.9}
+.me{width:18px;height:18px;border-radius:9px;background:#1A73E8;border:3px solid #fff;box-shadow:0 0 0 6px rgba(26,115,232,.25)}
+.navsum b{font-size:20px}
+.spot{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.spot .wd{width:42px;font-weight:700;color:var(--acc)}
+.spot .nm{flex:1;min-width:0}
 </style>
 </head>
 <body>
 <main id="pPlan" class="view"></main>
 <main id="pRoutes" class="view" hidden></main>
 <main id="pExplore" class="view" hidden></main>
+<main id="pFood" class="view" hidden></main>
 <main id="pMine" class="view" hidden></main>
 <nav class="tabs" id="tabs">
   <button data-p="pPlan" class="on"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5.2-7 13-7 13S5 14.2 5 9a7 7 0 0 1 7-7zm0 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>规划</button>
   <button data-p="pRoutes"><svg viewBox="0 0 24 24"><path d="M6 3a3 3 0 0 1 1 5.83V11h7a3 3 0 0 1 3 3v1.17a3 3 0 1 1-2 0V14a1 1 0 0 0-1-1H7v2.17a3 3 0 1 1-2 0V8.83A3 3 0 0 1 6 3z"/></svg>线路</button>
   <button data-p="pExplore"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm3 11 3-4 2.5 3 2-2.5L17 16H7zm2-8.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>景点</button>
+  <button data-p="pFood"><svg viewBox="0 0 24 24"><path d="M2 11h20a10 10 0 0 1-6 9.2V22H8v-1.8A10 10 0 0 1 2 11zM7 2.5h1.6c.3 1.3-.5 2.2-.5 3.6 0 .5.1.9.3 1.4H6.8c-.2-.5-.3-.9-.3-1.4 0-1.4.8-2.3.5-3.6zm4.2 0h1.6c.3 1.3-.5 2.2-.5 3.6 0 .5.1.9.3 1.4H11c-.2-.5-.3-.9-.3-1.4 0-1.4.8-2.3.5-3.6zm4.2 0H17c.3 1.3-.5 2.2-.5 3.6 0 .5.1.9.3 1.4h-1.6c-.2-.5-.3-.9-.3-1.4 0-1.4.8-2.3.5-3.6z"/></svg>美食</button>
   <button data-p="pMine"><svg viewBox="0 0 24 24"><path d="M12 21 10.6 19.7C5.6 15.2 2.5 12.4 2.5 8.9 2.5 6.1 4.7 4 7.4 4c1.6 0 3.1.7 4.1 1.9C12.5 4.7 14 4 15.6 4c2.8 0 4.9 2.1 4.9 4.9 0 3.5-3.1 6.3-8.1 10.8L12 21z"/></svg>我的</button>
 </nav>
 <div class="toast" id="toast" hidden></div>
@@ -395,13 +427,18 @@ function plan(f) {
   const fixed = f.fixed; // curated route: [[ids]]
   const exhausted = new Set(); // areas where nothing more fits into a day
   let stayDay = -1;              // the day we decided to stay put (nothing better within reach)
+  let triedSwitch = -1, wantSwitch = false;   // free afternoon: look at another area once
   const loose = new Set();     // areas where we also take spots outside the chosen interests
   const cand = rk => exhausted.has(rk) ? [] : D.places.filter(p => p.region === rk && !used.has(p.id) && score(p, f) >= (loose.has(rk) ? 0.8 : 3.2));
   const moreHere = rk => !loose.has(rk) && D.places.some(p => p.region === rk && !used.has(p.id));
   const regionValue = (rk, daysAvail) => {
     const ps = cand(rk).sort((a, b) => score(b, f) - score(a, f));
     let h = 0, v = 0;
-    for (const p of ps) { if (h + p.dur > daysAvail * dayHours) break; h += p.dur + 0.5; v += score(p, f); }
+    for (const p of ps) {
+      if (f.must.includes(p.id)) { h += p.dur + 0.5; v += score(p, f); continue; } // must-go places always count
+      if (h + p.dur > daysAvail * dayHours) break;
+      h += p.dur + 0.5; v += score(p, f);
+    }
     return {v, h};
   };
   const returnMin = from => f.roundtrip ? segMin(legPlan(from, start, f.mode)) : 0;
@@ -434,7 +471,7 @@ function plan(f) {
   };
   const meal = (day, kind, at) => {
     const s0 = at == null ? t : at;
-    day.items.push({type: 'meal', meal: kind, start: s0, end: s0 + 60, rk: loc.rk || region});
+    day.items.push({type: 'meal', meal: kind, start: s0, end: s0 + 60, rk: loc.rk || region, at: {lat: loc.lat, lng: loc.lng}, wd: day.date.getDay()});
     if (at == null) t += 60;
     day[kind] = true;
   };
@@ -518,16 +555,24 @@ function plan(f) {
       const daysLeft = f.days - di - (t - dayStart) / (dayEnd - dayStart);
       // choose a region when we have none or it ran out of good places
       const dayNow0 = days[days.length - 1];
-      const daytime = rk => cand(rk).some(p => p.slot !== 'evening' && p.slot !== 'night' || f.must.includes(p.id));
+      const daytime = rk => cand(rk).some(p => ((p.slot !== 'evening' && p.slot !== 'night' && p.cat !== 'food') && (p.dur < 5 || t <= 660) && openOn(p, dayNow0.date)) || f.must.includes(p.id));
+      // only evening spots and meals left here, but other sights nearby: widen the interests before moving on
+      if (region && cand(region).length && !daytime(region) && t < 870 && !dayNow0.ended && !loose.has(region)
+          && D.places.some(p => p.region === region && !used.has(p.id) && p.cat !== 'food' && p.slot !== 'evening' && p.slot !== 'night')) { loose.add(region); continue; }
       // move on when the area is done, or only evening spots are left while most of the day is still ahead
       const hurry = region && !mustIn(region) && mustLeft().length && daysLeft <= needDays() + 0.35;
-      if (!region || hurry || cand(region).length === 0 || (!daytime(region) && t < 870 && !dayNow0.ended && stayDay !== days.length)) {
+      const switching = wantSwitch; wantSwitch = false;
+      if (!region || hurry || switching || cand(region).length === 0 || (!daytime(region) && t < 870 && !dayNow0.ended && stayDay !== days.length)) {
+        // leaving in the middle of the day while spots remain here (only evening ones): just nearby places
+        const nearOnly = switching || (region && !hurry && cand(region).length > 0);
         let best = null, bestEff = -1;
         for (const r of D.regions) {
           if (!countries.has(r.country) || r.key === region) continue;
           const rp = Object.assign({}, r, {rk: r.key});
           const segs = legPlan(loc, rp, f.mode);
           const travelH = segMin(segs) / 60;
+          // filling a free afternoon: only places a short drive away
+          if (nearOnly && (travelH > 2.5 || segs.some(x => x.type === 'flight' || x.type === 'ferry'))) continue;
           const retH = returnMin(rp) / 60;
           const avail = daysLeft - travelH / dayHours - retH / dayHours;
           // not worth it when most of the remaining time would be spent getting there and back
@@ -553,30 +598,46 @@ function plan(f) {
       const dayNow = days[days.length - 1];
       const endToday = (days.length === f.days ? dayEnd - Math.min(returnMin(loc), dayEnd - dayStart - 120) : dayEnd) + 150;
       const full = dayNow.ended || dayNow.items.filter(x => x.type === 'stop').length >= CAP[f.pace];
-      const options = full ? [] : cand(region).filter(p => openOn(p, dayNow.date) || f.must.includes(p.id));
-      let pick = null, pv = -1;
+      const stopsNow = dayNow.items.filter(x => x.type === 'stop');
+      const mealOk = p => {   // food spots are meals: breakfast first thing, lunch around noon, one night market or dinner spot a day
+        if (p.cat !== 'food' || f.must.includes(p.id)) return true;
+        if (p.slot === 'morning') return !stopsNow.length && t <= dayStart + 60;
+        if (p.slot === 'day') return !dayNow.lunch && t <= 840;
+        return !stopsNow.some(x => PL[x.id].cat === 'food' && (PL[x.id].slot === 'night' || PL[x.id].slot === 'evening'));
+      };
+      const options = full ? [] : cand(region).filter(p => (openOn(p, dayNow.date) || f.must.includes(p.id)) && mealOk(p));
+      // every spot that can still fit today, then keep evening and night spots for later while daytime ones fit
+      const feasible = [];
       for (const p of options) {
         const pt = {lat: p.lat, lng: p.lng};
         const tm = segMin(legPlan(loc, Object.assign({rk: p.region}, pt), f.mode));
         let st = t + tm;
-        if (p.slot === 'night') { if (t < 1050 && options.some(o => o.slot !== 'night' && o.slot !== 'evening')) continue; st = Math.max(st, 1170); }
-        if (p.slot === 'evening' && t < 900 && options.some(o => o.slot === 'day' || o.slot === 'morning')) continue;
+        if (p.slot === 'night') st = Math.max(st, 1170);
         if (p.slot === 'sunrise' && (dayNow.items.some(x => x.type !== 'meal') || t > dayStart + 30)) continue;
-        if ((p.slot === 'morning') && t > dayStart + 120 && options.some(o => o.slot === 'day')) continue;
         if (p.dur >= 5 && st > 660 && p.slot !== 'night') continue; // full-day parks and tours start in the morning
+        if (p.cat === 'food' && p.slot === 'day' && !f.must.includes(p.id) && (st < 660 || st > 840)) continue; // lunch spots at lunch time
         let limit = p.slot === 'night' ? endToday + 90 : p.slot === 'evening' ? endToday + 60 : endToday - 150;
         if (p.dur >= 6) limit = Math.max(limit, Math.min(endToday - 90, dayEnd + 60)); // day tours: back by evening
         // a must-go place may run into the evening (and push the trip home later)
         if (st + p.dur * 60 > (f.must.includes(p.id) && p.slot !== 'night' ? Math.max(limit, dayEnd + 60) : limit)) continue;
-        const v = score(p, f) / (1 + tm / 40);
-        if (v > pv) { pv = v; pick = p; }
+        feasible.push({p, v: score(p, f) / (1 + tm / 40)});
       }
+      const isDay = x => x.p.slot === 'day' || x.p.slot === 'morning' || x.p.slot === 'sunrise';
+      let pool = feasible;
+      if (t < 900 && feasible.some(isDay)) pool = feasible.filter(isDay);
+      else if (t < 1050 && feasible.some(x => x.p.slot !== 'night')) pool = feasible.filter(x => x.p.slot !== 'night');
+      // morning spots late in the day only when nothing else fits
+      if (t > dayStart + 120 && pool.some(x => x.p.slot !== 'morning')) pool = pool.filter(x => x.p.slot !== 'morning');
+      let pick = null, pv = -1;
+      for (const x of pool) if (x.v > pv) { pv = x.v; pick = x.p; }
       if (pick) { addStop(pick); continue; }
       // a fresh morning and still nothing fits: this area is done
       if (!dayNow.items.some(x => x.type === 'stop') && t <= dayStart + 180) {
         if (moreHere(region)) loose.add(region); else exhausted.add(region);
         continue;
       }
+      // still early in the day: try another area for the afternoon (once a day)
+      if (t < 900 && triedSwitch !== days.length) { triedSwitch = days.length; wantSwitch = true; continue; }
       // nothing fits today: next day (or finish)
       if (days.length >= f.days) break;
       dayNow.region = dayNow.region || region;
@@ -714,6 +775,7 @@ function geocode(q) {
 function locate() {
   toast('正在定位…');
   const ok = (lat, lng) => {
+    LASTPOS = {lat, lng, t: Date.now()};
     const n = nearestTown({lat, lng});
     pickStart({name: '我的位置' + (n.t && n.d < 40 ? '（' + n.t.name.split(' ')[0] + '附近）' : ''), lat, lng});
     toast('已定位');
@@ -738,16 +800,18 @@ const deserialize = o => ({input: o.input, made: o.made, days: o.days.map(d => (
 
 /* ---------------- plan result ---------------- */
 const SEG = {drive: ['🚗', '开车'], bus: ['🚌', '长途巴士 / 火车'], grab: ['🚕', 'Grab / 地铁'], walk: ['🚶', '步行'], ferry: ['⛴', '渡轮'], flight: ['✈️', '飞机']};
-function navLinks(a, b, mode) {
+function navLinks(a, b, mode, name, grab) {
   const g = `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}&travelmode=${mode === 'public' ? 'transit' : 'driving'}`;
   const w = `https://waze.com/ul?ll=${b.lat},${b.lng}&navigate=yes`;
-  return `<span class="nav"><a href="${g}">Google 地图</a>${mode === 'public' ? '' : `<a href="${w}">Waze</a>`}</span>`;
+  const gb = grab ? `<a class="grab" data-grab="${b.lat},${b.lng}" data-name="${esc(name || '')}" data-from="${a.lat},${a.lng}">Grab</a>` : '';
+  return `<span class="nav">${mode === 'public' ? gb : ''}<a href="${g}">Google 地图</a>${mode === 'public' ? '' : `<a href="${w}">Waze</a>${gb}`}</span>`;
 }
 function legHtml(it, f) {
   const total = segMin(it.segs), kms = segKm(it.segs);
   if (!it.big) {
     const s = it.segs[0];
-    return `<div class="leg">${SEG[s.type][0]} ${SEG[s.type][1]}约 ${fmtDur(total)}${kms >= 1 ? ' · ' + kms + ' 公里' : ''}${s.type === 'walk' || total < 15 ? '' : navLinks(it.fromPt, it.toPt, f.mode)}</div>`;
+    const grab = s.type === 'grab' || (s.type === 'drive' && kms < 200);
+    return `<div class="leg">${SEG[s.type][0]} ${SEG[s.type][1]}约 ${fmtDur(total)}${kms >= 1 ? ' · ' + kms + ' 公里' : ''}${s.type === 'walk' || (total < 15 && s.type !== 'grab') ? '' : navLinks(it.fromPt, it.toPt, f.mode, it.toPt.name, grab)}</div>`;
   }
   const parts = it.segs.map(s => `${SEG[s.type][0]} ${s.type === 'flight' ? `飞往 ${esc(s.to)}（航程约 ${fmtDur(s.air)}）` : `${SEG[s.type][1]}${s.to ? '到 ' + esc(s.to) : ''} 约 ${fmtDur(s.min)}`}`).join('　→　');
   const notes = [];
@@ -756,14 +820,20 @@ function legHtml(it, f) {
   const fc = countryAt(it.fromPt), tc = countryAt(it.toPt);
   if (fc !== tc && !it.segs.some(s => s.type === 'flight')) { const k = [fc, tc].sort().join('-').replace('SG-MY', 'MY-SG').replace('TH-MY', 'MY-TH'); if (D.notes[k]) notes.push(D.notes[k]); }
   if (it.back && it.start >= 1200) notes.push('出发太晚了，可以多住一晚，第二天早上再回去。');
-  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode)}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}</div>`;
+  const roadOnly = it.segs.every(s => s.type === 'drive' || s.type === 'bus' || s.type === 'grab');
+  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode, it.to, roadOnly && kms < 200)}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}</div>`;
 }
 function mealHtml(it, pl, di) {
-  // suggest food spots in the same area that are not already in the plan
+  // nearby food spots that are open that day and suit the meal, not already in the plan
   const inPlan = new Set(); pl.days.forEach(d => d.items.forEach(x => x.type === 'stop' && inPlan.add(x.id)));
-  const near = D.places.filter(p => p.cat === 'food' && p.region === it.rk && !inPlan.has(p.id)).slice(0, 2);
+  const wd = it.wd != null ? it.wd : pl.days[di].date.getDay();
+  const at = it.at || (it.rk ? R[it.rk] : null);
+  const fits = p => it.meal === 'lunch' ? p.slot !== 'night' : p.slot !== 'morning';
+  const near = D.places.filter(p => p.cat === 'food' && !inPlan.has(p.id) && !p.closed.includes(wd) && fits(p) && (at ? km(at, p) < 20 : p.region === it.rk))
+    .sort((a, b) => at ? km(at, a) - km(at, b) : b.rank - a.rank).slice(0, 2);
+  const line = p => `<a data-open="${p.id}">${esc(p.name)}</a>${at ? `<small> ${Math.round(km(at, p) * 10) / 10} 公里</small>` : ''}${p.eat && p.eat[0] ? `<small>（必吃：${esc(p.eat[0].name)}）</small>` : ''}`;
   return `<div class="stop meal"><div class="time">${hhmm(it.start)}</div><div class="ph"><span class="ico">${it.meal === 'lunch' ? '🍜' : '🍲'}</span></div>
-    <div class="sbody"><b>${it.meal === 'lunch' ? '午餐' : '晚餐'}</b><div class="meta"><span>约 1 小时${near.length ? ' · 附近可以去：' : ' · 在附近找吃的'}</span>${near.map(p => `<a data-open="${p.id}">${esc(p.name)}</a>`).join('、')}</div></div></div>`;
+    <div class="sbody"><b>${it.meal === 'lunch' ? '午餐' : '晚餐'}</b><div class="meta"><span>约 1 小时${near.length ? ' · 附近推荐：' : ' · 在附近找吃的'}</span></div>${near.length ? `<div class="mini" style="line-height:1.7">${near.map(line).join('<br>')}</div>` : ''}</div></div>`;
 }
 function countryAt(pt) { const n = nearestRegion(pt); return n.r ? n.r.country : 'MY'; }
 function photo(p, small) {
@@ -828,11 +898,13 @@ function renderDays() {
       if (it.type === 'meal') return mealHtml(it, pl, di);
       if (it.type === 'free') return `<div class="leg">🕒 自由活动约 ${fmtDur(it.end - it.start)}（逛街、喝茶或回酒店休息）</div>`;
       const pp = PL[it.id], c = cost(pp, f.party, f.resident);
+      if (pp.cat === 'food' && c.free) c.text = '不用门票 · 按点餐付费';
       return `<div class="stop"><div class="time">${hhmm(it.start)}<small>${hhmm(it.end)}</small></div>
         <button class="ph" data-open="${pp.id}">${photo(pp, true)}</button>
         <div class="sbody"><b data-open="${pp.id}">${esc(pp.name)}</b>
           <div class="meta"><span class="cat ${pp.cat}">${CAT[pp.cat]}</span><span>约 ${pp.dur} 小时</span><span class="price${c.free ? ' free' : c.unknown ? ' unk' : ''}">${esc(c.text)}</span></div>
           ${it.warn && it.warn.length ? `<div class="warn">⚠ ${esc(it.warn.join('；'))}</div>` : ''}
+          ${pp.eat && pp.eat.length ? `<div class="mini" style="margin-top:4px">🍴 必吃：${pp.eat.slice(0, 3).map(e => esc(e.name) + (e.price ? `（${esc(e.price)}）` : '')).join('、')}</div>` : ''}
           ${pp.tip ? `<div class="mini" style="margin-top:4px">💡 ${esc(pp.tip)}</div>` : ''}
         </div><button class="x" data-rm="${di}:${ii}" aria-label="删除">✕</button></div>`;
     }).join('');
@@ -842,10 +914,13 @@ function renderDays() {
     return `<div class="card day"><div class="dayhd"><div class="dayno"><span>第</span><b>${di + 1}</b></div>
       <div class="t"><b>${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}${where ? ' · ' + esc(where) : ''}</b><small>${stops ? stops + ' 个景点' : d.travel ? '路程日，到了可以先休息' : '自由活动'}</small></div>
       <div class="wx" id="wx${di}"></div></div>
+      ${stops >= 1 ? `<div class="btnrow" style="padding:0 14px"><button data-daynav="${di}">🧭 这天的路线导航</button></div>` : ''}
       <div class="tl">${items || '<div class="mini" style="padding:10px 0">这天没有排景点，可以休息、逛街或自由活动。</div>'}
       ${sleep && di < pl.days.length - 1 ? `<div class="hotel">🏨 今晚住：${esc(sleep.name)}${sleep.country !== 'MY' ? '（' + COUNTRY[sleep.country] + '）' : ''}</div>` : ''}</div></div>`;
   }).join('');
   $('daysBox').onclick = e => {
+    const dn = e.target.closest('[data-daynav]');
+    if (dn) { openDayNav(+dn.dataset.daynav); return; }
     const o = e.target.closest('[data-open]');
     if (o) { openPlace(o.dataset.open); return; }
     const x = e.target.closest('[data-rm]');
@@ -988,7 +1063,7 @@ function listExplore() {
   $('exList').innerHTML = list.length ? list.map(p => {
     const c = cost(p, {a: 1, c: 0}, F.resident);
     return `<button class="pc" data-open="${p.id}"><div class="im">${photo(p, true)}<span class="cat ${p.cat}">${CAT[p.cat]}</span></div>
-      <div class="bd"><b>${esc(p.name)}</b><small><span>${esc(R[p.region].name)}</span><span class="price${c.free ? ' free' : c.unknown ? ' unk' : ''}">${esc(c.free ? '免费' : c.unknown ? '未定价' : (c.approx ? '约' : '') + money(c.local, c.cur))}</span></small></div></button>`;
+      <div class="bd"><b>${esc(p.name)}</b><small><span>${esc(R[p.region].name)}</span><span class="price${c.free && p.cat !== 'food' ? ' free' : c.unknown ? ' unk' : ''}">${esc(p.cat === 'food' ? (p.closed.length >= 4 ? '只在' + openDaysText(p) : p.closed.length ? p.closed.map(d => WD[d]).join('、') + '休' : '') : c.free ? '免费' : c.unknown ? '未定价' : (c.approx ? '约' : '') + money(c.local, c.cur))}</span></small></div></button>`;
   }).join('') : '<div class="empty">没有符合的景点</div>';
 }
 
@@ -1004,7 +1079,7 @@ function overlay(title) {
   OV.push(o);
   return o;
 }
-function closeOverlay() { const o = OV.pop(); if (o) o.el.remove(); return !!o; }
+function closeOverlay() { const o = OV.pop(); if (o) { if (o.onclose) try { o.onclose(); } catch (e) {} o.el.remove(); } return !!o; }
 function priceTable(p) {
   const pr = p.price;
   if (!pr) return '<p class="note">暂时没有找到可靠的票价资料，请以现场或官网为准。</p>';
@@ -1031,12 +1106,15 @@ function openPlace(id) {
     <h1>${esc(p.name)}</h1><div class="mini">${esc(p.en)}</div>
     <p style="margin:12px 0 0">${esc(p.desc)}</p>
     ${p.tip ? `<div class="tip">💡 ${esc(p.tip)}</div>` : ''}
-    <dl class="facts"><dt>开放时间</dt><dd>${esc(p.hours)}</dd>${p.closed.length ? `<dt>休息日</dt><dd>${p.closed.map(d => WD[d]).join('、')}</dd>` : ''}<dt>建议游玩</dt><dd>约 ${p.dur} 小时${p.slot === 'night' ? '（晚上去）' : p.slot === 'evening' ? '（傍晚去）' : p.slot === 'morning' ? '（早上去）' : p.slot === 'sunrise' ? '（清晨 / 日出）' : ''}</dd></dl>
-    <h2>门票</h2>${priceTable(p)}
+    <dl class="facts"><dt>开放时间</dt><dd>${esc(p.hours)}${p.closed.length ? days7(p) : ''}</dd>${p.closed.length ? `<dt>${p.closed.length >= 4 ? '开市日' : '休息日'}</dt><dd>${p.closed.length >= 4 ? '只在' + openDaysText(p) : p.closed.map(d => WD[d]).join('、')}</dd>` : ''}<dt>建议游玩</dt><dd>约 ${p.dur} 小时${p.slot === 'night' ? '（晚上去）' : p.slot === 'evening' ? '（傍晚去）' : p.slot === 'morning' ? '（早上去）' : p.slot === 'sunrise' ? '（清晨 / 日出）' : ''}</dd></dl>
+    ${p.spots ? spotsHtml(p) : ''}
+    ${p.eat ? eatHtml(p) : ''}
+    ${p.cat === 'food' && p.price && p.price.free ? '' : `<h2>门票</h2>${priceTable(p)}`}
     <div class="acts" style="margin-top:16px">
-      <a class="btn sm" style="text-decoration:none;flex:1" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}">Google 地图</a>
-      <a class="btn sm ghost" style="text-decoration:none;flex:1" href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze 导航</a>
+      <button class="btn sm" style="flex:1" data-nav="${p.id}">🧭 路线导航</button>
+      <button class="btn sm grab" style="flex:1" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">🚕 叫 Grab</button>
     </div>
+    <div class="btnrow"><a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}">Google 地图</a><a href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze</a></div>
     <button class="btn ghost" id="dMust" style="margin-top:10px">${must.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）'}</button>
     <h2>附近景点</h2><div class="cards" id="near"></div>
   </div>`;
@@ -1056,6 +1134,387 @@ function openPlace(id) {
     if (m.includes(id) && !F.countries.includes(r.country)) { F.countries.push(r.country); saveForm(); }
     toast(m.includes(id) ? '已加入必去清单' : '已移除');
   };
+}
+
+/* ---------------- opening days & dishes ---------------- */
+const WD1 = '日一二三四五六';
+function days7(p, today) {
+  const t = today == null ? new Date().getDay() : today;
+  return `<div class="days7">${[1, 2, 3, 4, 5, 6, 0].map(d => `<i class="${p.closed.includes(d) ? '' : 'on'}${d === t ? ' today' : ''}">${WD1[d]}</i>`).join('')}</div>`;
+}
+function openDaysText(p) { return [1, 2, 3, 4, 5, 6, 0].filter(d => !p.closed.includes(d)).map(d => WD[d]).join('、'); }
+function eatHtml(p) {
+  const src = p.info && p.info.src ? `<p class="src">资料来源${p.info.asof ? '（' + esc(p.info.asof) + '）' : ''}：<a href="${esc(p.info.src)}">${esc(p.info.src.replace(/^https?:\/\//, '').slice(0, 60))}</a>。价钱会变，以现场为准。</p>` : '';
+  return `<h2>必吃</h2><table class="eat">${p.eat.map(e => `<tr><td>${esc(e.name)}${e.note ? `<small>${esc(e.note)}</small>` : ''}</td><td class="p">${esc(e.price || '')}</td></tr>`).join('')}</table>
+    ${p.cat === 'food' && p.price && p.price.free ? '<p class="note">不用门票，按点的东西付钱。</p>' : ''}${src}`;
+}
+function spotsHtml(p) {
+  const t = new Date().getDay();
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  return `<h2>这周在哪里摆</h2>${order.map(d => p.spots.filter(x => x.day === d).map(x => `<div class="spot"><span class="wd">${WD[d]}</span><span class="nm">${esc(x.name)}${d === t ? ' <span class="badge">今天</span>' : ''}</span>
+    <span class="btnrow" style="margin:0"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.q)}">地图</a><a href="https://waze.com/ul?q=${encodeURIComponent(x.q)}&navigate=yes">Waze</a></span></div>`).join('')).join('')}`;
+}
+
+/* ---------------- bottom sheet ---------------- */
+let SHEET = null;
+function sheet(html) {
+  closeSheet();
+  const s = document.createElement('div'); s.className = 'scrim';
+  const b = document.createElement('div'); b.className = 'sheet';
+  b.innerHTML = html + '<button class="btn ghost" data-x="1" style="margin-top:12px">关闭</button>';
+  document.body.append(s, b);
+  SHEET = {s, b};
+  s.onclick = closeSheet; b.querySelector('[data-x]').onclick = closeSheet;
+  return b;
+}
+function closeSheet() { if (!SHEET) return false; SHEET.s.remove(); SHEET.b.remove(); SHEET = null; return true; }
+
+/* ---------------- Grab ---------------- */
+// The Grab app opens on its booking screen with the drop-off (and pick-up, when given) already filled in.
+function grabLink(to, from) {
+  const e = encodeURIComponent;
+  let u = `grab://open?screenType=BOOKING&dropOffLatitude=${(+to.lat).toFixed(6)}&dropOffLongitude=${(+to.lng).toFixed(6)}&dropOffAddress=${e(to.name || '')}&dropOffKeywords=${e(to.name || '')}`;
+  if (from) u += `&pickUpLatitude=${(+from.lat).toFixed(6)}&pickUpLongitude=${(+from.lng).toFixed(6)}&pickUpAddress=${e(from.name || '')}`;
+  return u;
+}
+function openGrab(to, from) {
+  const url = grabLink(to, from);
+  if (A && A.grab) { A.grab(url); return; }
+  let left = false;
+  const onHide = () => { if (document.hidden) left = true; };
+  document.addEventListener('visibilitychange', onHide);
+  window.location.href = url;
+  setTimeout(() => { document.removeEventListener('visibilitychange', onHide); if (!left) grabMissing(); }, 1800);
+}
+function grabMissing() {
+  sheet(`<b style="font-size:17px">没有打开 Grab？</b><p class="note">可能这台手机还没装 Grab。装好以后回来再点一次「叫 Grab」，目的地会自动填好。</p>
+    <a class="btn grab" style="text-decoration:none" href="https://www.grab.com/">去 Grab 官网下载</a>`);
+}
+window.grabMissing = grabMissing;
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-grab]');
+  if (g) {
+    e.preventDefault();
+    const [lat, lng] = g.dataset.grab.split(',').map(Number);
+    const fr = g.dataset.from ? g.dataset.from.split(',').map(Number) : null;
+    // a pick-up point far from where the person is now would be wrong; Grab uses the phone's location by default
+    const from = fr && LASTPOS && km(LASTPOS, {lat: fr[0], lng: fr[1]}) < 1 ? {lat: fr[0], lng: fr[1], name: ''} : null;
+    openGrab({lat, lng, name: g.dataset.name || ''}, from);
+    return;
+  }
+  const n = e.target.closest('[data-nav]');
+  if (n) { e.preventDefault(); openNavTo(n.dataset.nav); }
+});
+
+/* ---------------- my position ---------------- */
+let LASTPOS = null;
+function getPosition() {
+  return new Promise((res, rej) => {
+    const ok = (lat, lng) => { LASTPOS = {lat, lng, t: Date.now()}; res(LASTPOS); };
+    if (A && A.locate) { window.onLocate = (lat, lng, err) => err ? rej(new Error(err)) : ok(lat, lng); A.locate(); return; }
+    if (!navigator.geolocation) { rej(new Error('这台设备不能定位')); return; }
+    navigator.geolocation.getCurrentPosition(p => ok(p.coords.latitude, p.coords.longitude), () => rej(new Error('定位失败，请打开定位或换个出发地')), {timeout: 20000, enableHighAccuracy: true});
+  });
+}
+let WATCH = null;
+function startWatch(cb) {
+  stopWatch();
+  WATCH = {cb, id: null};
+  window.onWatch = (lat, lng) => { LASTPOS = {lat, lng, t: Date.now()}; if (WATCH) WATCH.cb(LASTPOS); };
+  if (A && A.watch) { A.watch(true); return; }
+  if (navigator.geolocation) WATCH.id = navigator.geolocation.watchPosition(p => window.onWatch(p.coords.latitude, p.coords.longitude), () => {}, {enableHighAccuracy: true, maximumAge: 3000});
+}
+function stopWatch() {
+  if (!WATCH) return;
+  if (A && A.watch) A.watch(false);
+  else if (WATCH.id != null && navigator.geolocation) navigator.geolocation.clearWatch(WATCH.id);
+  WATCH = null;
+}
+
+/* ---------------- route navigation ---------------- */
+function osrm(points, profile) {
+  const url = `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/${points.map(p => (+p.lng).toFixed(6) + ',' + (+p.lat).toFixed(6)).join(';')}?overview=full&geometries=geojson&steps=true`;
+  return getJSON(url).then(j => {
+    if (j.code !== 'Ok' || !j.routes || !j.routes.length) throw new Error(j.message || j.code || 'no route');
+    const r = j.routes[0];
+    let straight = 0;
+    for (let i = 1; i < points.length; i++) straight += km(points[i - 1], points[i]);
+    if (r.distance / 1000 < straight * 0.9) throw new Error('bad route');
+    return r;
+  });
+}
+const TURN = {uturn: ['⤺', '掉头'], 'sharp right': ['↱', '向右急转'], right: ['→', '右转'], 'slight right': ['↗', '稍向右'],
+  straight: ['↑', '直行'], 'slight left': ['↖', '稍向左'], left: ['←', '左转'], 'sharp left': ['↰', '向左急转']};
+function stepText(s) {
+  const m = s.maneuver || {}, road = s.name || s.ref ? `「${s.name || s.ref}」` : '';
+  const t = TURN[m.modifier] || ['↑', ''];
+  switch (m.type) {
+    case 'depart': return ['🚩', '出发' + (road ? '，沿' + road + '走' : '')];
+    case 'arrive': return ['🏁', '到达目的地' + (m.modifier && /left|right/.test(m.modifier) ? `（在${/left/.test(m.modifier) ? '左' : '右'}边）` : '')];
+    case 'roundabout': case 'rotary': return ['⟲', `进入环岛，从第 ${m.exit || 1} 个出口出去` + (road ? '，进入' + road : '')];
+    case 'exit roundabout': case 'exit rotary': return ['⟲', '离开环岛' + (road ? '，进入' + road : '')];
+    case 'merge': return [t[0], '并入' + (road || '主路')];
+    case 'on ramp': return [t[0], (t[1] && t[1] !== '直行' ? t[1] + '，' : '') + '上匝道' + (road ? '往' + road : '')];
+    case 'off ramp': return [t[0], (t[1] && t[1] !== '直行' ? t[1] + '，' : '') + '下匝道' + (road ? '往' + road : '')];
+    case 'fork': return [t[0], '岔路口' + (/left/.test(m.modifier) ? '靠左' : /right/.test(m.modifier) ? '靠右' : '直走') + (road ? '，进入' + road : '')];
+    case 'end of road': return [t[0], '路口尽头' + (t[1] || '转弯') + (road ? '，进入' + road : '')];
+    case 'new name': case 'continue': return [t[0], (t[1] && t[1] !== '直行' ? t[1] : '继续直行') + (road ? '，沿' + road : '')];
+    default: return [t[0], (t[1] || '继续') + (road ? '，进入' + road : '')];
+  }
+}
+const fmtM = m => m >= 1000 ? (Math.round(m / 100) / 10) + ' 公里' : (Math.round(m / 10) * 10) + ' 米';
+function mapIn(el) {
+  const m = L.map(el, {zoomControl: false});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap contributors'}).addTo(m);
+  return m;
+}
+const pinIcon = (txt, col) => L.divIcon({className: '', html: `<div class="pin" style="background:${col}">${txt}</div>`, iconSize: [26, 26]});
+function openNavTo(id) { const p = PL[id]; openNav({lat: p.lat, lng: p.lng, name: p.name, en: p.en, id}); }
+function openNav(dest) {
+  const ov = overlay('导航到 ' + dest.name);
+  const st = {dest, from: null, mode: store.get('navMode', 'car'), route: null, map: null, layer: null, me: null, seq: 0, cum: null, starts: null};
+  ov.onclose = () => { stopWatch(); if (st.map) st.map.remove(); };
+  ov.body.innerHTML = `<div class="dtl">
+    <div class="lbl">从哪里出发</div><div class="chips" id="nFrom"></div>
+    <div class="field" style="position:relative;margin-top:8px" id="nSearch" hidden><input class="inp" id="nQ" placeholder="输入城市、景点或地址" autocomplete="off"><div class="sug" id="nSug" hidden></div></div>
+    <div class="seg" id="nMode" style="margin-top:12px"><button data-v="car">🚗 开车</button><button data-v="grab">🚕 Grab</button><button data-v="walk">🚶 步行</button><button data-v="transit">🚇 公交</button></div>
+    <div id="nNext"></div>
+    <div class="map" id="nMap" style="height:300px;margin-top:12px"></div>
+    <div class="card navsum" id="nSum" style="margin-top:12px"></div>
+    <h2>路线说明</h2><ol class="steps" id="nSteps"></ol>
+    <p class="mini" style="margin-top:10px">路线由 OpenStreetMap 计算，不含实时路况；开车时用 Google 地图或 Waze 跟着走更稳。</p></div>`;
+  const B = ov.body, $q = sel => B.querySelector(sel);
+  const fromChoices = () => {
+    const list = [{k: 'here', t: '📍 我的位置'}];
+    if (F.start && !/^我的位置/.test(F.start.name)) list.push({k: 'start', t: '🏁 ' + F.start.name.split(' ')[0]});
+    list.push({k: 'other', t: '🔎 其他地方'});
+    $q('#nFrom').innerHTML = list.map(c => `<button class="chip${st.fromKind === c.k ? ' on' : ''}" data-k="${c.k}">${esc(c.t)}${c.k === 'other' && st.fromKind === 'other' && st.from ? '：' + esc(st.from.name) : ''}</button>`).join('');
+  };
+  const setFrom = (kind, pt) => { st.fromKind = kind; st.from = pt; fromChoices(); $q('#nSearch').hidden = kind !== 'other' || !!pt; calc(); };
+  const useHere = () => {
+    st.fromKind = 'here'; st.from = null; fromChoices();
+    $q('#nSum').innerHTML = '<div class="row"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在定位…</div>';
+    getPosition().then(p => { if (st.fromKind === 'here') setFrom('here', {lat: p.lat, lng: p.lng, name: '我的位置', here: true}); })
+      .catch(err => { toast(err.message); if (F.start) setFrom('start', F.start); else setFrom('other', null); });
+  };
+  $q('#nFrom').onclick = e => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    if (b.dataset.k === 'here') useHere();
+    else if (b.dataset.k === 'start') setFrom('start', F.start);
+    else { st.fromKind = 'other'; st.from = null; fromChoices(); $q('#nSearch').hidden = false; $q('#nQ').focus(); }
+  };
+  const box = $q('#nSug');
+  $q('#nQ').oninput = e => {
+    const q = e.target.value, list = matchTowns(q);
+    box.innerHTML = list.map((t, i) => `<button data-i="${i}">${esc(t.name)}${t.sub ? ` <small>· ${esc(t.sub)}</small>` : ''}</button>`).join('') + (q.trim().length >= 2 ? `<button data-online="1">🔎 在线搜索「${esc(q.trim())}」</button>` : '');
+    box.hidden = !box.innerHTML;
+    box.onclick = ev => {
+      const b = ev.target.closest('button'); if (!b) return;
+      if (b.dataset.online) {
+        box.innerHTML = '<button disabled>搜索中…</button>';
+        getJSON('https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=zh,en&countrycodes=my,sg,th,id&q=' + encodeURIComponent(q.trim()))
+          .then(j => { const l2 = (j || []).map(x => ({name: x.display_name.split(',').slice(0, 2).join(','), lat: +x.lat, lng: +x.lon}));
+            box.innerHTML = l2.length ? l2.map((t, i) => `<button data-j="${i}">${esc(t.name)}</button>`).join('') : '<button disabled>没有找到</button>';
+            box.onclick = ev2 => { const c = ev2.target.closest('[data-j]'); if (c) { box.hidden = true; setFrom('other', l2[+c.dataset.j]); } }; })
+          .catch(() => { box.innerHTML = '<button disabled>网络不通</button>'; });
+        return;
+      }
+      box.hidden = true; setFrom('other', list[+b.dataset.i]);
+    };
+  };
+  B.querySelectorAll('#nMode button').forEach(b => { b.classList.toggle('on', b.dataset.v === st.mode); b.onclick = () => { st.mode = b.dataset.v; store.set('navMode', st.mode); B.querySelectorAll('#nMode button').forEach(x => x.classList.toggle('on', x === b)); calc(); }; });
+  setTimeout(() => {
+    if (!window.L) return;
+    st.map = mapIn($q('#nMap'));
+    st.map.setView([dest.lat, dest.lng], 14);
+    L.marker([dest.lat, dest.lng], {icon: pinIcon('终', '#E8622F')}).addTo(st.map);
+    if (st.last) draw(st.last[0], st.last[1]);
+    if (WATCH && LASTPOS) follow(LASTPOS);
+  }, 240);
+
+  function links() {
+    const o = st.from && !st.from.here ? `&origin=${st.from.lat},${st.from.lng}` : '';
+    const tm = {car: 'driving', grab: 'driving', walk: 'walking', transit: 'transit'}[st.mode];
+    const g = `https://www.google.com/maps/dir/?api=1${o}&destination=${dest.lat},${dest.lng}&travelmode=${tm}`;
+    const w = `https://waze.com/ul?ll=${dest.lat},${dest.lng}&navigate=yes`;
+    const gb = `<button class="btn ${st.mode === 'grab' ? '' : 'sm '}grab" style="flex:1" data-grab="${dest.lat},${dest.lng}" data-name="${esc(dest.en || dest.name)}"${st.from && !st.from.here ? ` data-from="${st.from.lat},${st.from.lng}"` : ''}>🚕 叫 Grab（目的地已填好）</button>`;
+    if (st.mode === 'grab') return `<div class="acts" style="margin-top:12px">${gb}</div><div class="btnrow"><a href="${g}">Google 地图看路线</a></div>`;
+    return `<div class="acts" style="margin-top:12px"><a class="btn sm" style="flex:1;text-decoration:none" href="${g}">Google 地图导航</a>${st.mode === 'car' ? `<a class="btn sm ghost" style="flex:1;text-decoration:none" href="${w}">Waze 导航</a>` : ''}</div>
+      ${st.mode !== 'car' ? `<div class="btnrow">${gb.replace('btn sm grab', 'grab').replace(' style="flex:1"', '')}</div>` : ''}
+      <button class="btn ghost sm" id="nFollow" style="margin-top:10px;width:100%">${WATCH ? '⏹ 停止跟随' : '📍 跟着我走（显示我的位置和下一步）'}</button>`;
+  }
+  function draw(coords, dashed) {
+    st.last = [coords, dashed];
+    if (!st.map) return;
+    if (st.layer) st.layer.remove();
+    st.layer = L.layerGroup().addTo(st.map);
+    L.polyline(coords, dashed ? {color: '#888', weight: 3, dashArray: '6 8'} : {color: '#0E7672', weight: 6, opacity: .85}).addTo(st.layer);
+    if (st.from) L.marker([st.from.lat, st.from.lng], {icon: pinIcon(st.from.here ? '我' : '起', '#1D2A2E')}).addTo(st.layer);
+    st.map.fitBounds(L.latLngBounds(coords.concat([[dest.lat, dest.lng]])).pad(0.12));
+  }
+  function calc() {
+    const seq = ++st.seq;
+    st.route = null; st.cum = null;
+    $q('#nSteps').innerHTML = ''; $q('#nNext').innerHTML = '';
+    if (!st.from) { $q('#nSum').innerHTML = '<div class="mini">先选出发地。</div>'; return; }
+    const from = st.from, d = km(from, dest);
+    const fr = nearestRegion(from).r, tr = PL[dest.id] ? R[PL[dest.id].region] : nearestRegion(dest).r;
+    // across the sea or very far: show the trip plan (flight / ferry) instead of a road route
+    const sea = fr && tr && fr.group !== tr.group && d > 3;
+    if (sea || d > 900) {
+      const segs = legPlan(Object.assign({rk: fr && km(from, fr) < 35 ? fr.key : null}, from), Object.assign({rk: tr ? tr.key : null}, dest), st.mode === 'transit' ? 'public' : 'car');
+      $q('#nSum').innerHTML = `<b>约 ${fmtDur(segMin(segs))}</b><div class="mini" style="margin-top:4px">${segs.map(s => SEG[s.type][0] + ' ' + SEG[s.type][1] + (s.to ? '到 ' + esc(s.to) : '') + ' 约 ' + fmtDur(s.min)).join('　→　')}</div><div class="note">要过海或距离太远，没有直达的开车路线。</div>` + links();
+      draw([[from.lat, from.lng], [dest.lat, dest.lng]], true);
+      return;
+    }
+    if (st.mode === 'transit') {
+      const segs = legPlan(from, dest, 'public');
+      $q('#nSum').innerHTML = `<b>约 ${fmtDur(segMin(segs))}</b><span class="mini">（估算）</span><div class="note">公交、地铁和巴士的班次请用 Google 地图查看，会给你具体坐哪一路车。</div>` + links();
+      draw([[from.lat, from.lng], [dest.lat, dest.lng]], true);
+      bindFollow();
+      return;
+    }
+    if (d < 0.05) { $q('#nSum').innerHTML = '<b>你已经在这里了 🎉</b>'; return; }
+    $q('#nSum').innerHTML = '<div class="row"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在计算路线…</div>';
+    osrm([from, dest], st.mode === 'walk' ? 'foot' : 'car').then(r => {
+      if (seq !== st.seq) return;
+      st.route = r;
+      const coords = r.geometry.coordinates.map(c => [c[1], c[0]]);
+      // distance along the route at each point, and where each step starts
+      st.cum = [0];
+      for (let i = 1; i < coords.length; i++) st.cum.push(st.cum[i - 1] + km({lat: coords[i - 1][0], lng: coords[i - 1][1]}, {lat: coords[i][0], lng: coords[i][1]}) * 1000);
+      st.coords = coords;
+      const steps = r.legs[0].steps;
+      st.starts = []; let acc = 0;
+      steps.forEach(s => { st.starts.push(acc); acc += s.distance; });
+      st.steps = steps;
+      const head = {car: '🚗 开车', grab: '🚕 Grab 车程', walk: '🚶 步行'}[st.mode];
+      $q('#nSum').innerHTML = `<div class="mini">${head}</div><b>${fmtDur(r.duration / 60)}</b> · ${fmtM(r.distance)}
+        ${st.mode === 'grab' ? '<div class="note">不含等车时间；车费以 Grab App 报价为准，高峰期和下雨天会贵一些。</div>' : ''}
+        ${st.mode === 'walk' && r.distance > 3000 ? '<div class="warn">走路有点远，可以改坐 Grab。</div>' : ''}
+        ${st.mode === 'car' ? '<div class="note">不含塞车时间。</div>' : ''}` + links();
+      $q('#nSteps').innerHTML = steps.filter((s, i) => s.distance > 0 || i === steps.length - 1).map(s => {
+        const [ic, tx] = stepText(s);
+        return `<li data-s="${steps.indexOf(s)}"><i>${ic}</i><span>${esc(tx)}</span><small>${s.distance > 0 ? fmtM(s.distance) : ''}</small></li>`;
+      }).join('');
+      draw(coords, false);
+      bindFollow();
+      if (WATCH) follow(LASTPOS);
+    }).catch(err => {
+      if (seq !== st.seq) return;
+      console.warn(err);
+      const segs = legPlan(from, dest, 'car');
+      $q('#nSum').innerHTML = `<b>约 ${fmtDur(segMin(segs))}</b><span class="mini">（估算，${navigator.onLine === false ? '没有网络' : '暂时算不出详细路线'}）</span>` + links();
+      draw([[from.lat, from.lng], [dest.lat, dest.lng]], true);
+      bindFollow();
+    });
+  }
+  function bindFollow() {
+    const b = $q('#nFollow'); if (!b) return;
+    b.onclick = () => {
+      if (WATCH) { stopWatch(); $q('#nNext').innerHTML = ''; if (st.me) { st.me.remove(); st.me = null; } b.textContent = '📍 跟着我走（显示我的位置和下一步）'; return; }
+      b.textContent = '⏹ 停止跟随';
+      $q('#nNext').innerHTML = '<div class="nextbar">正在取得你的位置…</div>';
+      startWatch(follow);
+    };
+  }
+  function follow(pos) {
+    if (!pos || !st.map) return;
+    if (!st.me) st.me = L.marker([pos.lat, pos.lng], {icon: L.divIcon({className: '', html: '<div class="me"></div>', iconSize: [18, 18]}), zIndexOffset: 1000}).addTo(st.map);
+    else st.me.setLatLng([pos.lat, pos.lng]);
+    st.map.panTo([pos.lat, pos.lng], {animate: true});
+    const left = km(pos, dest) * 1000;
+    if (left < 60) { $q('#nNext').innerHTML = '<div class="nextbar">🏁 到了！</div>'; return; }
+    if (!st.coords) { $q('#nNext').innerHTML = `<div class="nextbar">离目的地直线 ${fmtM(left)}</div>`; return; }
+    // nearest point of the route
+    let bi = 0, bd = 1e9;
+    st.coords.forEach((c, i) => { const dd = km(pos, {lat: c[0], lng: c[1]}); if (dd < bd) { bd = dd; bi = i; } });
+    const done = st.cum[bi];
+    if (bd > 0.2) { $q('#nNext').innerHTML = `<div class="nextbar">⚠ 你离开路线了（约 ${fmtM(bd * 1000)}）<small>点「我的位置」重新规划，或继续往目的地方向走</small></div>`; return; }
+    let k = st.starts.findIndex(x => x > done + 15);
+    if (k < 0) k = st.steps.length - 1;
+    const [ic, tx] = stepText(st.steps[k]);
+    $q('#nNext').innerHTML = `<div class="nextbar">${ic} ${esc(tx)}<small>还有 ${fmtM(Math.max(0, st.starts[k] - done))} · 全程剩 ${fmtM(Math.max(0, st.route.distance - done))}</small></div>`;
+    B.querySelectorAll('#nSteps li').forEach(li => li.classList.toggle('now', +li.dataset.s === k));
+  }
+  fromChoices();
+  if (LASTPOS && Date.now() - LASTPOS.t < 10 * 60e3) setFrom('here', {lat: LASTPOS.lat, lng: LASTPOS.lng, name: '我的位置', here: true});
+  else useHere();
+  return st;
+}
+
+/* a whole day of the plan: every stop on one map, with one-tap navigation or Grab to each */
+function openDayNav(di) {
+  const pl = CUR_PLAN, d = pl.days[di], f = pl.input;
+  const stops = d.items.filter(x => x.type === 'stop').map(x => PL[x.id]);
+  const firstLeg = d.items.find(x => x.type === 'leg');
+  const begin = firstLeg && d.items.indexOf(firstLeg) < d.items.findIndex(x => x.type === 'stop') ? firstLeg.fromPt : null;
+  const ov = overlay(`第 ${di + 1} 天路线`);
+  let map = null;
+  ov.onclose = () => { if (map) map.remove(); };
+  const pts = (begin ? [{lat: begin.lat, lng: begin.lng, name: '出发'}] : []).concat(stops.map(p => ({lat: p.lat, lng: p.lng, name: p.name})));
+  // Google Maps takes up to 9 stops in between
+  const g = pts.length >= 2 ? `https://www.google.com/maps/dir/?api=1&origin=${pts[0].lat},${pts[0].lng}&destination=${pts[pts.length - 1].lat},${pts[pts.length - 1].lng}${pts.length > 2 ? '&waypoints=' + pts.slice(1, -1).slice(0, 9).map(p => p.lat + ',' + p.lng).join('%7C') : ''}&travelmode=${f.mode === 'public' ? 'transit' : 'driving'}` : '';
+  ov.body.innerHTML = `<div class="dtl"><h1>第 ${di + 1} 天 · ${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}</h1>
+    <div class="map" id="dMap" style="height:300px"></div><div class="card" id="dSum" style="margin-top:12px"><div class="mini">正在计算全天路线…</div></div>
+    ${g ? `<a class="btn" style="text-decoration:none;margin-top:12px" href="${g}">用 Google 地图导航全天（${pts.length} 个点）</a>` : ''}
+    <h2>每一站</h2><div class="stack">${stops.map((p, i) => `<div class="card fc" style="padding:12px"><div class="pin" style="background:${DAYC[di % DAYC.length]};flex:none">${i + 1}</div>
+      <div class="sbody"><b data-open="${p.id}">${esc(p.name)}</b><div class="mini">${esc(p.hours)}</div>
+      <div class="btnrow"><button data-nav="${p.id}">🧭 导航</button><button class="grab" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">Grab</button></div></div></div>`).join('')}</div></div>`;
+  ov.body.onclick = e => { const o = e.target.closest('[data-open]'); if (o) openPlace(o.dataset.open); };
+  setTimeout(() => {
+    if (!window.L || !pts.length) return;
+    map = mapIn(ov.body.querySelector('#dMap'));
+    pts.forEach((p, i) => L.marker([p.lat, p.lng], {icon: pinIcon(begin && i === 0 ? '起' : String(begin ? i : i + 1), begin && i === 0 ? '#1D2A2E' : DAYC[di % DAYC.length])}).addTo(map));
+    map.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lng])).pad(0.15));
+    const sum = ov.body.querySelector('#dSum');
+    const groups = new Set(pts.map(p => nearestRegion(p).r.group));
+    if (pts.length < 2) { sum.innerHTML = '<div class="mini">这天只有一站。</div>'; return; }
+    if (groups.size > 1 || pts.length > 25) { sum.innerHTML = '<div class="mini">这天要坐船或飞机，地图上只画直线。</div>'; L.polyline(pts.map(p => [p.lat, p.lng]), {color: '#888', dashArray: '6 8'}).addTo(map); return; }
+    osrm(pts, 'car').then(r => {
+      L.polyline(r.geometry.coordinates.map(c => [c[1], c[0]]), {color: DAYC[di % DAYC.length], weight: 5, opacity: .85}).addTo(map);
+      sum.innerHTML = `<b>${fmtM(r.distance)}</b> · 开车约 ${fmtDur(r.duration / 60)}<div class="note">按顺序走完全部景点的路程（不含塞车和游玩时间）。</div>`;
+    }).catch(() => { L.polyline(pts.map(p => [p.lat, p.lng]), {color: '#888', dashArray: '6 8'}).addTo(map); sum.innerHTML = '<div class="mini">暂时算不出详细路线（可能没有网络），先显示直线。</div>'; });
+  }, 240);
+}
+
+/* ---------------- food tab ---------------- */
+let FD = {country: 'all', region: 'all', day: new Date().getDay()};
+function foodCard(p, wd) {
+  const weekly = p.closed.length >= 4;
+  return `<div class="card fc" style="padding:12px"><button class="ph" data-open="${p.id}">${photo(p, true)}</button>
+    <div class="sbody"><b data-open="${p.id}">${esc(p.name)}</b> ${weekly ? `<span class="badge">只在${esc(openDaysText(p))}</span>` : ''}
+      <div class="meta"><span>${esc(R[p.region].name)}</span><span>${esc(p.hours)}</span></div>
+      ${p.closed.length ? days7(p, wd) : ''}
+      ${p.eat ? `<div class="dish">🍴 ${p.eat.slice(0, 3).map(e => esc(e.name) + (e.price ? ` <b>${esc(e.price)}</b>` : '')).join(' · ')}</div>` : ''}
+      ${p.spots ? `<div class="dish">📍 ${WD[wd]}在：${esc((p.spots.find(x => x.day === wd) || {}).name || '—')}</div>` : ''}
+      <div class="btnrow"><button data-nav="${p.id}">🧭 导航</button><button class="grab" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">Grab</button></div>
+    </div></div>`;
+}
+function renderFood() {
+  const P = $('pFood');
+  const foods = D.places.filter(x => x.cat === 'food');
+  const inC = x => FD.country === 'all' || R[x.region].country === FD.country;
+  const inSel = x => inC(x) && (FD.region === 'all' || x.region === FD.region);
+  const regs = [...new Set(foods.filter(inC).map(x => x.region))].map(k => R[k]);
+  const today = new Date().getDay();
+  const nightish = x => x.slot === 'night' || x.slot === 'evening';
+  const night = foods.filter(x => inSel(x) && nightish(x) && !x.closed.includes(FD.day)).sort((a, b) => (b.closed.length >= 4) - (a.closed.length >= 4) || b.rank - a.rank);
+  const shut = foods.filter(x => inSel(x) && nightish(x) && x.closed.includes(FD.day));
+  const dayEat = foods.filter(x => inSel(x) && !nightish(x)).sort((a, b) => b.rank - a.rank);
+  P.innerHTML = `<h1>美食夜市</h1><p class="lead">${foods.length} 个美食点：必吃菜、价钱和夜市开市日。</p>
+  <div class="hscroll">${[['all', '全部'], ...Object.entries(COUNTRY)].map(([k, v]) => `<button class="chip${FD.country === k ? ' on' : ''}" data-c="${k}">${v}</button>`).join('')}</div>
+  <div class="hscroll">${[['all', '全部地区'], ...regs.map(r => [r.key, r.name])].map(([k, v]) => `<button class="chip${FD.region === k ? ' on' : ''}" data-r="${k}">${esc(v)}</button>`).join('')}</div>
+  <h2>${FD.day === today ? '今晚' : WD[FD.day] + '晚上'}开的夜市</h2>
+  <div class="hscroll" style="margin-bottom:8px">${[1, 2, 3, 4, 5, 6, 0].map(d => `<button class="chip${FD.day === d ? ' on' : ''}" data-d="${d}">${WD[d]}${d === today ? '（今天）' : ''}</button>`).join('')}</div>
+  <div class="stack">${night.length ? night.map(x => foodCard(x, FD.day)).join('') : '<div class="empty" style="padding:20px">这一天这些地区没有收录的夜市</div>'}</div>
+  ${shut.length ? `<p class="mini" style="margin-top:8px">${WD[FD.day]}不开：${shut.map(x => esc(x.name)).join('、')}</p>` : ''}
+  <h2>白天吃什么</h2><div class="stack">${dayEat.length ? dayEat.map(x => foodCard(x, FD.day)).join('') : '<div class="mini">这里没有收录</div>'}</div>
+  <p class="mini" style="margin-top:14px">价钱和营业时间来自各美食点下方注明的资料来源（2023–2026 年），小贩常会调整，以现场为准。</p>`;
+  P.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { FD.country = b.dataset.c; FD.region = 'all'; renderFood(); });
+  P.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { FD.region = b.dataset.r; renderFood(); });
+  P.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { FD.day = +b.dataset.d; renderFood(); });
+  P.onclick = e => { const o = e.target.closest('[data-open]'); if (o) openPlace(o.dataset.open); };
 }
 
 /* ---------------- mine ---------------- */
@@ -1082,17 +1541,19 @@ function renderMine() {
 
 /* ---------------- tabs & back ---------------- */
 function showTab(id) {
-  ['pPlan', 'pRoutes', 'pExplore', 'pMine'].forEach(k => $(k).hidden = k !== id);
+  ['pPlan', 'pRoutes', 'pExplore', 'pFood', 'pMine'].forEach(k => $(k).hidden = k !== id);
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.p === id));
   if (id === 'pRoutes') renderRoutes();
   if (id === 'pExplore') renderExplore();
   if (id === 'pMine') renderMine();
+  if (id === 'pFood') renderFood();
   if (id === 'pPlan' && !CUR_PLAN) renderPlanForm();
   if (id === 'pPlan' && CUR_PLAN && planMap) setTimeout(() => planMap.invalidateSize(), 50);
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { while (OV.length) closeOverlay(); showTab(b.dataset.p); });
 window.onAndroidBack = () => {
+  if (closeSheet()) return true;
   if (closeOverlay()) return true;
   if ($('pPlan').hidden) { showTab('pPlan'); return true; }
   if (CUR_PLAN) { CUR_PLAN = null; renderPlanForm(); return true; }
@@ -1118,6 +1579,10 @@ function runDemo(d) {
   if (k === 'locate') { while (OV.length) closeOverlay(); CUR_PLAN = null; showTab('pPlan'); renderPlanForm(); locate(); }
   if (k === 'go') { while (OV.length) closeOverlay(); if (F.start) { F.days = +a || F.days; F.fixed = null; go(); } }
   if (k === 'scroll') window.scrollTo(0, +a || 0);
+  if (k === 'nav') { while (OV.length) closeOverlay(); openNavTo(a); }
+  if (k === 'grab') { const p = PL[a]; openGrab({lat: p.lat, lng: p.lng, name: p.en}); }
+  if (k === 'daynav') { showTab('pPlan'); if (CUR_PLAN) openDayNav(+a || 0); }
+  if (k === 'follow') { const bt = document.querySelector('#nFollow'); if (bt) bt.click(); }
 }
 window.runDemo = runDemo;
 if (!A && location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

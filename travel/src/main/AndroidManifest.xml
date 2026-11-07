@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <queries>
+        <package android:name="com.grabtaxi.passenger" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="grab" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />

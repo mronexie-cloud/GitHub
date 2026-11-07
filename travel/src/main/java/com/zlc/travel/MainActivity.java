@@ -44,7 +44,7 @@ import java.util.concurrent.Executors;
 /** The app screen (a web page in assets/index.html) plus location, sharing, links and network for it. */
 public class MainActivity extends Activity {
     static final String TAG = "Travel";
-    static final int REQ_LOC = 1;
+    static final int REQ_LOC = 1, REQ_WATCH = 2;
     static final String UA = "SEATravelGuide/1.0 (Android; https://github.com/mronexie-cloud/GitHub)";
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -52,6 +52,9 @@ public class MainActivity extends Activity {
     private LocationManager lm;
     private LocationListener listener;
     private boolean locating;
+    /** continuous position for the navigation page ("跟着我走") */
+    private LocationListener watcher;
+    private boolean watchWanted;
     /** for the automatic test, e.g. "plan:吉隆坡:3" */
     private String demo;
 
@@ -191,8 +194,86 @@ public class MainActivity extends Activity {
         });
     }
 
+    // ---------- following the person's position on the navigation page
+
+    void watch(boolean on) {
+        watchWanted = on;
+        if (on) startWatching(); else stopWatching();
+    }
+
+    private void startWatching() {
+        stopWatching();
+        if (!hasLocPerm()) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_WATCH);
+            return;
+        }
+        watcher = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location l) {
+                js("window.onWatch&&window.onWatch(" + l.getLatitude() + "," + l.getLongitude() + "," + l.getAccuracy() + ")");
+            }
+
+            @Override
+            public void onStatusChanged(String p, int s, Bundle e) { }
+
+            @Override
+            public void onProviderEnabled(String p) { }
+
+            @Override
+            public void onProviderDisabled(String p) { }
+        };
+        try {
+            Location last = lastKnown();
+            if (last != null && System.currentTimeMillis() - last.getTime() < 2 * 60_000L) watcher.onLocationChanged(last);
+            for (String p : new String[]{LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER}) {
+                if (lm.isProviderEnabled(p)) lm.requestLocationUpdates(p, 2000, 3, watcher, Looper.getMainLooper());
+            }
+        } catch (SecurityException | IllegalArgumentException e) {
+            Log.w(TAG, "watch", e);
+        }
+    }
+
+    private void stopWatching() {
+        if (watcher != null) {
+            try { lm.removeUpdates(watcher); } catch (Exception ignored) { }
+            watcher = null;
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopWatching(); // no GPS in the background
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (watchWanted) startWatching();
+    }
+
+    /** Opens Grab with the trip filled in; without Grab installed, its store page. */
+    void grab(String url) {
+        Log.i(TAG, "grab " + url);
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+            return;
+        } catch (ActivityNotFoundException e) {
+            Log.i(TAG, "grab not installed");
+        }
+        Toast.makeText(this, "还没安装 Grab，先打开下载页面", Toast.LENGTH_LONG).show();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.grabtaxi.passenger")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (ActivityNotFoundException e) {
+            open("https://play.google.com/store/apps/details?id=com.grabtaxi.passenger");
+        }
+    }
+
     @Override
     protected void onDestroy() {
+        stopWatching();
         stopLocating();
         bg.shutdownNow();
         if (web != null) web.destroy();
@@ -294,6 +375,10 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
         super.onRequestPermissionsResult(code, perms, res);
+        if (code == REQ_WATCH) {
+            if (hasLocPerm()) startWatching(); else sendError("没有定位权限，不能显示你的位置");
+            return;
+        }
         if (code != REQ_LOC) return;
         if (hasLocPerm()) locate();
         else sendError("没有定位权限，请直接输入出发地");
@@ -331,6 +416,16 @@ public class MainActivity extends Activity {
             String d = demo;
             demo = null;
             return d == null ? "" : d;
+        }
+
+        @JavascriptInterface
+        public void grab(String url) {
+            ui.post(() -> MainActivity.this.grab(url));
+        }
+
+        @JavascriptInterface
+        public void watch(boolean on) {
+            ui.post(() -> MainActivity.this.watch(on));
         }
 
         @JavascriptInterface
