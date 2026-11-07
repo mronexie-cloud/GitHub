@@ -169,6 +169,23 @@ def main():
         if w.get("image") and not SKIP_IMG.search(w["image"]):
             lead_names.append(w["image"])
         extra_names += [n for n in (w.get("images") or [])[:25] if not SKIP_IMG.search(n)]
+    # 1b) places without a Wikipedia article: position from OpenStreetMap search (only if close to our estimate)
+    for p in places:
+        q = p.pop("geo", None)
+        if not q or p["_w"].get("lat") is not None:
+            continue
+        d = get("https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode({"q": q, "format": "json", "limit": 1}))
+        time.sleep(1.2)
+        if d:
+            lat, lng = float(d[0]["lat"]), float(d[0]["lon"])
+            dist = km(p["lat"], p["lng"], lat, lng)
+            if dist < 15:
+                print("  geo %-14s moved %.2f km  (%s)" % (p["id"], dist, d[0].get("display_name", "")[:60]), flush=True)
+                p["lat"], p["lng"] = round(lat, 5), round(lng, 5)
+            else:
+                print("  geo %-14s too far (%d km) - keeping ours" % (p["id"], dist), flush=True)
+        else:
+            print("  geo %-14s not found" % p["id"], flush=True)
     lead = file_info(lead_names, 1280)
     extra = file_info(extra_names, 960)
 

@@ -70,9 +70,26 @@ def fx(cur, adult, child=None, note=None, src=None, asof=None, approx=False, gro
 # closed: weekdays the place is closed, 0 = Sunday … 6 = Saturday
 PLACES = []
 
-def P(id, region, name, en, wiki, lat, lng, cat, rank, dur, hours, price, desc, tip="", closed=None, slot="day"):
-    PLACES.append(dict(id=id, region=region, name=name, en=en, wiki=wiki, lat=lat, lng=lng, cat=cat, rank=rank,
-                       dur=dur, hours=hours, price=price, desc=desc, tip=tip, closed=closed or [], slot=slot))
+def P(id, region, name, en, wiki, lat, lng, cat, rank, dur, hours, price, desc, tip="", closed=None, slot="day",
+      eat=None, spots=None, geo=None, src=None, asof=None):
+    """eat: must-eat list [(dish, note, price text)]; spots: roaming markets [(weekday, name, map search text)];
+    geo: OpenStreetMap search text used to fix the position; src/asof: where the food details come from."""
+    d = dict(id=id, region=region, name=name, en=en, wiki=wiki, lat=lat, lng=lng, cat=cat, rank=rank,
+             dur=dur, hours=hours, price=price, desc=desc, tip=tip, closed=closed or [], slot=slot)
+    if eat:
+        d["eat"] = [dict(name=e[0], note=e[1], price=e[2] if len(e) > 2 else "") for e in eat]
+    if spots:
+        d["spots"] = [dict(day=x[0], name=x[1], q=x[2]) for x in spots]
+    if geo:
+        d["geo"] = geo
+    if src:
+        d["info"] = {"src": src, "asof": asof}
+    PLACES.append(d)
+
+WEEK = [0, 1, 2, 3, 4, 5, 6]
+def only(*days):
+    """closed on every day except these (0 = Sunday)"""
+    return [d for d in WEEK if d not in days]
 
 S_TSL_KLT = "https://thesmartlocal.my/kl-tower-reopens/"
 S_MMOVE_BATU = "https://the-malaysia-move.pages.dev/kl-batu-caves/"
@@ -114,8 +131,11 @@ P("theanhou", "kl", "天后宫", "Thean Hou Temple", "Thean Hou Temple", 3.1218,
   "约 8:00–22:00", free(),
   "东南亚最大的华人庙宇之一，层层飞檐和红灯笼，晚上亮灯特别好拍。", "农历新年和元宵前后挂满灯笼，人也最多。", slot="evening")
 P("petaling", "kl", "茨厂街（唐人街）", "Petaling Street", "Petaling Street", 3.1436, 101.6976, "food", 4, 1.5,
-  "白天至深夜", free(),
-  "吉隆坡老唐人街，有罗汉果茶、板面、咖喱面和各种小摊，附近还有关帝庙和兴都庙。", "下午 5 点后夜市最热闹。", slot="night")
+  "白天至深夜；夜市约 18:00 开始", free(),
+  "吉隆坡老唐人街，有罗汉果茶、板面、咖喱面和各种小摊，附近还有关帝庙和兴都庙。", "下午 5 点后夜市最热闹。", slot="night",
+  eat=[("冰镇龙眼罗汉果水", "牌楼入口的老字号，逛街解渴", ""), ("板面 · 咖喱面", "附近老店，早午餐更好", ""),
+       ("小吃", "夜市小吃大多 RM2–10", "RM2–10")],
+  src="https://the-malaysia-move.pages.dev/kl-night-markets/", asof="2026-05")
 P("iamm", "kl", "伊斯兰艺术博物馆", "Islamic Arts Museum Malaysia", "Islamic Arts Museum Malaysia", 3.1414, 101.6896, "culture", 3, 1.5,
   "每日 9:30–18:00（仅开斋节、哈芝节休息）",
   myr(loc=(20, 10), intl=(20, 10), src="https://iamm.org.my/visit-us", asof="2026",
@@ -127,8 +147,13 @@ P("muzium", "kl", "国家博物馆", "National Museum", "National Museum (Malays
       note="马来西亚儿童（12 岁以下）免费"),
   "了解马来西亚从远古到独立的历史，门票很便宜。")
 P("bukitbintang", "kl", "武吉免登 · 亚罗街美食街", "Bukit Bintang & Jalan Alor", "Jalan Alor", 3.1456, 101.7090, "food", 4, 2,
-  "傍晚至深夜", free(),
-  "吉隆坡最热闹的购物区，旁边的亚罗街一入夜就摆满烧烤、炒粿条和榴莲摊。", "晚上 7 点后去。", slot="night")
+  "每晚约 17:00 至深夜（19:30–22:00 最热闹）", free(),
+  "吉隆坡最热闹的购物区，旁边的亚罗街一入夜就摆满烧烤、炒粿条和榴莲摊。",
+  "海鲜按重量算，点之前先问每 100 克多少钱、确认总价。", slot="night",
+  eat=[("炭烤鸡翅", "亚罗街招牌，排队的那几家最出名", ""), ("沙爹", "鸡肉、牛肉串配花生酱", ""),
+       ("炒粿条 · 福建面", "吉隆坡式黑福建面", ""), ("蚝煎", "", ""), ("烤魔鬼鱼", "参巴酱烧烤", "按重量"),
+       ("两人晚餐（连饮料）", "", "约 RM50–90")],
+  src="https://the-malaysia-move.pages.dev/kl-night-markets/", asof="2026-05")
 P("istana", "kl", "国家皇宫（外观）", "Istana Negara", "Istana Negara, Jalan Duta", 3.1726, 101.6648, "culture", 2, 0.5,
   "大门外全天可拍照", free(), "马来西亚最高元首官邸，大门有骑兵和卫兵站岗。", "整点前后可能看到换岗。")
 P("sunwaylagoon", "kl", "双威水上乐园", "Sunway Lagoon", "Sunway Lagoon", 3.0710, 101.6075, "theme", 4, 6,
@@ -180,7 +205,8 @@ P("mossy", "cameron", "苔藓森林", "Mossy Forest", "Gunung Brinchang", 4.5180
 P("strawberry", "cameron", "草莓园与花园", "Strawberry farms", "Cameron Highlands", 4.4993, 101.3907, "nature", 2, 1,
   "约 8:00–18:00", free("免费入场，摘草莓按重量付费"), "金马伦高原的草莓园、玫瑰园和蔬菜市场，适合亲子。")
 P("cameronmarket", "cameron", "金马伦夜市", "Brinchang Night Market", "Brinchang", 4.4950, 101.3880, "food", 2, 1.5,
-  "周五、周六晚上（约 17:00–23:00）", free(), "高原上的夜市，烤玉米、草莓和各种小吃。", "只在周末开，晚上很冷。", slot="night")
+  "周五、周六晚上（约 17:00–23:00）", free(), "高原上的夜市，烤玉米、草莓和各种小吃。", "只在周末开，晚上很冷。", slot="night",
+  closed=only(5, 6), eat=[("烤玉米 · 烤红薯", "", ""), ("新鲜草莓 · 草莓雪糕", "", ""), ("炸物小吃", "", "")])
 
 P("ipoholdtown", "ipoh", "怡保旧街场 · 二奶巷", "Ipoh Old Town & Concubine Lane", "Concubine Lane", 4.5960, 101.0790, "culture", 4, 2,
   "白天", free(), "保留大量英殖民时期店屋，二奶巷文青小店林立，还有壁画街。",
@@ -256,7 +282,10 @@ P("penangnp", "penang", "槟城国家公园（猴子海滩）", "Penang National
   "约 8:00–18:00", free("免费入园，需登记；坐船往返海滩另付"), "全球最小的国家公园之一，徒步穿越雨林到猴子海滩和灯塔。",
   "带足饮用水，下雨天步道很滑。", slot="morning")
 P("gurney", "penang", "新关仔角美食中心", "Gurney Drive Hawker Centre", "Gurney Drive", 5.4380, 100.3110, "food", 4, 1.5,
-  "傍晚至深夜", free(), "槟城小吃大集合：炒粿条、亚参叻沙、蚝煎、红豆冰。", slot="night")
+  "约 16:30–23:00（部分摊位周二休息）", free(), "槟城小吃大集合：炒粿条、亚参叻沙、蚝煎、红豆冰。",
+  "大部分小吃 RM5–25。", slot="night",
+  eat=[("炒粿条", "", ""), ("亚参叻沙", "", ""), ("蚝煎", "", ""), ("红豆冰 · 煎蕊", "", ""), ("罗惹", "", "")],
+  src="https://thebackpackingfamily.com/?p=5641", asof="2025-12")
 
 P("alorsetartower", "alorsetar", "亚罗士打塔", "Alor Setar Tower", "Alor Setar Tower", 6.1230, 100.3690, "city", 2, 1,
   "约 9:00–22:00", None, "165 米高的通讯塔，可眺望吉打州一望无际的稻田。")
@@ -291,7 +320,10 @@ P("afamosa", "melaka", "圣地亚哥古城门 · 圣保罗山", "A Famosa & St P
 P("dutchsquare", "melaka", "荷兰红屋 · 基督教堂", "Dutch Square", "Christ Church, Malacca", 2.1941, 102.2490, "culture", 5, 1,
   "全天", free("广场免费；红屋内的博物馆另收门票"), "整片砖红色的荷兰殖民建筑，是马六甲最经典的拍照点。")
 P("jonker", "melaka", "鸡场街夜市", "Jonker Walk", "Jonker Street", 2.1960, 102.2470, "food", 5, 2,
-  "夜市：周五至周日傍晚至深夜", free(), "古董店、娘惹糕、鸡饭粒、榴莲煎蕊，一条街吃个够。", "夜市只在周五至周日开。", slot="night")
+  "夜市：周五至周日傍晚至深夜（老街白天也能逛）", free(), "古董店、娘惹糕、鸡饭粒、榴莲煎蕊，一条街吃个够。", "夜市只在周五至周日开。",
+  slot="night", closed=only(5, 6, 0),
+  eat=[("榴莲煎蕊", "马六甲甜品", ""), ("沙爹朱律（Satay Celup）", "串串放进花生酱锅里烫", ""),
+       ("娘惹叻沙 · 娘惹糕", "", ""), ("烤鱿鱼 · 各式小吃", "", "")])
 P("rivercruise", "melaka", "马六甲河游船", "Melaka River Cruise", "Malacca River", 2.1990, 102.2480, "city", 4, 1,
   "每日 9:00–23:00，约 30 分钟一班",
   myr(loc=(25, 15), intl=(30, 25), src="https://www.malaysia-traveller.com/melaka-river-cruise.html", asof="2024-01",
@@ -426,17 +458,20 @@ P("clarkequay", "sg", "克拉码头与新加坡河游船", "Clarke Quay", "Clark
 P("hawpar", "sg", "虎豹别墅", "Haw Par Villa", "Haw Par Villa", 1.2830, 103.7820, "culture", 2, 1.5,
   "约 9:00–20:00", free(), "上千座中国神话雕塑，十殿阎罗很有名，小孩可能会怕。")
 P("laupasat", "sg", "老巴刹美食中心", "Lau Pa Sat", "Lau Pa Sat", 1.2806, 103.8504, "food", 3, 1.5,
-  "24 小时；沙爹街傍晚开", free(), "百年铁铸建筑里的熟食中心，晚上旁边整条街烤沙爹。", slot="night")
+  "24 小时；沙爹街傍晚开", free(), "百年铁铸建筑里的熟食中心，晚上旁边整条街烤沙爹。", slot="night",
+  eat=[("沙爹", "沙爹街傍晚封路摆摊", ""), ("福建虾面 · 炒粿条", "", ""), ("辣椒螃蟹（海鲜摊）", "按重量，先问价", "")])
 
 # ===================== THAILAND =====================
 P("hatyaipark", "hatyai", "合艾市政公园", "Hat Yai Municipal Park", "Hat Yai Municipal Park", 7.0390, 100.4880, "culture", 3, 2,
   "约 6:00–20:00", free("公园免费；登山缆车另收费"), "山上有四面佛、观音像和金色佛塔，坐缆车可俯瞰合艾市。")
 P("kimyong", "hatyai", "金荣市场", "Kim Yong Market", "Kim Yong Market", 7.0080, 100.4740, "food", 3, 1.5,
-  "约 9:00–18:00", free(), "合艾最有名的市场，干货、零食和泰国小吃，马来西亚游客必逛。")
+  "约 9:00–18:00", free(), "合艾最有名的市场，干货、零食和泰国小吃，马来西亚游客必逛。",
+  eat=[("合艾炸鸡", "配炸葱头和糯米饭", ""), ("泰式点心 · 烤肉串", "", ""), ("干货零食（腰果、鱿鱼丝）", "带回家当手信", "")])
 P("samila", "hatyai", "宋卡沙密拉海滩", "Samila Beach, Songkhla", "Samila Beach", 7.2140, 100.5960, "beach", 3, 1.5,
   "全天", free(), "海边的美人鱼铜像是宋卡的象征，傍晚散步最舒服。", slot="evening")
 P("hatyaifloating", "hatyai", "合艾水上市场", "Khlong Hae Floating Market", "Khlong Hae Floating Market", 7.0320, 100.4570, "food", 3, 1.5,
-  "周五至周日傍晚（以现场为准）", free(), "小船上卖泰式小吃和甜点，晚上灯火通明。", slot="night")
+  "周五至周日傍晚（以现场为准）", free(), "小船上卖泰式小吃和甜点，晚上灯火通明。", slot="night", closed=only(5, 6, 0),
+  eat=[("船上烤海鲜", "", ""), ("泰式甜品", "", ""), ("泰式奶茶", "", "")])
 P("watHatYaiNai", "hatyai", "合艾大卧佛寺", "Wat Hat Yai Nai", "Wat Hat Yai Nai", 7.0210, 100.4520, "culture", 2, 0.5,
   "白天", free(), "35 米长的卧佛，身体里面可以进去参观。")
 
@@ -454,7 +489,8 @@ P("watarun", "bangkok", "郑王庙", "Wat Arun", "Wat Arun", 13.7437, 100.4888, 
   fx("THB", 200, None, src="https://watarun.com/wat-arun-tickets/", asof="2026"),
   "湄南河畔用彩瓷镶嵌的高塔，从对岸看夕阳下的剪影最美。", "从卧佛寺旁的码头坐渡轮过河。", slot="evening")
 P("chatuchak", "bangkok", "乍都乍周末市场", "Chatuchak Weekend Market", "Chatuchak Weekend Market", 13.7999, 100.5510, "food", 4, 3,
-  "周六、周日 9:00–18:00（周五晚上部分开）", free(), "上万个摊位的超大市场，衣服、手工艺品和椰子冰淇淋。", "只在周末开，坐 MRT 到 Chatuchak Park。")
+  "周六、周日 9:00–18:00（周五晚上部分开）", free(), "上万个摊位的超大市场，衣服、手工艺品和椰子冰淇淋。", "只在周末开，坐 MRT 到 Chatuchak Park。",
+  closed=only(6, 0), eat=[("椰子冰淇淋", "", ""), ("西班牙海鲜饭（市场名摊）", "", ""), ("泰式烤肉串", "", "")])
 P("skywalk", "bangkok", "王权大京都 SkyWalk", "Mahanakhon SkyWalk", "King Power Mahanakhon", 13.7234, 100.5283, "city", 3, 1.5,
   "10:00–19:00",
   fx("THB", 900, None, approx=True, src="https://itsbetterinthailand.com/our-100-best-things-to-do-in-thailand-in-2026/", asof="2026",
@@ -500,8 +536,9 @@ P("chediluang", "chiangmai", "契迪龙寺", "Wat Chedi Luang", "Wat Chedi Luang
   "约 8:00–17:00",
   fx("THB", 40, None, note="外国游客门票 ฿40，泰国人免费", src="https://www.phuket101.net/wat-chedi-luang/", asof="2026-06", approx=True),
   "古城中心 14 世纪的巨大残塔，可以和僧侣聊天。")
-P("nightbazaar", "chiangmai", "清迈夜市 · 周日步行街", "Chiang Mai Night Bazaar", "Chiang Mai Night Bazaar", 18.7870, 99.0000, "food", 4, 2,
-  "每晚；周日步行街在塔佩门一带", free(), "手工艺品、泰北小吃和现场音乐，周日步行街最热闹。", slot="night")
+P("nightbazaar", "chiangmai", "清迈夜市", "Chiang Mai Night Bazaar", "Chiang Mai Night Bazaar", 18.7870, 99.0000, "food", 3, 2,
+  "每晚", free(), "长康路一带的夜市，手工艺品、泰北小吃和现场音乐，每天都开。", "周六、周日晚上改去步行街更有特色。", slot="night",
+  eat=[("泰北香肠", "", ""), ("芒果糯米饭", "", ""), ("烤肉串", "", "")])
 P("elephantpark", "chiangmai", "大象自然公园", "Elephant Nature Park", "Elephant Nature Park", 19.2140, 98.8590, "nature", 4, 6,
   "需提前预约（含接送）",
   fx("THB", 2500, None, approx=True, src="https://itsbetterinthailand.com/our-100-best-things-to-do-in-thailand-in-2026/", asof="2026",
@@ -587,7 +624,8 @@ P("tamansari", "yogya", "水宫", "Taman Sari", "Taman Sari (Yogyakarta)", -7.81
      src="https://www.detik.com/jogja/plesir/d-7091026/harga-tiket-masuk-taman-sari-yogyakarta-dan-daya-tariknya", asof="2023-12"),
   "苏丹昔日的皇家浴池和地下清真寺，就在王宫旁边。")
 P("malioboro", "yogya", "马里奥波罗街", "Malioboro Street", "Malioboro", -7.7926, 110.3658, "food", 4, 2,
-  "全天，晚上最热闹", free(), "日惹的主街，蜡染布、街头小吃和街头艺人。", slot="night")
+  "全天，晚上最热闹", free(), "日惹的主街，蜡染布、街头小吃和街头艺人。", slot="night",
+  eat=[("Angkringan 路边摊", "小包饭、炸物串和炭火咖啡（kopi joss）", ""), ("鸡肉沙爹", "", ""), ("Gudeg 菠萝蜜饭", "日惹名菜，附近 Wijilan 街最集中", "")])
 P("merapi", "yogya", "默拉皮火山吉普车", "Merapi Lava Tour", "Mount Merapi", -7.5407, 110.4457, "nature", 3, 3,
   "清晨或下午", None, "坐吉普车在火山熔岩地带越野，看 2010 年火山爆发遗迹。", slot="sunrise")
 P("tanahlot", "bali", "海神庙", "Tanah Lot", "Tanah Lot", -8.6212, 115.0868, "culture", 5, 2,
@@ -639,6 +677,136 @@ P("sipisopiso", "toba", "西皮索皮索瀑布", "Sipiso-piso Waterfall", "Sipis
   "白天", None, "120 米高的瀑布从峭壁直落峡谷，可远眺多巴湖。")
 
 # ---------- curated routes: id, name, days, start region, note, [[place ids per day]]
+# ===================== FOOD & NIGHT MARKETS (more) =====================
+KLNM = "https://the-malaysia-move.pages.dev/kl-night-markets/"
+PGF = "https://www.penang-traveltips.com/malaysia/penang/must-try-penang-food.htm"
+IPF = "https://www.travelswithsun.com/best-ipoh-food/"
+P("connaught", "kl", "康乐花园夜市（周三）", "Taman Connaught Night Market", "Taman Connaught", 3.0827, 101.7375, "food", 3, 2,
+  "只在周三，约 17:00–24:00（19:00–21:00 最热闹）", free(), "吉隆坡最长的夜市之一，两公里的摊位从台湾小吃到烧烤、水果应有尽有。",
+  "人很多，坐 MRT 到 Taman Connaught 站，或者叫 Grab。", closed=only(3), slot="night", geo="Taman Connaught, Cheras",
+  eat=[("臭豆腐 · 台湾小吃", "", ""), ("烧烤串", "", ""), ("珍珠奶茶 · 甘蔗水", "", ""), ("煎蕊 · 新鲜水果", "", ""),
+       ("小吃价钱", "大多 RM2–10，一晚吃饱约 RM30/人", "RM2–10")], src=KLNM, asof="2026-05")
+P("newlane", "penang", "新巷小贩中心（Lorong Baru）", "New Lane Hawker Stalls", "", 5.4148, 100.3265, "food", 4, 1.5,
+  "约 16:00–22:00，周三休息", free(), "槟城人晚上吃宵夜的老地方，街边一整排小贩，鸭蛋炒粿条最出名。", "周三大部分摊位休息。",
+  closed=[3], slot="night", geo="Lorong Baru, George Town, Penang",
+  eat=[("鸭蛋炒粿条", "", "约 RM12"), ("炒粿角", "", ""), ("卤肉 · 沙爹", "", ""), ("云吞面 · 粿汁", "", ""),
+       ("一般小吃", "", "RM5–10")], src="https://thebackpackingfamily.com/?p=5641", asof="2025-12")
+P("airitamlaksa", "penang", "亚依淡叻沙", "Air Itam Laksa", "", 5.4005, 100.2782, "food", 3, 1,
+  "白天（以现场为准）", free(), "极乐寺山脚的老字号亚参叻沙，酸辣鱼汤配粗米粉、黄梨和薄荷叶。", "和极乐寺一起安排最顺路。",
+  geo="Pasar Air Itam, Penang", eat=[("亚参叻沙", "罗望子鱼汤，酸辣开胃", "")], src=PGF, asof="2025-08")
+P("cendol", "penang", "槟城路驰名潮州煎蕊", "Penang Road Famous Teochew Chendul", "", 5.4172, 100.3305, "food", 3, 0.5,
+  "白天（以现场为准）", free(), "1932 年开到现在的街边煎蕊摊，椰浆、椰糖、红豆和斑兰绿条，排队也值得。",
+  geo="Lebuh Keng Kwee, George Town", eat=[("煎蕊", "椰糖浆 + 椰浆 + 红豆", ""), ("亚参叻沙", "对面小档", "")], src=PGF, asof="2025-08")
+P("lineclear", "penang", "Line Clear 嘛嘛饭", "Line Clear Nasi Kandar", "", 5.4191, 100.3330, "food", 3, 1,
+  "从早到深夜（以现场为准）", free(), "小巷里的老牌印度穆斯林饭档，白饭淋上好几种咖喱，配炸鸡和蛋。",
+  geo="Line Clear Nasi Kandar, Penang", eat=[("嘛嘛饭（Nasi Kandar）", "饭 + 鸡 + 蛋 + 菜 + 多种咖喱", "约 RM6.50 起")], src=PGF, asof="2025-08")
+P("ipohcoffee", "ipoh", "旧街场白咖啡（新源隆 · 南香）", "Ipoh White Coffee (Sin Yoon Loong & Nam Heong)", "", 4.5972, 101.0787, "food", 4, 1,
+  "新源隆 6:30–14:30；南香 6:30–16:30", free(), "怡保白咖啡的发源地，两家老店就在同一条街，配咖椰吐司和蛋挞。", "早上去，中午前人最多。",
+  slot="morning", geo="Jalan Bandar Timah, Ipoh",
+  eat=[("白咖啡", "", ""), ("蛋挞", "南香最出名", ""), ("咖椰吐司 · 半生熟蛋", "", "")], src=IPF, asof="2026-08")
+P("ipohtauge", "ipoh", "怡保芽菜鸡", "Ipoh Bean Sprout Chicken", "", 4.5905, 101.0880, "food", 3, 1,
+  "Cowan Street 店：周四至周日 18:00–24:00（时间不太固定）", free(), "又短又胖的怡保芽菜配白斩鸡和河粉，是怡保晚餐的标配。",
+  "另外两家老字号老黄、安记在 Jalan Yau Tet Shin，白天到晚上都开。", closed=only(4, 5, 6, 0), slot="evening", geo="Jalan Raja Ekram, Ipoh",
+  eat=[("芽菜鸡", "", ""), ("鸡丝河粉（Sar Hor Fun）", "", "")], src=IPF, asof="2026-08")
+P("ricebal", "melaka", "中华茶室鸡饭粒", "Chung Wah Chicken Rice Balls", "", 2.1955, 102.2478, "food", 4, 1,
+  "约 9:00–15:00，常常中午就卖完", free(), "马六甲招牌鸡饭粒，就在鸡场街口，半只鸡配饭粒是标准吃法。", "越早去越好；附近还有和记（周四休）、Famosa。",
+  geo="Jalan Hang Jebat, Melaka",
+  eat=[("鸡饭粒", "", "每粒约 RM0.40–0.60"), ("半只鸡 + 约 10 粒饭", "", "约 RM30"), ("两人一餐", "", "约 RM25–40")],
+  src="https://the-malaysia-move.pages.dev/malacca-chicken-rice-balls/", asof="2026-05")
+P("pasirpenambang", "kselangor", "巴斯班南海鲜村", "Pasir Penambang Seafood", "", 3.3445, 101.2560, "food", 3, 1.5,
+  "午餐至晚餐（各家不同）", free(), "瓜拉雪兰莪河口的渔村，一排海鲜楼，看萤火虫前在这里吃晚餐最顺路。", "海鲜按重量算，点之前先问价。",
+  slot="evening", geo="Pasir Penambang, Kuala Selangor",
+  eat=[("清蒸鱼 · 奶油虾", "", "按重量"), ("辣椒螃蟹", "", "按重量"), ("炒啦啦（花蛤）", "", "")])
+P("langkawinight", "langkawi", "兰卡威流动夜市", "Langkawi Night Markets", "", 6.3270, 99.8460, "food", 3, 1.5,
+  "每天换地方，约 17:00–22:00", free(), "当地人的流动夜市（Pasar Malam），每天在岛上不同村镇摆摊，沙爹、椰浆饭和各种马来小吃。",
+  "下面的列表按星期几告诉你今天在哪里。", slot="night",
+  spots=[(1, "Ulu Melaka 夜市", "Pasar Malam Ulu Melaka Langkawi"), (2, "Kedawang 夜市", "Pasar Malam Kedawang Langkawi"),
+         (3, "瓜镇 Kuah 夜市", "Pasar Malam Kuah Langkawi"), (4, "Temonyong 夜市", "Pasar Malam Temonyong Langkawi"),
+         (5, "Ayer Hangat 夜市", "Pasar Malam Ayer Hangat Langkawi"), (6, "瓜镇 Kuah 夜市", "Pasar Malam Kuah Langkawi"),
+         (0, "Padang Matsirat 夜市", "Pasar Malam Padang Matsirat Langkawi")],
+  eat=[("沙爹", "", ""), ("煎饼（Apam Balik）", "", ""), ("椰浆饭（Nasi Lemak）", "", ""), ("烤鸡 · 海鲜", "", "")],
+  src="https://www.travelswithsun.com/langkawi-night-market/")
+P("maxwell", "sg", "麦士威熟食中心", "Maxwell Food Centre", "Maxwell Food Centre", 1.2803, 103.8448, "food", 4, 1,
+  "各摊位时间不同（大多早上至晚上）", free(), "牛车水旁边的熟食中心，天天海南鸡饭上过米其林推荐，中午排队最长。", "天天鸡饭周一休息；避开 12:00–13:30 的上班族午餐时间。",
+  geo="Maxwell Food Centre, Singapore",
+  eat=[("天天海南鸡饭", "周二至周日 10:00–20:00", "S$5 起"), ("亚太海南鸡饭", "周二休息", "S$5 起"),
+       ("真真粥品", "周三、周五至周日 5:30–14:00", "S$4–5")], src="https://eatbook.sg/maxwell-food-centre-guide/", asof="2026-09")
+P("oldairport", "sg", "旧机场路熟食中心", "Old Airport Road Food Centre", "Old Airport Road Food Centre", 1.3082, 103.8855, "food", 3, 1,
+  "各摊位时间不同（大多早上至晚上）", free(), "本地人最爱的大型熟食中心，几十家老字号虾面、炒粿条、沙爹和豆花。",
+  geo="Old Airport Road Food Centre, Singapore",
+  eat=[("Albert Street 虾面", "", "S$4–5"), ("南星福建虾面", "", "S$3–5"), ("Lucky 炒粿条", "", "S$3–5"),
+       ("老伴豆花", "周一休息", "S$2.90 / 杏仁 S$3.60"), ("全记沙爹", "晚上开，周一、周四休息", "每串 S$0.40–0.50")],
+  src="https://www.thebestsingapore.com/?p=3393", asof="2026-05")
+P("yaowarat", "bangkok", "耀华力路唐人街夜食", "Yaowarat Street Food", "Yaowarat Road", 13.7402, 100.5096, "food", 5, 2.5,
+  "每晚约 17:00 开始，18:30–22:30 最热闹（部分摊位周一休息）", free(), "曼谷唐人街一到晚上就变成大排档，粿汁、蚝煎、鱼鳔汤和海鲜一路吃过去。",
+  "坐 MRT 到 Wat Mangkon 站；热门摊要排 20–40 分钟。", slot="night", geo="Yaowarat Road, Bangkok",
+  eat=[("粿汁（Guay Jub）", "胡椒汤卷粉", "฿60–100"), ("蚝煎", "", "฿120–200"), ("蟹肉炒饭", "", "฿150–280"),
+       ("鱼鳔汤", "", "฿60–100"), ("沙爹猪肉（10 串）", "", "฿70–90"), ("芒果糯米饭", "", "฿80–150"), ("海鲜拼盘", "", "฿400–1,200")],
+  src="https://www.khaosanroad.com/articles/yaowarat-street-food-guide", asof="2026-06")
+P("joddfairs", "bangkok", "Jodd Fairs 拉差达夜市", "Jodd Fairs Ratchada", "", 13.7656, 100.5699, "food", 4, 2,
+  "每天约 17:00–01:00", free(), "曼谷最红的夜市，招牌是堆成小山的火山排骨，还有烤河虾和海鲜桶。",
+  "旧的拉玛九 Rama 9 场地已经关了，现在在 Big C Place Ratchadaphisek 旁边；MRT 泰国文化中心站 4 号出口走 3 分钟。",
+  slot="night", geo="Big C Place Ratchadaphisek, Bangkok",
+  eat=[("火山排骨（Leng Saap）", "两个人点中份就够", "中 ฿180 / 大 ฿250 / 特大 ฿350"), ("烤河虾", "", "฿200–450"),
+       ("盐烤鱼", "", "฿250–400"), ("海鲜桶", "适合 3–4 人分", "฿500–900"), ("烤肉串", "", "每串 ฿15–40"),
+       ("两人晚餐连饮料", "", "约 ฿600–1,200")],
+  src="https://travjoy.com/blog/jodd-fairs-night-market-bangkok-a-complete-2026-guide-to-the-ratchada-site", asof="2026-07")
+P("greenway", "hatyai", "合艾绿道夜市 Greenway", "Greenway Night Market", "", 7.0140, 100.4900, "food", 3, 1.5,
+  "周二至周日 17:00–22:00，周一休息", free(), "合艾最大的美食夜市，炸鸡、烤鱿鱼、海鲜桶，清真食品也多。", "离 ASEAN Night Bazaar 只有 400 米。",
+  closed=[1], slot="night", geo="Greenway Night Market, Hat Yai",
+  eat=[("合艾炸鸡", "", ""), ("烤鱿鱼", "", ""), ("海鲜桶", "", ""), ("清真烧烤 · 甜品", "", "")],
+  src="https://www.lovethailand.org/travel/en/73-Songkhla/8192-Greenway-Market.html")
+P("sundaywalk", "chiangmai", "清迈周日步行街", "Chiang Mai Sunday Walking Street", "", 18.7883, 98.9905, "food", 5, 2.5,
+  "只在周日 16:30–23:00", free(), "从塔佩门到帕辛寺的整条拉差当嫩路封街，手工艺品加上寺庙里的美食区。",
+  "人非常多，傍晚 5 点前到比较好走。", closed=only(0), slot="night", geo="Ratchadamnoen Road, Chiang Mai",
+  eat=[("泰北香肠（Sai Ua）", "", ""), ("泰北咖喱面（Khao Soi）", "", ""), ("寺庙里的小吃摊", "", "")],
+  src="https://www.expique.com/the-best-markets-in-chiang-mai/", asof="2023-03")
+P("saturdaywalk", "chiangmai", "清迈周六步行街（Wua Lai）", "Chiang Mai Saturday Walking Street", "", 18.7808, 98.9845, "food", 4, 2,
+  "只在周六 16:30–23:00", free(), "银器街 Wua Lai 路的周六夜市，比周日步行街小一点、好逛一点。", closed=only(6), slot="night",
+  geo="Wua Lai Road, Chiang Mai",
+  eat=[("泰北香肠（Sai Ua）", "", ""), ("泰北咖喱面（Khao Soi）", "", ""), ("南咪粉（Khanom Jeen Nam Ngiao）", "", "")],
+  src="https://www.expique.com/the-best-markets-in-chiang-mai/", asof="2023-03")
+P("warorot", "chiangmai", "瓦洛洛市场", "Warorot Market (Kad Luang)", "Warorot Market", 18.7905, 99.0003, "food", 3, 1.5,
+  "每天约 4:00–18:00", free(), "清迈本地人的大市场，泰北熟食、零食和手信都便宜。", geo="Warorot Market, Chiang Mai",
+  eat=[("汉莱咖喱（Gaeng Hunglay）", "缅甸风味猪肉咖喱", ""), ("炸猪皮（Kap Moo）", "", ""), ("泰北香肠", "", "")],
+  src="https://www.expique.com/the-best-markets-in-chiang-mai/", asof="2023-03")
+P("phuketsunday", "phuket", "普吉老镇周日夜市（Lard Yai）", "Phuket Town Sunday Walking Street", "", 7.8853, 98.3888, "food", 4, 2,
+  "只在周日 16:00–22:00", free(), "老镇他朗路封街的周日夜市，普吉本地小吃最集中。", closed=only(0), slot="night", geo="Thalang Road, Phuket",
+  eat=[("蚝仔煎（O-tao）", "加芋头的普吉版蚝煎", ""), ("椰子小煎饼（A-pong）", "", ""), ("刨冰（O-eaw）", "", ""),
+       ("福建面", "", ""), ("卤味串（Loba）", "", "")], src="https://21sensations.com/phuket-town-night-market/", asof="2026-04")
+P("krabinight", "krabi", "甲米镇周末夜市", "Krabi Town Weekend Night Market", "", 8.0645, 98.9161, "food", 3, 1.5,
+  "周五、周六 17:00 后（19:30–22:00 最热闹）", free(), "甲米镇中心的步行街夜市，以小吃为主，座位不多，大家都边走边吃。",
+  closed=only(5, 6), slot="night", eat=[("烤肉串 · 炸物", "", ""), ("泰式甜品", "", ""), ("果汁 · 奶茶", "", "")],
+  src="https://krabinature.com/krabi-night-markets-in-town-and-ao-nang-beach/", asof="2026-09")
+P("aonangnight", "krabi", "奥南海滩夜市", "Ao Nang Landmark Night Market", "", 8.0432, 98.8114, "food", 3, 1.5,
+  "傍晚开始（以现场为准）", free(), "奥南海边最大的夜市，烤鸡、烤鱼、烤猪肉和水果甜品。", slot="night",
+  eat=[("烤鸡 · 烤鱼", "", ""), ("烤猪肉", "", ""), ("水果 · 甜品", "", "")],
+  src="https://krabinature.com/krabi-night-markets-in-town-and-ao-nang-beach/", asof="2026-09")
+P("thepprasit", "pattaya", "Thepprasit 夜市", "Thepprasit Night Market", "", 12.9050, 100.8840, "food", 3, 1.5,
+  "每晚约 17:00–23:00，周五至周日最热闹", free(), "芭提雅南边最大的夜市，盐烤鱼、烤猪肉串配糯米饭和各种泰式小吃。", "带零钱，大部分摊位不标价。",
+  slot="night", geo="Thepprasit Night Market, Pattaya",
+  eat=[("盐烤鱼（Pla Pao）", "", ""), ("烤猪肉串配糯米饭", "", ""), ("泰式炒河粉 · 青木瓜沙拉", "", ""), ("芒果糯米饭 · 椰奶小煎饼", "", "")],
+  src="https://pattayapointer.pages.dev/guides/pattaya-night-markets-guide", asof="2026-10")
+P("gianyar", "bali", "吉安雅夜市", "Gianyar Night Market", "", -8.5420, 115.3260, "food", 4, 1.5,
+  "每天 16:00–23:00", free(), "巴厘岛最大的本地夜市，离乌布约 10 公里，烤乳猪饭便宜又地道。", slot="night", geo="Pasar Gianyar, Bali",
+  eat=[("烤乳猪饭（Babi Guling）", "", "约 Rp15,000"), ("巴厘沙爹（Sate Lilit）", "", "")],
+  src="https://forevervacation.com/the-vacationer/best-night-markets-in-bali", asof="2026")
+P("sindhu", "bali", "沙努尔 Sindhu 夜市", "Sindhu Night Market, Sanur", "", -8.6835, 115.2620, "food", 3, 1,
+  "每天 17:00–22:00", free(), "沙努尔海边小镇的小夜市，适合住在沙努尔的人散步过去吃晚餐。", slot="night",
+  geo="Jalan Danau Tamblingan, Sanur",
+  eat=[("巴厘沙爹（Sate Lilit）", "", "Rp15,000–25,000"), ("炒饭 · 炒面", "", "")],
+  src="https://forevervacation.com/the-vacationer/best-night-markets-in-bali", asof="2026")
+P("jimbaran", "bali", "金巴兰海滩海鲜晚餐", "Jimbaran Seafood Dinner", "Jimbaran", -8.7780, 115.1650, "food", 4, 2,
+  "海滩餐厅傍晚开始；鱼市约 7:00–19:00", free(), "在沙滩上一边看日落一边吃炭烤海鲜，是巴厘岛的经典晚餐。",
+  "海滩餐厅比自己去 Kedonganan 鱼市买了再请人烤贵很多；点之前一定问清每公斤价钱。", slot="evening",
+  eat=[("红鲷鱼（鱼市价）", "", "每公斤 Rp90,000–130,000"), ("虾（鱼市价）", "", "每公斤 Rp100,000–200,000"),
+       ("螃蟹（鱼市价）", "", "每公斤 Rp150,000–180,000"), ("龙虾（鱼市价）", "", "每公斤 Rp400,000–500,000"),
+       ("代烤费", "鱼市旁的烧烤档", "每公斤 Rp15,000")], src="https://backpackmoments.com/jimbaran-fish-market/", asof="2025-01")
+P("gudeg", "yogya", "Wijilan 菠萝蜜饭街", "Gudeg Wijilan", "", -7.8058, 110.3672, "food", 3, 1,
+  "各家时间不同（大多早上至晚上）", free(), "王宫北广场东边的一条街，全是卖日惹名菜 Gudeg（甜味菠萝蜜炖菜饭）的老店。",
+  "Gudeg 偏甜，配辣的 krecek（牛皮辣酱）一起吃。", geo="Jalan Wijilan, Yogyakarta",
+  eat=[("Gudeg 菠萝蜜饭", "配鸡肉、鸡蛋和牛皮辣酱", "")], src="https://simplyindonesia.pages.dev/yogyakarta/best-gudeg-in-yogyakarta/", asof="2026-05")
+
 ROUTES = [
     ("klclassic", "吉隆坡经典 3 天", "kl", "第一次来吉隆坡：地标、黑风洞、布城和萤火虫。",
      [["petronas", "aquaria", "iamm", "merdeka", "petaling"], ["batucaves", "birdpark", "kltower", "theanhou", "bukitbintang"], ["putramosque", "putracruise", "melawati", "fireflies"]]),
@@ -706,6 +874,28 @@ NOTES = {
 # ---------- photo choice: a Commons search used when the article's lead photo is missing or unsuitable
 # (e.g. a map or satellite picture). The build logs which photo each place ends up with.
 PHOTO = {
+    "connaught": "Taman Connaught night market",
+    "newlane": "Lorong Baru hawker Penang",
+    "airitamlaksa": "Penang asam laksa",
+    "cendol": "Penang Road Teochew Chendul",
+    "lineclear": "Nasi kandar Penang",
+    "ipohcoffee": "Ipoh white coffee",
+    "ipohtauge": "Ipoh bean sprout chicken",
+    "ricebal": "Chicken rice balls Malacca",
+    "pasirpenambang": "Kuala Selangor seafood restaurant",
+    "langkawinight": "Langkawi night market",
+    "joddfairs": "Jodd Fairs",
+    "greenway": "Hat Yai night market",
+    "sundaywalk": "Sunday Walking Street Chiang Mai",
+    "saturdaywalk": "Wualai Saturday walking street",
+    "phuketsunday": "Phuket Old Town walking street",
+    "krabinight": "Krabi night market",
+    "aonangnight": "Ao Nang night market",
+    "thepprasit": "Pattaya night market",
+    "gianyar": "Gianyar night market",
+    "sindhu": "Sanur night market",
+    "jimbaran": "Jimbaran seafood",
+    "gudeg": "Gudeg Yogyakarta",
     "watmachim": "",  # no reliable photo found: show the icon instead of a wrong picture
     "elephantpark": "Elephant Nature Park Chiang Mai",
     "pdbeach": "Port Dickson beach",
