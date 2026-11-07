@@ -4,15 +4,11 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ComponentName;
-import android.content.ContentUris;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,7 +16,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
-import android.util.Size;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -42,11 +37,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -69,6 +60,7 @@ public class MainActivity extends Activity {
     /** for the automatic test: "play", "song:<title>", "tab:<name>" */
     private volatile String demo;
     private long lastSave;
+    private Boolean lastAllFiles;
     private final Runnable tick = new Runnable() {
         @Override
         public void run() {
@@ -105,7 +97,7 @@ public class MainActivity extends Activity {
                 if (!"local.art".equals(u.getHost())) return null;
                 int size = 160;
                 try { size = Integer.parseInt(u.getQueryParameter("s")); } catch (Exception ignored) { }
-                byte[] b = art(u.getLastPathSegment(), Math.max(64, Math.min(size, 1000)));
+                byte[] b = Art.get(MainActivity.this, u.getLastPathSegment(), Math.max(64, Math.min(size, 1000)));
                 Map<String, String> h = new HashMap<>();
                 h.put("Cache-Control", "max-age=86400");
                 h.put("Access-Control-Allow-Origin", "*");
@@ -206,7 +198,7 @@ public class MainActivity extends Activity {
                 .setTitle(s.optString("title"))
                 .setArtist(s.optString("artist").isEmpty() ? null : s.optString("artist"))
                 .setAlbumTitle(s.optString("album").isEmpty() ? null : s.optString("album"));
-        if (s.has("albumId")) md.setArtworkUri(Uri.parse("content://media/external/audio/albumart/" + s.optLong("albumId")));
+        md.setArtworkUri(Uri.parse("content://" + ArtProvider.AUTHORITY + "/" + Uri.encode(s.optString("id"))));
         String uri = s.optString("uri");
         return new MediaItem.Builder().setMediaId(uri).setUri(uri).setMediaMetadata(md.build()).build();
     }
@@ -263,75 +255,23 @@ public class MainActivity extends Activity {
         js("window.openPlayer&&openPlayer()");
     }
 
-    // ---------- album covers
-
-    private byte[] art(String id, int size) {
-        if (id == null) return null;
-        File dir = new File(getCacheDir(), "art");
-        dir.mkdirs();
-        File f = new File(dir, Lyrics.safe(id) + "_" + size + ".jpg");
-        File none = new File(dir, Lyrics.safe(id) + ".none");
-        try {
-            if (f.exists()) return Files.readAllBytes(f.toPath());
-            if (none.exists()) return null;
-            JSONObject s = Library.songs.get(id);
-            if (s == null) return null;
-            Bitmap bm = null;
-            Uri uri = Uri.parse(s.optString("uri"));
-            if (id.startsWith("m") && Build.VERSION.SDK_INT >= 29) {
-                try { bm = getContentResolver().loadThumbnail(uri, new Size(size, size), null); } catch (Exception ignored) { }
-            }
-            if (bm == null) {
-                MediaMetadataRetriever r = new MediaMetadataRetriever();
-                try {
-                    if (id.startsWith("m")) r.setDataSource(this, uri);
-                    else r.setDataSource(s.optString("path"));
-                    byte[] pic = r.getEmbeddedPicture();
-                    if (pic != null) bm = decode(pic, size);
-                } catch (Exception ignored) {
-                } finally {
-                    try { r.release(); } catch (Exception ignored) { }
-                }
-            }
-            if (bm == null && s.has("albumId") && Build.VERSION.SDK_INT < 29) {
-                try (InputStream in = getContentResolver().openInputStream(ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), s.optLong("albumId")))) {
-                    if (in != null) bm = BitmapFactory.decodeStream(in);
-                } catch (Exception ignored) {
-                }
-            }
-            if (bm == null) {
-                new FileOutputStream(none).close();
-                return null;
-            }
-            if (bm.getWidth() > size * 1.3 || bm.getHeight() > size * 1.3) {
-                float k = (float) size / Math.max(bm.getWidth(), bm.getHeight());
-                bm = Bitmap.createScaledBitmap(bm, Math.max(1, (int) (bm.getWidth() * k)), Math.max(1, (int) (bm.getHeight() * k)), true);
-            }
-            ByteArrayOutputStream o = new ByteArrayOutputStream();
-            bm.compress(Bitmap.CompressFormat.JPEG, 86, o);
-            byte[] b = o.toByteArray();
-            try (FileOutputStream fo = new FileOutputStream(f)) { fo.write(b); }
-            return b;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static Bitmap decode(byte[] pic, int size) {
-        BitmapFactory.Options o = new BitmapFactory.Options();
-        o.inJustDecodeBounds = true;
-        BitmapFactory.decodeByteArray(pic, 0, pic.length, o);
-        int sample = 1;
-        while (o.outWidth / (sample * 2) >= size && o.outHeight / (sample * 2) >= size) sample *= 2;
-        BitmapFactory.Options o2 = new BitmapFactory.Options();
-        o2.inSampleSize = sample;
-        return BitmapFactory.decodeByteArray(pic, 0, pic.length, o2);
-    }
-
     // ---------- permissions, pickers, theme
 
     private String audioPerm() {
         return Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_AUDIO : Manifest.permission.READ_EXTERNAL_STORAGE;
+    }
+
+    /** "All files access": needed (Android 11+) to see songs in folders hidden with .nomedia. */
+    private boolean allFiles() {
+        return Build.VERSION.SDK_INT < 30 || android.os.Environment.isExternalStorageManager();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        boolean a = allFiles();
+        if (lastAllFiles != null && lastAllFiles != a) js("window.onAllFiles&&onAllFiles(" + a + ")");
+        lastAllFiles = a;
     }
 
     private boolean hasPerm() {
@@ -431,6 +371,23 @@ public class MainActivity extends Activity {
             String d = demo;
             demo = null;
             return d == null ? "" : d;
+        }
+
+        @JavascriptInterface
+        public boolean allFiles() {
+            return MainActivity.this.allFiles();
+        }
+
+        @JavascriptInterface
+        public void askAllFiles() {
+            ui.post(() -> {
+                if (Build.VERSION.SDK_INT < 30) return;
+                try {
+                    startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName())));
+                } catch (Exception e) {
+                    try { startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)); } catch (Exception ignored) { }
+                }
+            });
         }
 
         @JavascriptInterface

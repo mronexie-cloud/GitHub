@@ -97,6 +97,11 @@ class Library {
             artist = base.substring(0, k).trim();
             title = base.substring(k + 3).trim();
         }
+        // without an album tag, Android uses the folder name as the album: not a real album
+        if (!album.isEmpty() && path != null) {
+            File parent = new File(path).getParentFile();
+            if (parent != null && album.equals(parent.getName())) album = "";
+        }
         String folder = "";
         if (path != null) {
             String dir = new File(path).getParent();

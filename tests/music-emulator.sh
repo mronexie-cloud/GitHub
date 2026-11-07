@@ -18,6 +18,13 @@ adb logcat -c
 adb shell am start -n com.zlc.music/.MainActivity
 sleep 12
 shot 1-library
+# turn on "All files access" the way the person would in Settings, then come back to the app
+adb shell appops set --uid com.zlc.music MANAGE_EXTERNAL_STORAGE allow
+adb shell input keyevent KEYCODE_HOME
+sleep 2
+adb shell am start -n com.zlc.music/.MainActivity
+sleep 8
+shot 1b-library-all-files
 adb logcat -d -s MusicBox:* > $OUT/scanlog.txt
 adb shell am start -n com.zlc.music/.MainActivity --es demo play
 sleep 8

@@ -161,6 +161,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 .dlg .acts button{height:38px;padding:0 16px;border-radius:19px;font-weight:600}
 .dlg .acts .ok{background:var(--acc);color:var(--accInk)}
 .dlg p{margin:0;color:var(--sub);font-size:14px;line-height:1.6;word-break:break-all}
+.tip{margin:10px 12px 4px;padding:12px 14px;border-radius:14px;background:var(--soft);font-size:13px;color:var(--sub);line-height:1.55}
+.tip b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+.tip .acts{display:flex;gap:8px;margin-top:8px}
+.tip .acts button{height:32px;padding:0 14px;border-radius:16px;font-weight:600;font-size:13px}
+.tip .acts .ok{background:var(--acc);color:var(--accInk)}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(30,22,16,.92);color:#fff;padding:9px 16px;border-radius:18px;font-size:13.5px;z-index:60;max-width:86vw;text-align:center}
 </style>
 </head>
@@ -269,7 +274,10 @@ const T = {
   modeAll:['列表循环','Repeat all'], modeOne:['单曲循环','Repeat one'], modeShuf:['随机播放','Shuffle'],
   path:['位置','Location'], size:['大小','Size'], format:['格式','Format'], length:['时长','Length'], album:['专辑','Album'], hiddenTag:['隐藏文件夹','hidden folder'],
   nothing:['这里还没有歌曲','No songs here yet'], favEmpty:['点歌曲旁边的 ⋮ 或播放页的 ♡ 收藏歌曲','Tap ⋮ next to a song or ♡ on the player to add favorites'],
-  noMatch:['没有匹配的歌曲','No matching songs'], from:['来自：{n}','From: {n}'], allSongs:['全部歌曲','All songs'],
+  noMatch:['没有匹配的歌曲','No matching songs'],
+  deepT:['有些 App 把歌存在隐藏文件夹里','Some apps keep songs in hidden folders'],
+  deepD:['开启“所有文件访问”后，音乐盒也能找到这些普通音频文件，并读取歌曲旁边的 .lrc 歌词。','Turn on “All files access” so Music Box can find those plain audio files and read .lrc lyrics next to songs.'],
+  deepOn:['去开启','Turn on'], deepNo:['不用了','No thanks'], deep:['扫描隐藏文件夹','Scan hidden folders'], deepState:['已开启','On'], deepOff:['未开启','Off'], from:['来自：{n}','From: {n}'], allSongs:['全部歌曲','All songs'],
 };
 const t = (k, n) => { let v = T[k]; v = Array.isArray(v) ? v[ZH ? 0 : 1] : k; return n === undefined ? v : v.replace('{n}', n); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -409,8 +417,11 @@ function render() {
   if (S.tab === 'songs' || q) {
     S.view = sorted(S.lib.filter(s => matches(s, q)));
     m.dataset.ctx = 'songs';
-    m.innerHTML = S.view.length ? songList(S.view, 'songs')
-      : q ? emptyHtml(I.note, t('noMatch'), '') : emptyHtml(I.note, t('emptyT'), t('emptyD'), `<button class="btn" id="rescanBtn">${esc(t('rescan'))}</button>`);
+    const tip = !q && A && A.allFiles && !A.allFiles() && !store.get('deepTip', 0)
+      ? `<div class="tip"><b>${esc(t('deepT'))}</b>${esc(t('deepD'))}<div class="acts"><button class="ok" id="deepOn">${esc(t('deepOn'))}</button><button id="deepNo">${esc(t('deepNo'))}</button></div></div>` : '';
+    m.innerHTML = tip + (S.view.length ? songList(S.view, 'songs')
+      : q ? emptyHtml(I.note, t('noMatch'), '') : emptyHtml(I.note, t('emptyT'), t('emptyD'), `<button class="btn" id="rescanBtn">${esc(t('rescan'))}</button>`));
+    if ($('deepOn')) { $('deepOn').onclick = () => A.askAllFiles(); $('deepNo').onclick = () => { store.set('deepTip', 1); render(); }; }
     const rb = $('rescanBtn'); if (rb) rb.onclick = () => scan(true);
     const sb = $('sortBtn'); if (sb) sb.onclick = sortSheet;
   } else if (S.tab === 'lists') {
@@ -927,6 +938,7 @@ function settingsSheet() {
   const n = A ? A.lyricsFolderCount() : 0;
   sheet(`<span>${esc(t('settings'))}</span>`,
     item(I.scan, t('rescan'), 'scan') +
+    (A && A.allFiles ? `<button class="item" data-act="deep">${I.folder}<span>${esc(t('deep'))}</span><span class="r">${esc(A.allFiles() ? t('deepState') : t('deepOff'))}</span></button>` : '') +
     `<div class="sect">${esc(t('minLen'))}</div><div class="opt">${[0, 10, 30, 60].map(v => `<button data-minlen="${v}" class="${S.min === v ? 'on' : ''}">${esc(v ? t('sec', v) : t('noFilter'))}</button>`).join('')}</div>` +
     `<div class="sect">${esc(t('lyrics'))}</div>` +
     `<button class="item" data-act="online"><span>${esc(t('online'))}</span><i class="sw${S.online ? ' on' : ''}"></i></button>` +
@@ -943,9 +955,11 @@ function settingsSheet() {
     if (a === 'scan') { closeSheet(); scan(true); }
     if (a === 'online') { S.online = !S.online; store.set('online', S.online ? 1 : 0); b.querySelector('.sw').classList.toggle('on', S.online); S.lyr = {}; }
     if (a === 'folder') { closeSheet(); A.pickLyricsFolder(); }
+    if (a === 'deep') { closeSheet(); if (!A.allFiles()) A.askAllFiles(); else scan(true); }
     if (a === 'sleep') sleepSheet();
   };
 }
+window.onAllFiles = on => { if (on) { store.set('deepTip', 1); scan(true); } else render(); };
 window.onLrcFolder = n => { toast(t('lrcIndexed', n)); S.lyr = {}; const s = curSong(); if (s) loadLyrics(s); };
 
 /* ---------------- header, tabs, back ---------------- */
