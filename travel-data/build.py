@@ -181,19 +181,22 @@ def main():
         w = p.pop("_w")
         name = w.get("image")
         chosen, why = None, ""
-        if p["id"] in P.PHOTO:
+        skip = P.PHOTO.get(p["id"]) == ""
+        if p["id"] in P.PHOTO and not skip:
             cands = [e for e in commons_search(P.PHOTO[p["id"]]) if good_shape(e) and e["name"] not in taken]
             if cands:
                 chosen, why = cands[0], "search:" + P.PHOTO[p["id"]]
-        if not chosen and name and not SKIP_IMG.search(name) and lead.get(name, {}).get("url"):
+        if skip:
+            w = {}
+        if not chosen and not skip and name and not SKIP_IMG.search(name) and lead.get(name, {}).get("url"):
             chosen, why = dict(lead[name], name=name), "lead"
-        if not chosen:
+        if not chosen and not skip:
             for n in (w.get("images") or []):
                 e = extra.get(n)
                 if good_shape(e, 1000):
                     chosen, why = dict(e, name=n), "article"
                     break
-        if not chosen:
+        if not chosen and not skip:
             cands = [e for e in commons_search(p["en"]) if good_shape(e) and e["name"] not in taken]
             if cands:
                 chosen, why = cands[0], "search:" + p["en"]

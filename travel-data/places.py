@@ -706,6 +706,7 @@ NOTES = {
 # ---------- photo choice: a Commons search used when the article's lead photo is missing or unsuitable
 # (e.g. a map or satellite picture). The build logs which photo each place ends up with.
 PHOTO = {
+    "watmachim": "",  # no reliable photo found: show the icon instead of a wrong picture
     "elephantpark": "Elephant Nature Park Chiang Mai",
     "pdbeach": "Port Dickson beach",
     "perhentian": "Perhentian Kecil beach",
