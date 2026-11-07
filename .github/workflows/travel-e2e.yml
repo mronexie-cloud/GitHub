@@ -5,6 +5,7 @@ on:
     paths:
       - "travel/**"
       - "tests/travel-emulator.sh"
+      - "tests/travel-planner.js"
       - ".github/workflows/travel-e2e.yml"
   workflow_dispatch:
 
@@ -12,6 +13,20 @@ permissions:
   contents: write
 
 jobs:
+  planner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Planner checks (plans, edits, costs, calendar file)
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+          node tests/travel-planner.js
+
   emulator:
     runs-on: ubuntu-24.04
     timeout-minutes: 45

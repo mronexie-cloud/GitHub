@@ -5,6 +5,9 @@
     <!-- only used when the person taps 定位 to use their location as the starting point -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- only used when the person taps 加入手机日历 to put the trip into their calendar -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
     <queries>
         <package android:name="com.grabtaxi.passenger" />
@@ -37,5 +40,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- the trip's .ics file, for sharing -->
+        <provider
+            android:name=".FileShare"
+            android:authorities="com.zlc.travel.files"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

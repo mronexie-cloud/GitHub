@@ -68,6 +68,46 @@ shot 16-island
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "ferry:batam-hf"
 sleep 5
 shot 17-ferry
+# v1.3: edit the plan (swap, move), costs, the trip in the phone's calendar, the .ics file
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "plan:吉隆坡:3"
+sleep 12
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "edit"
+sleep 3
+shot 20-edit-sheet
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "swap"
+sleep 3
+shot 21-swap-choices
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "pick"
+sleep 4
+shot 22-after-swap
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "move"
+sleep 4
+shot 23-after-move
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "cost"
+sleep 3
+shot 24-cost
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "cal"
+sleep 3
+shot 25-cal-sheet
+adb logcat -c
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "caladd"
+sleep 8
+shot 26-calendar-app
+adb logcat -d -s Travel:* > $OUT/calendar-log.txt
+adb shell content query --uri content://com.android.calendar/events --projection title:dtstart:eventTimezone > $OUT/calendar-events.txt 2>&1
+echo "calendar events: $(grep -c 'Row:' $OUT/calendar-events.txt)" >> $OUT/results.txt
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "caladd"
+sleep 8
+adb shell content query --uri content://com.android.calendar/events --projection title:dtstart:eventTimezone:deleted > $OUT/calendar-events-2.txt 2>&1
+echo "calendar events after adding again: $(grep -c 'Row:' $OUT/calendar-events-2.txt) (deleted=0: $(grep -c 'deleted=0' $OUT/calendar-events-2.txt))" >> $OUT/results.txt
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "calshare"
+sleep 4
+shot 27-share-ics
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "addplace:sunwaylagoon"
+sleep 4
+shot 28-add-place
 adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
 echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"

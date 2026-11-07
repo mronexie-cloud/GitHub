@@ -166,6 +166,34 @@ table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 .mini{font-size:12px;color:var(--faint)}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--card);border-radius:18px 18px 0 0;padding:14px max(16px,env(safe-area-inset-left)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right));box-shadow:0 -6px 30px rgba(0,0,0,.25);max-height:80vh;overflow:auto}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55}
+/* editing the plan, costs, calendar */
+.ed{flex:none;font-size:12.5px;font-weight:700;color:var(--acc);background:var(--accSoft);border-radius:12px;padding:5px 10px;margin-top:2px}
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.opts button{height:48px;border-radius:12px;background:var(--soft);font-weight:700;font-size:15px;text-align:left;padding:0 14px}
+.opts button.danger{color:#C2410C}
+:root[data-theme="dark"] .opts button.danger{color:#FF9A6B}
+.opts small{display:block;font-weight:400;font-size:12px;color:var(--sub)}
+.opts button:has(small){height:auto;padding:10px 14px}
+.picks{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.pick{display:flex;gap:10px;align-items:center;text-align:left;background:var(--soft);border-radius:12px;padding:8px}
+.pick .im{width:56px;height:44px;border-radius:8px;overflow:hidden;flex:none;background:var(--line);display:grid;place-items:center;font-size:22px}
+.pick .im img{width:100%;height:100%;object-fit:cover;display:block}
+.pick .tx{flex:1;min-width:0}
+.pick .tx b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick .tx small{color:var(--sub);font-size:12px}
+.pick .go{flex:none;font-size:12.5px;font-weight:700;color:var(--acc)}
+.dayopt{display:flex;gap:10px;align-items:center;text-align:left;background:var(--soft);border-radius:12px;padding:10px 12px}
+.dayopt b{flex:none;width:52px}
+.dayopt span{flex:1;min-width:0;font-size:14px}
+.dayopt small{display:block;color:var(--sub);font-size:12px}
+.undo{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(20,30,32,.95);color:#fff;padding:6px 6px 6px 16px;border-radius:20px;font-size:14px;z-index:91;width:max-content;max-width:92vw;display:flex;align-items:center;gap:10px}
+.undo button{color:#7FE3D9;font-weight:800;padding:6px 10px;flex:none}
+.costs td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.costs td.v{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700}
+.costs tr.tot td{font-size:16px;border-bottom:0}
+.costs small{display:block;color:var(--sub);font-size:12px;font-weight:400}
+.stat.tap{text-align:left;cursor:pointer}
+.stat.tap small::after{content:' ›'}
 /* food, navigation, Grab */
 .days7{display:flex;gap:3px;margin-top:6px}
 .days7 i{font-style:normal;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11.5px;background:var(--soft);color:var(--faint);text-decoration:line-through}
@@ -223,6 +251,7 @@ table.eat{width:100%;border-collapse:collapse;font-size:14px}
   <button data-p="pMine"><svg viewBox="0 0 24 24"><path d="M12 21 10.6 19.7C5.6 15.2 2.5 12.4 2.5 8.9 2.5 6.1 4.7 4 7.4 4c1.6 0 3.1.7 4.1 1.9C12.5 4.7 14 4 15.6 4c2.8 0 4.9 2.1 4.9 4.9 0 3.5-3.1 6.3-8.1 10.8L12 21z"/></svg>我的</button>
 </nav>
 <div class="toast" id="toast" hidden></div>
+<div class="undo" id="undo" hidden><span></span><button>撤销</button></div>
 
 <script src="lib/leaflet.js"></script>
 <script src="data.js"></script>
@@ -467,7 +496,88 @@ function score(p, f) {
 function dateAt(f, i) { const d = new Date(f.date + 'T00:00:00'); d.setDate(d.getDate() + i); return d; }
 function openOn(p, date) { return !p.closed.includes(date.getDay()); }
 
-function plan(f) {
+/* Order one day's spots: early ones first (sunrise, breakfast, morning, full-day parks), then the rest along
+   the shortest path (nearest neighbour, then 2-opt), lunch spots around noon, evening and night spots last. */
+function orderStops(ids, from, t0, f) {
+  const memo = {};
+  const ptOf = id => { const p = PL[id]; return {lat: p.lat, lng: p.lng, rk: p.region}; };
+  const cost = (a, b) => {   // a: a place id, or anything else for the starting point; b: a place id
+    const s = typeof a === 'string';
+    const k = (s ? a : '@') + '>' + b;
+    if (memo[k] == null) memo[k] = segMin(legPlan(s ? ptOf(a) : from, ptOf(b), f.mode));
+    return memo[k];
+  };
+  const pathLen = (seq, start) => { let s = 0, p = start; for (const x of seq) { s += cost(p, x); p = x; } return s; };
+  const shortest = (list, start) => {
+    if (list.length < 2) return list.slice();
+    const left = list.slice(), seq = [];
+    let p = start;
+    while (left.length) {
+      let bi = 0;
+      for (let i = 1; i < left.length; i++) if (cost(p, left[i]) < cost(p, left[bi])) bi = i;
+      p = left.splice(bi, 1)[0]; seq.push(p);
+    }
+    let best = seq, bl = pathLen(seq, start), better = true;
+    while (better) {
+      better = false;
+      for (let i = 0; i < best.length - 1; i++) for (let k = i + 1; k < best.length; k++) {
+        const s = best.slice(0, i).concat(best.slice(i, k + 1).reverse(), best.slice(k + 1));
+        const l = pathLen(s, start);
+        if (l < bl - 0.5) { best = s; bl = l; better = true; }
+      }
+    }
+    return best;
+  };
+  const isFood = id => PL[id].cat === 'food';
+  const slot = id => PL[id].slot;
+  const longDay = id => PL[id].dur >= 5 && slot(id) === 'day' && !(PL[id].cat === 'beach' && PL[id].dur < 7);
+  const sunrise = ids.filter(id => slot(id) === 'sunrise');
+  const breakfast = ids.filter(id => slot(id) === 'morning' && isFood(id));
+  const morning = ids.filter(id => slot(id) === 'morning' && !isFood(id));
+  const parks = ids.filter(id => slot(id) === 'day' && longDay(id));
+  const day = ids.filter(id => slot(id) === 'day' && !isFood(id) && !longDay(id));
+  const lunch = ids.filter(id => slot(id) === 'day' && isFood(id));
+  const evening = ids.filter(id => slot(id) === 'evening');
+  const night = ids.filter(id => slot(id) === 'night');
+  let seq = [...sunrise, ...breakfast];
+  const last = () => seq.length ? seq[seq.length - 1] : null;
+  seq = seq.concat(shortest(morning, last() || from));
+  seq = seq.concat(shortest(parks, last() || from));
+  seq = seq.concat(shortest(day, last() || from));
+  // lunch spots: where the day reaches about 11:30
+  for (const id of lunch) {
+    let t = t0, p = null, at = seq.length;
+    for (let i = 0; i < seq.length; i++) {
+      t += cost(p, seq[i]);
+      if (t >= 690) { at = i; break; }
+      t += PL[seq[i]].dur * 60; p = seq[i];
+      if (t >= 690) { at = i + 1; break; }
+    }
+    seq.splice(at, 0, id);
+  }
+  seq = seq.concat(shortest(evening, last() || from));
+  seq = seq.concat(shortest(night, last() || from));
+  return seq;
+}
+/* The planned days as lists: place ids, and {to: region} where the trip moves to another area */
+function planEntries(pl) {
+  return pl.days.map(d => d.items.filter(it => it.type === 'stop' || (it.type === 'leg' && !it.small && !it.back))
+    .map(it => it.type === 'stop' ? it.id : {to: nearestRegion(it.toPt).r.key}));
+}
+/* drop moves to an area that no longer has spots right after them */
+function cleanEntries(days) {
+  const flat = [];
+  days.forEach((d, di) => d.forEach((x, i) => flat.push({x, di, i})));
+  const drop = new Set();
+  flat.forEach((e, n) => {
+    if (typeof e.x === 'string') return;
+    const next = flat.slice(n + 1).find(y => typeof y.x === 'string' || !drop.has(y));
+    if (!next || typeof next.x !== 'string' || PL[next.x].region !== e.x.to) drop.add(e);
+  });
+  return days.map((d, di) => d.filter((x, i) => !flat.some(e => drop.has(e) && e.di === di && e.i === i)));
+}
+/** Builds the plan; with "edit" ({days: [[id | {to}]]}) it follows those days and orders each day's spots itself. */
+function plan(f, edit) {
   const [dayStart, dayEnd, dayHours] = PACE[f.pace];
   const start = {lat: f.start.lat, lng: f.start.lng, name: f.start.name};
   const sr = nearestRegion(start);
@@ -479,7 +589,7 @@ function plan(f) {
   const ctx = {f, dayStart, dayEnd, dayHours};
   const newDay = () => days.push({date: dateAt(f, days.length), items: [], region: null});
   newDay();
-  const fixed = f.fixed; // curated route: [[ids]]
+  const fixed = edit ? edit.days : f.fixed; // curated route or edited plan: [[ids]]
   const exhausted = new Set(); // areas where nothing more fits into a day
   let stayDay = -1;              // the day we decided to stay put (nothing better within reach)
   let triedSwitch = -1, wantSwitch = false;   // free afternoon: look at another area once
@@ -526,9 +636,9 @@ function plan(f) {
     loc = Object.assign({}, to);
     while (t > dayEnd + 120) { t = t - (dayEnd - dayStart) - 720; newDay(); if (t < dayStart) t = dayStart; }
   };
-  const meal = (day, kind, at) => {
-    const s0 = at == null ? t : at;
-    day.items.push({type: 'meal', meal: kind, start: s0, end: s0 + 60, rk: loc.rk || region, at: {lat: loc.lat, lng: loc.lng}, wd: day.date.getDay()});
+  const meal = (day, kind, at, pos) => {
+    const s0 = at == null ? t : at, w = pos || loc;
+    day.items.push({type: 'meal', meal: kind, start: s0, end: s0 + 60, rk: w.rk || region, at: {lat: w.lat, lng: w.lng}, wd: day.date.getDay()});
     if (at == null) t += 60;
     day[kind] = true;
   };
@@ -548,6 +658,8 @@ function plan(f) {
       day.items.push({type: 'leg', segs, start: t, end: t + m, small: true, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: pt});
       t += m;
     } else if (dawn) t = 300;
+    // arrived around noon after a drive: lunch here first
+    if (p.cat !== 'food' && !day.lunch && t >= 700 && t < 870 && p.slot !== 'night') meal(day, 'lunch', null, pt);
     let st = t;
     if (p.slot === 'night') st = Math.max(t, 1170);
     if (p.slot === 'evening') st = Math.max(t, Math.min(1050, dayEnd - p.dur * 60));
@@ -573,7 +685,7 @@ function plan(f) {
     // curated route: follow its days; within a day, morning spots first and evening ones last
     const SLOT = {sunrise: 0, morning: 1, day: 2, evening: 3, night: 4};
     // far from the start: if the first day's spots will not fit after the trip there, travel the day before
-    const firstP = PL[(fixed[0] || []).find(id => PL[id])];
+    const firstP = edit ? null : PL[(fixed[0] || []).find(id => PL[id])];
     if (firstP && firstP.region !== loc.rk && km(loc, firstP) > 25) {
       const there = Object.assign({}, R[firstP.region], {rk: firstP.region});
       // daytime spots must be done by about 17:30; evening ones just need an arrival before dusk
@@ -589,6 +701,33 @@ function plan(f) {
       if (di > 0) {
         newDay(); t = dayStart;
         if (loc.rk) loc = Object.assign({}, R[loc.rk], {rk: loc.rk, name: R[loc.rk].name}); // from the hotel
+      }
+      if (edit) {
+        // edited plan: the spots between two moves are grouped by area (in the order the areas come) and ordered
+        let part = [];
+        const flush = () => {
+          const groups = [];
+          part.forEach(id => { let g = groups.find(x => x.rk === PL[id].region); if (!g) groups.push(g = {rk: PL[id].region, ids: []}); g.ids.push(id); });
+          for (const g of groups) {
+            const here = g.rk === loc.rk || km(loc, R[g.rk]) <= 25;
+            const from = here ? loc : Object.assign({}, R[g.rk], {rk: g.rk});
+            const t0 = here ? t : t + segMin(legPlan(loc, from, f.mode));
+            orderStops(g.ids, from, t0, f).forEach(id => {
+              const p = PL[id];
+              if (p.region !== loc.rk && km(loc, p) > 25) addLeg(Object.assign({}, R[p.region], {rk: p.region}), R[p.region].name);
+              addStop(p);
+            });
+          }
+          part = [];
+        };
+        for (const x of ids0) {
+          if (typeof x === 'string') { if (PL[x]) part.push(x); continue; }
+          flush();
+          const r = R[x.to];
+          if (r && (x.to !== loc.rk || km(loc, r) > 25)) addLeg(Object.assign({}, r, {rk: x.to}), r.name);
+        }
+        flush();
+        return;
       }
       // sort by time of day inside each run of spots in the same area (never jump between areas)
       const ids = [];
@@ -644,6 +783,8 @@ function plan(f) {
           if (eff * mustBoost > bestEff) { bestEff = eff * mustBoost; best = rp; }
         }
         if (!best) {
+          // nothing worth the trip and nothing chosen yet: see what is around the starting point
+          if (!region && start.rk && !loose.has(start.rk) && D.places.some(p => p.region === start.rk)) { region = start.rk; loose.add(region); continue; }
           if (region && moreHere(region)) { loose.add(region); stayDay = days.length; continue; } // nothing better nearby: see more here
           if (region && cand(region).length) { stayDay = days.length; continue; } // stay and enjoy the evening here
           break;
@@ -704,7 +845,7 @@ function plan(f) {
     }
   }
   while (days.length > f.days && !days[days.length - 1].items.length) days.pop();
-  while (days.length < (f.fixed ? f.fixed.length : f.days)) newDay();
+  while (days.length < (fixed ? fixed.length : f.days)) newDay();
   if (f.roundtrip && km(loc, start) > 3) {
     const last = days[days.length - 1];
     if (t < dayStart) t = dayStart;
@@ -843,10 +984,11 @@ function locate() {
   navigator.geolocation.getCurrentPosition(p => ok(p.coords.latitude, p.coords.longitude), () => toast('定位失败，请手动输入出发地'), {timeout: 15000});
 }
 function go() {
+  $('undo').hidden = true;   // the undo belongs to the plan being replaced
   const btn = $('fGo');
   if (btn) btn.innerHTML = '<span class="spin"></span> 正在规划…';
   setTimeout(() => {
-    try { CUR_PLAN = plan(Object.assign({}, F, {must: store.get('must', [])})); }
+    try { CUR_PLAN = improvePlan(plan(Object.assign({}, F, {must: store.get('must', [])}))); }
     catch (e) { console.error(e); toast('规划失败：' + e.message); renderPlanForm(); return; }
     store.set('last', serialize(CUR_PLAN));
     renderPlanResult();
@@ -930,30 +1072,35 @@ function renderPlanResult() {
   const p = $('pPlan');
   const regs = [];
   pl.days.forEach(d => (d.regions && d.regions.length ? d.regions : d.region ? [d.region] : []).forEach(k => { if (regs[regs.length - 1] !== k) regs.push(k); }));
-  const tot = planTotals(pl);
+  const tot = planTotals(pl), tc = tripCost(pl);
   const party = f.party.a + ' 大' + (f.party.c ? ' ' + f.party.c + ' 小' : '');
+  const want = f.fixed ? 0 : f.days;
   p.innerHTML = `<div class="row" style="justify-content:space-between"><button class="btn ghost sm" id="rEdit">← 修改条件</button><span class="mini">${esc(party)} · ${f.resident === 'my' ? 'MyKad' : '外国游客'}</span></div>
   <div class="card sum" style="margin-top:12px">
-    <h3>${f.fixed ? esc(f.routeName) + (pl.days.length > f.fixed.length ? `（另加 ${pl.days.length - f.fixed.length} 天路程）` : '') : `${pl.days.length} 天 · ${esc(regs.map(k => R[k].name).join(' → ') || '行程')}`}</h3>
+    <h3>${esc(planTitle(pl))}</h3>
     <div class="chain"><span>从 <b>${esc(f.start.name)}</b> 出发</span>${regs.map(k => `<span>→ <b>${esc(R[k].name)}</b></span>`).join('')}${f.roundtrip ? '<span>→ 返回</span>' : ''}</div>
     <div class="stats">
       <div class="stat"><b>${tot.stops}</b><small>个景点</small></div>
-      <div class="stat"><b>${tot.approx ? '约 ' : ''}${rm(tot.rmSum)}</b><small>门票合计${tot.unknown ? `（另有 ${tot.unknown} 个未定价）` : ''}</small></div>
+      <button class="stat tap" id="rCost"><b>约 ${inCur(tc.total, store.get('costCur', 'MYR'))}</b><small>费用估算</small></button>
       <div class="stat"><b>${Math.round(tot.drive)} 公里</b><small>${f.mode === 'car' ? '开车' : '陆路'}${tot.flights ? ` · ${tot.flights} 段飞机` : ''}${tot.ferries ? ` · ${tot.ferries} 段渡轮` : ''}</small></div>
     </div>
+    ${want && pl.days.length > want ? `<div class="warn">⚠ 调整后行程变成 ${pl.days.length} 天（原定 ${want} 天）。可以删掉几站，或点「修改条件」重新规划。</div>` : ''}
+    <div class="mini" style="margin-top:8px">点「调整」可以删掉、换掉或挪动景点，时间和顺序会自动重排。</div>
   </div>
   <div class="map" id="planMap" style="margin-top:12px"></div>
   <div class="stack" id="daysBox" style="margin-top:12px"></div>
-  <div class="acts" style="margin-top:16px"><button class="btn" id="rSave">保存攻略</button><button class="btn ghost" id="rShare">分享文字版</button></div>
+  <div class="acts" style="margin-top:16px"><button class="btn" id="rSave">保存攻略</button><button class="btn ghost" id="rCal">📅 加入日历</button><button class="btn ghost" id="rShare">分享文字版</button></div>
   <p class="mini" style="margin-top:12px">车程按道路距离估算，实际以导航为准；门票为 ${esc(f.party.a)} 大${f.party.c ? ' ' + f.party.c + ' 小' : ''} 的合计，外币按 1 ${'SGD'} ≈ RM${(FX.SGD || 0).toFixed(2)}、100 THB ≈ RM${((FX.THB || 0) * 100).toFixed(2)} 换算。</p>`;
-  $('rEdit').onclick = () => { CUR_PLAN = null; renderPlanForm(); window.scrollTo(0, 0); };
+  $('rEdit').onclick = () => { $('undo').hidden = true; CUR_PLAN = null; renderPlanForm(); window.scrollTo(0, 0); };
   $('rSave').onclick = () => {
     const list = store.get('plans', []);
-    list.unshift(Object.assign({id: 'p' + Date.now(), title: p.querySelector('h3').textContent}, serialize(pl)));
+    list.unshift(Object.assign({id: 'p' + Date.now(), title: planTitle(pl)}, serialize(pl)));
     store.set('plans', list.slice(0, 30));
     toast('已保存到「我的」');
   };
   $('rShare').onclick = () => shareText(planText(pl));
+  $('rCal').onclick = exportCal;
+  $('rCost').onclick = () => openCost();
   renderDays();
   drawPlanMap(pl);
   loadWeather(pl);
@@ -975,15 +1122,17 @@ function renderDays() {
           ${it.warn && it.warn.length ? `<div class="warn">⚠ ${esc(it.warn.join('；'))}</div>` : ''}
           ${pp.eat && pp.eat.length ? `<div class="mini" style="margin-top:4px">🍴 必吃：${pp.eat.slice(0, 3).map(e => esc(e.name) + (e.price ? `（${esc(e.price)}）` : '')).join('、')}</div>` : ''}
           ${pp.tip ? `<div class="mini" style="margin-top:4px">💡 ${esc(pp.tip)}</div>` : ''}
-        </div><button class="x" data-rm="${di}:${ii}" aria-label="删除">✕</button></div>`;
+        </div><button class="ed" data-edit="${pp.id}">调整</button></div>`;
     }).join('');
     const stops = d.items.filter(x => x.type === 'stop').length;
     const where = (d.regions && d.regions.length ? d.regions : d.region ? [d.region] : []).map(k => R[k].name).join(' → ');
     const sleep = d.sleep ? R[d.sleep] : null;
-    return `<div class="card day"><div class="dayhd"><div class="dayno"><span>第</span><b>${di + 1}</b></div>
+    const late = dayLate(d, f);
+    return `<div class="card day" id="day${di}"><div class="dayhd"><div class="dayno"><span>第</span><b>${di + 1}</b></div>
       <div class="t"><b>${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}${where ? ' · ' + esc(where) : ''}</b><small>${stops ? stops + ' 个景点' : d.travel ? '路程日，到了可以先休息' : '自由活动'}</small></div>
       <div class="wx" id="wx${di}"></div></div>
-      ${stops >= 1 ? `<div class="btnrow" style="padding:0 14px"><button data-daynav="${di}">🧭 这天的路线导航</button></div>` : ''}
+      ${late ? `<div class="warn" style="margin:8px 14px 0">⚠ 这天排得太满，大约 ${hhmm(late)} 才结束。可以删掉一站，或挪到别的天。</div>` : ''}
+      <div class="btnrow" style="padding:0 14px">${stops >= 1 ? `<button data-daynav="${di}">🧭 这天的路线导航</button>` : ''}<button data-addday="${di}">＋ 加景点</button></div>
       <div class="tl">${items || '<div class="mini" style="padding:10px 0">这天没有排景点，可以休息、逛街或自由活动。</div>'}
       ${sleep && di < pl.days.length - 1 ? `<div class="hotel">🏨 今晚住：${esc(sleep.name)}${sleep.country !== 'MY' ? '（' + COUNTRY[sleep.country] + '）' : ''}</div>` : ''}</div></div>`;
   }).join('');
@@ -994,20 +1143,174 @@ function renderDays() {
     if (dn) { openDayNav(+dn.dataset.daynav); return; }
     const o = e.target.closest('[data-open]');
     if (o) { openPlace(o.dataset.open); return; }
-    const x = e.target.closest('[data-rm]');
-    if (x) {
-      const [di, ii] = x.dataset.rm.split(':').map(Number);
-      const day = CUR_PLAN.days[di];
-      const it = day.items[ii];
-      // drop the stop and the short hop that led to it
-      day.items.splice(ii, 1);
-      if (ii > 0 && day.items[ii - 1] && day.items[ii - 1].type === 'leg' && day.items[ii - 1].small) day.items.splice(ii - 1, 1);
-      toast('已删除「' + PL[it.id].name + '」');
-      store.set('last', serialize(CUR_PLAN));
-      renderDays();
-      drawPlanMap(CUR_PLAN);
-    }
+    const ed = e.target.closest('[data-edit]');
+    if (ed) { editStop(ed.dataset.edit); return; }
+    const ad = e.target.closest('[data-addday]');
+    if (ad) addToDay(+ad.dataset.addday);
   };
+}
+
+/* ---------------- editing the plan ---------------- */
+/** when a day ends too late: the end time in minutes, else 0 (night markets and evening spots may run late) */
+function dayLate(d, f) {
+  const dayEnd = PACE[f.pace][1];
+  let work = 0, all = 0;
+  d.items.forEach((it, i) => {
+    if (it.type === 'leg' && it.back) return;
+    all = Math.max(all, it.end);
+    const nx = it.type === 'leg' ? d.items[i + 1] : it;
+    const lateOk = nx && nx.type === 'stop' && (PL[nx.id].slot === 'night' || PL[nx.id].slot === 'evening');
+    if (!lateOk && it.type !== 'meal' && it.type !== 'free') work = Math.max(work, it.end);
+  });
+  if (!d.items.some(x => x.type === 'stop')) return 0;
+  return work > dayEnd + 90 || all > 1380 ? Math.max(work, all) : 0;
+}
+const planStops = pl => { const s = new Set(); pl.days.forEach(d => d.items.forEach(x => x.type === 'stop' && s.add(x.id))); return s; };
+function stopDay(id) { return CUR_PLAN.days.findIndex(d => d.items.some(x => x.type === 'stop' && x.id === id)); }
+/** put a spot into a day's list: after the spots of the same area, else after the move there, else before an evening move away */
+function insertInto(list, id) {
+  const rk = PL[id].region;
+  let at = -1;
+  list.forEach((x, i) => { if (typeof x === 'string' ? PL[x] && PL[x].region === rk : x.to === rk) at = i; });
+  if (at >= 0) { list.splice(at + 1, 0, id); return; }
+  const lastMove = list.length && typeof list[list.length - 1] !== 'string';
+  list.splice(lastMove ? list.length - 1 : list.length, 0, id);
+}
+let UNDO = null;
+function applyEdit(mut, msg, focusDay) {
+  const before = serialize(CUR_PLAN), y = window.scrollY;
+  const days = planEntries(CUR_PLAN);
+  mut(days);
+  let np;
+  try { np = plan(CUR_PLAN.input, {days: cleanEntries(days)}); }
+  catch (e) { console.error(e); toast('调整失败：' + e.message); return; }
+  np.made = CUR_PLAN.made;
+  CUR_PLAN = np;
+  store.set('last', serialize(np));
+  closeSheet();
+  const away = OV.length > 0 || $('pPlan').hidden;   // edited from a place page or another tab: show the day
+  while (OV.length) closeOverlay();
+  if ($('pPlan').hidden) showTab('pPlan');
+  renderPlanResult();
+  const el = focusDay != null ? $('day' + Math.min(focusDay, np.days.length - 1)) : null;
+  if (away && el) el.scrollIntoView(); else window.scrollTo(0, y);
+  showUndo(msg, before);
+}
+function showUndo(msg, before) {
+  const u = $('undo');
+  u.querySelector('span').textContent = msg;
+  u.hidden = false;
+  clearTimeout(UNDO);
+  UNDO = setTimeout(() => { u.hidden = true; }, 8000);
+  u.querySelector('button').onclick = () => {
+    u.hidden = true; clearTimeout(UNDO);
+    const y = window.scrollY;
+    CUR_PLAN = deserialize(before);
+    store.set('last', before);
+    renderPlanResult(); window.scrollTo(0, y);
+    toast('已撤销');
+  };
+}
+function pickRow(p, sub, attr) {
+  return `<button class="pick" ${attr}><span class="im">${photo(p, true)}</span><span class="tx"><b>${esc(p.name)}</b><small>${sub}</small></span><span class="go">选这个</span></button>`;
+}
+/** spots near a point that are not in the plan yet and are open that day, best first */
+function choicesNear(center, date, keep, n) {
+  const f = CUR_PLAN.input, inPlan = planStops(CUR_PLAN);
+  return D.places.filter(p => !inPlan.has(p.id) && keep(p) && !p.closed.includes(date.getDay()) && km(center, p) < 30)
+    .map(p => ({p, d: km(center, p)}))
+    .sort((a, b) => score(b.p, f) / (1 + b.d / 6) - score(a.p, f) / (1 + a.d / 6)).slice(0, n);
+}
+function choiceSub(x) {
+  const f = CUR_PLAN.input, c = cost(x.p, f.party, f.resident);
+  return `${Math.round(x.d * 10) / 10} 公里 · 约 ${x.p.dur} 小时 · ${esc(x.p.cat === 'food' && c.free ? '不用门票' : c.text)}`;
+}
+function editStop(id) {
+  const di = stopDay(id), p = PL[id];
+  if (di < 0) return;
+  const it = CUR_PLAN.days[di].items.find(x => x.type === 'stop' && x.id === id);
+  const b = sheet(`<h3 style="margin:0 0 2px">${esc(p.name)}</h3><div class="mini">第 ${di + 1} 天 · ${hhmm(it.start)}–${hhmm(it.end)}</div>
+    <div class="opts"><button data-op="swap">🔄 换一个附近的景点</button><button data-op="move">📅 挪到别的天</button><button data-op="del" class="danger">🗑 删掉这一站</button></div>`);
+  b.onclick = e => {
+    const op = e.target.closest('[data-op]');
+    if (!op) return;
+    if (op.dataset.op === 'del') applyEdit(days => days.forEach(d => { const i = d.indexOf(id); if (i >= 0) d.splice(i, 1); }), `已删掉「${p.name}」，时间已重新安排`);
+    if (op.dataset.op === 'swap') swapStop(id, di);
+    if (op.dataset.op === 'move') chooseDay(id, di);
+  };
+}
+function swapStop(id, di) {
+  const p = PL[id], date = CUR_PLAN.days[di].date;
+  const list = choicesNear(p, date, x => (x.cat === 'food') === (p.cat === 'food'), 8);
+  const b = sheet(`<h3 style="margin:0 0 2px">把「${esc(p.name)}」换成</h3><div class="mini">附近、当天开放、还没排进行程的${p.cat === 'food' ? '美食' : '景点'}</div>
+    <div class="picks">${list.length ? list.map(x => pickRow(x.p, choiceSub(x), `data-pick="${x.p.id}"`)).join('') : '<div class="mini" style="padding:12px 0">附近 30 公里内没有可以换的了。</div>'}</div>`);
+  b.onclick = e => {
+    const pk = e.target.closest('[data-pick]');
+    if (!pk) return;
+    const nid = pk.dataset.pick;
+    applyEdit(days => days.forEach(d => { const i = d.indexOf(id); if (i >= 0) d[i] = nid; }), `已把「${p.name}」换成「${PL[nid].name}」`);
+  };
+}
+/** the days of the plan with how far each one is from a spot; moving (id in the plan) or adding */
+function chooseDay(id, from) {
+  const p = PL[id], pl = CUR_PLAN;
+  const dist = pl.days.map(d => {
+    const pts = d.items.filter(x => x.type === 'stop' && x.id !== id).map(x => PL[x.id]);
+    if (!pts.length && (d.sleep || d.region)) pts.push(R[d.sleep || d.region]);
+    return pts.length ? Math.min(...pts.map(q => km(p, q))) : 9999;
+  });
+  let best = -1;
+  dist.forEach((v, i) => { if (i !== from && (best < 0 || v < dist[best])) best = i; });
+  const rows = pl.days.map((d, i) => {
+    if (i === from) return '';
+    const where = (d.regions && d.regions.length ? d.regions : d.region ? [d.region] : []).map(k => R[k].name).join(' → ');
+    const shut = p.closed.includes(d.date.getDay());
+    return `<button class="dayopt" data-day="${i}"><b>第 ${i + 1} 天</b><span>${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}${where ? ' · ' + esc(where) : ''}<small>${dist[i] < 9999 ? '离当天行程约 ' + (dist[i] < 10 ? Math.round(dist[i] * 10) / 10 : Math.round(dist[i])) + ' 公里' : ''}${shut ? ' · ⚠ 这天休息' : ''}</small></span>${i === best && !shut ? '<i class="badge">最顺路</i>' : ''}</button>`;
+  }).join('');
+  const b = sheet(`<h3 style="margin:0 0 2px">${from >= 0 ? `把「${esc(p.name)}」挪到哪一天？` : `把「${esc(p.name)}」加到哪一天？`}</h3><div class="mini">选好后会重新安排当天的顺序和时间</div><div class="picks">${rows}</div>`);
+  b.onclick = e => {
+    const dy = e.target.closest('[data-day]');
+    if (!dy) return;
+    const to = +dy.dataset.day;
+    applyEdit(days => {
+      days.forEach(d => { const i = d.indexOf(id); if (i >= 0) d.splice(i, 1); });
+      insertInto(days[to], id);
+    }, from >= 0 ? `已把「${p.name}」挪到第 ${to + 1} 天` : `已把「${p.name}」加到第 ${to + 1} 天`, to);
+  };
+}
+function addToDay(di) {
+  const d = CUR_PLAN.days[di];
+  const pts = d.items.filter(x => x.type === 'stop').map(x => PL[x.id]);
+  const center = pts.length ? pts[pts.length - 1] : R[d.sleep || d.region || nearestRegion(CUR_PLAN.input.start).r.key];
+  const list = choicesNear(center, d.date, () => true, 10);
+  const b = sheet(`<h3 style="margin:0 0 2px">第 ${di + 1} 天加一个景点</h3><div class="mini">${esc(R[nearestRegion(center).r.key].name)}附近、当天开放、还没排进行程的</div>
+    <div class="picks">${list.length ? list.map(x => pickRow(x.p, choiceSub(x), `data-pick="${x.p.id}"`)).join('') : '<div class="mini" style="padding:12px 0">附近 30 公里内没有可以加的了。</div>'}</div>`);
+  b.onclick = e => {
+    const pk = e.target.closest('[data-pick]');
+    if (!pk) return;
+    const nid = pk.dataset.pick;
+    applyEdit(days => insertInto(days[di], nid), `已把「${PL[nid].name}」加到第 ${di + 1} 天`);
+  };
+}
+/** minutes on the road, plus penalties for spots on their closed day and days that run late */
+function planScore(pl) {
+  const f = pl.input;
+  let s = 0;
+  pl.days.forEach(d => {
+    d.items.forEach(it => { if (it.type === 'leg') s += segMin(it.segs); if (it.type === 'stop' && it.warn && it.warn.length) s += 60; });
+    const late = dayLate(d, f); if (late) s += (late - PACE[f.pace][1]) * 3;
+  });
+  return s;
+}
+const stopKey = pl => pl.days.map(d => d.items.filter(x => x.type === 'stop').map(x => x.id).sort().join(',')).join('|');
+/** same spots on the same days, in a shorter order: kept only when it saves time */
+function improvePlan(pl) {
+  try {
+    const opt = plan(pl.input, {days: cleanEntries(planEntries(pl))});
+    if (opt.days.length !== pl.days.length || stopKey(opt) !== stopKey(pl)) return pl;
+    if (planScore(opt) < planScore(pl) - 3) { opt.made = pl.made; return opt; }
+  } catch (e) { console.error(e); }
+  return pl;
 }
 let planMap = null;
 const DAYC = ['#0E7672', '#E8622F', '#4F5BD5', '#C2307A', '#2F7D3A', '#A86F00', '#0B7E9C', '#B4441B'];
@@ -1066,9 +1369,164 @@ function planText(pl) {
       else if (it.type === 'leg' && it.big) lines.push(`  ${hhmm(it.start)} ${it.back ? '返回' : '前往'}${it.to || ''}：${it.segs.map(s => SEG[s.type][1]).join(' → ')}，约 ${fmtDur(segMin(it.segs))}`);
     });
   });
-  const t = planTotals(pl);
-  lines.push('', `门票合计约 ${rm(t.rmSum)}（${f.party.a} 大 ${f.party.c} 小）`, '— 东南亚旅游攻略 App');
+  const t = planTotals(pl), c = tripCost(pl);
+  lines.push('', `门票合计约 ${rm(t.rmSum)}（${f.party.a} 大 ${f.party.c} 小）`, `费用估算约 ${rm(c.total)}，每人约 ${rm(c.per)}（门票、船票、交通、餐饮；不含住宿和机票）`, '— 东南亚旅游攻略 App');
   return lines.join('\n');
+}
+/* ---------------- trip costs (estimates) ---------------- */
+// a meal at a hawker stall or a simple restaurant, per person
+const MEAL = {MY: [15, 'MYR'], SG: [10, 'SGD'], TH: [120, 'THB'], ID: [50000, 'IDR']};
+// RON95 per litre: BUDI95 price with MyKad, market price for others (5–11 Nov 2026)
+const FUEL = {my: 1.99, intl: 4.27};
+const mealRM = pt => { const m = MEAL[countryAt(pt)] || MEAL.MY; return toRM(m[0], m[1]); };
+function ferryFare(fe, f) {
+  const rows = (fe.fares && fe.fares.rows) || [];
+  if (!rows.length) return null;
+  let row = rows[0];
+  if (fe.fares.cur === 'MYR' && rows.length > 1) row = rows.find(r => f.resident === 'my' ? /马来西亚/.test(r[0]) : /外国/.test(r[0])) || rows[0];
+  const a = row[1], c = row[2] == null ? row[1] : row[2];
+  return toRM(a * f.party.a + c * f.party.c, fe.fares.cur);
+}
+function tripCost(pl) {
+  const f = pl.input, n = f.party.a + f.party.c;
+  const cats = {ticket: 0, ferry: 0, road: 0, meal: 0}, miss = {ticket: 0, ferry: 0, road: 0, flight: 0};
+  const perDay = pl.days.map(() => 0);
+  let meals = 0;
+  pl.days.forEach((d, di) => d.items.forEach(it => {
+    const add = (k, v) => { cats[k] += v; perDay[di] += v; };
+    if (it.type === 'stop') {
+      const p = PL[it.id], c = cost(p, f.party, f.resident);
+      if (c.unknown) miss.ticket++; else add('ticket', c.rm || 0);
+      if (p.cat === 'food') { add('meal', mealRM(p) * n); meals++; }
+    } else if (it.type === 'meal') { add('meal', mealRM(it.at || R[it.rk]) * n); meals++; }
+    else if (it.type === 'leg') {
+      const ctry = countryAt(it.fromPt);
+      it.segs.forEach(s => {
+        if (s.type === 'walk') return;
+        if (s.type === 'ferry') { const v = s.route ? ferryFare(FR[s.route], f) : null; if (v == null) miss.ferry++; else add('ferry', v); return; }
+        if (s.type === 'flight') { miss.flight++; return; }
+        if (f.mode === 'car' && s.type === 'drive') { add('road', (s.km || 0) * 0.075 * FUEL[f.resident === 'my' ? 'my' : 'intl'] * Math.ceil(n / 5)); return; }
+        if (ctry !== 'MY') { miss.road++; return; }
+        if (s.type === 'bus') add('road', Math.max(10, 0.13 * (s.km || 0)) * n);
+        else add('road', Math.max(5, 2 + 0.25 * (s.km || 0) + 0.43 * s.min) * Math.ceil(n / 4));  // Grab, taxi, airport transfers
+      });
+    }
+  }));
+  const total = cats.ticket + cats.ferry + cats.road + cats.meal;
+  return {cats, miss, perDay, total, per: total / Math.max(1, n), meals, n};
+}
+function inCur(v, cur) { return cur === 'MYR' ? rm(v) : money(Math.round(v / (FX[cur] || 1)), cur); }
+function openCost(cur) {
+  const pl = CUR_PLAN, f = pl.input, c = tripCost(pl);
+  cur = cur || store.get('costCur', 'MYR');
+  store.set('costCur', cur);
+  const v = x => inCur(x, cur);
+  const party = `${f.party.a} 大${f.party.c ? ' ' + f.party.c + ' 小' : ''}`;
+  const more = [];
+  if (c.miss.flight) more.push(`${c.miss.flight} 段机票`);
+  if (c.miss.road) more.push(`${c.miss.road} 段新泰印的 Grab / 巴士`);
+  if (c.miss.ferry) more.push(`${c.miss.ferry} 段没有票价资料的船`);
+  if (c.miss.ticket) more.push(`${c.miss.ticket} 个未定价的景点`);
+  const b = sheet(`<h3 style="margin:0 0 2px">费用估算 · ${esc(party)}</h3><div class="mini">不含住宿${more.length ? '，也没算：' + more.join('、') : ''}</div>
+    <div class="chips" style="margin-top:10px">${['MYR', 'SGD', 'THB', 'IDR', 'USD'].map(k => `<button class="chip${k === cur ? ' on' : ''}" data-cur="${k}">${CUR[k]}</button>`).join('')}</div>
+    <table class="costs" style="width:100%;margin-top:8px">
+      <tr><td>门票<small>${f.resident === 'my' ? 'MyKad' : '外国游客'}票价</small></td><td class="v">${v(c.cats.ticket)}</td></tr>
+      ${c.cats.ferry || c.miss.ferry ? `<tr><td>船票<small>单程票价，不含海洋公园保护费和上岛费</small></td><td class="v">${v(c.cats.ferry)}</td></tr>` : ''}
+      <tr><td>交通<small>${f.mode === 'car' ? `油费，每 5 人一辆车；过路费和停车费另计` : '大马的 Grab 和长途巴士'}</small></td><td class="v">${v(c.cats.road)}</td></tr>
+      <tr><td>餐饮<small>${c.meals} 餐 × ${c.n} 人，早餐没算</small></td><td class="v">${v(c.cats.meal)}</td></tr>
+      <tr class="tot"><td><b>合计</b><small>每人约 ${v(c.per)}</small></td><td class="v">约 ${v(c.total)}</td></tr>
+    </table>
+    <h3 style="margin:14px 0 4px;font-size:15px">每天</h3>
+    <table class="costs" style="width:100%">${pl.days.map((d, i) => `<tr><td>第 ${i + 1} 天<small>${d.date.getMonth() + 1}月${d.date.getDate()}日 ${WD[d.date.getDay()]}</small></td><td class="v">${v(c.perDay[i])}</td></tr>`).join('')}</table>
+    <p class="mini" style="line-height:1.6;margin-top:10px">怎么估的：自驾按每 100 公里 7.5 升油，RON95 每升 RM${FUEL.my.toFixed(2)}（MyKad BUDI95 价）或 RM${FUEL.intl.toFixed(2)}（市价，2026 年 11 月 5–11 日，<a href="https://www.thevibes.com/articles/news/129191/unsubsidised-ron95-drops-to-rm4.27-diesel-to-rm5.12-from-nov-5">来源</a>）。
+    Grab 按起步 RM2 + 每公里 RM0.25 + 每分钟 RM0.43、最低 RM5（巴生谷费率，<a href="https://carz.com.my/2023/01/grab-revises-fare-structure-rides-during-peak-hours-to-cost-more">来源</a>，高峰时段会更贵），每 4 人一辆车。
+    长途巴士按每人每公里约 RM0.13（吉隆坡到北海 352 公里 RM37–58，<a href="https://busonlineticket.com/booking/kuala-lumpur-to-butterworth-bus-tickets">来源</a>）。
+    每人每餐：大马 RM15、新加坡 S$10、泰国 ฿120、印尼 Rp50,000（小贩中心、小吃店的价钱），小孩按大人算。外币按「我的」里的汇率换算。</p>`);
+  b.onclick = e => {
+    const k = e.target.closest('[data-cur]');
+    if (k) { openCost(k.dataset.cur); return; }
+    const a = e.target.closest('a[href]');
+    if (a && A) { e.preventDefault(); openUrl(a.href); }
+  };
+}
+
+/* ---------------- calendar ---------------- */
+function tzAt(pt) {
+  const c = countryAt(pt);
+  if (c === 'TH') return ['Asia/Bangkok', 7];
+  if (c === 'ID') return pt.lng > 114.5 ? ['Asia/Makassar', 8] : ['Asia/Jakarta', 7];   // Bali and Lombok are an hour ahead of Java
+  if (c === 'SG') return ['Asia/Singapore', 8];
+  return ['Asia/Kuala_Lumpur', 8];
+}
+function planTitle(pl) {
+  const f = pl.input, regs = [];
+  pl.days.forEach(d => (d.regions && d.regions.length ? d.regions : d.region ? [d.region] : []).forEach(k => { if (regs[regs.length - 1] !== k) regs.push(k); }));
+  return f.fixed ? f.routeName + (pl.days.length > f.fixed.length ? `（另加 ${pl.days.length - f.fixed.length} 天路程）` : '') : `${pl.days.length} 天 · ${regs.map(k => R[k].name).join(' → ') || '行程'}`;
+}
+/** one event for each spot and each long trip, in the local time of the place */
+function calEvents(pl) {
+  const f = pl.input, ev = [];
+  pl.days.forEach((d, di) => d.items.forEach((it, ii) => {
+    let title, pt;
+    const desc = [];
+    if (it.type === 'stop') {
+      const p = PL[it.id], c = cost(p, f.party, f.resident);
+      pt = p; title = p.name;
+      desc.push(`门票：${p.cat === 'food' && c.free ? '不用门票' : c.text}`, `开放：${p.hours}`);
+      if (p.tip) desc.push(p.tip);
+      desc.push(`地图：https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`);
+    } else if (it.type === 'leg' && (it.big || it.back)) {
+      pt = it.fromPt;
+      title = `${it.back ? '返程' : '前往'} ${it.to || ''}（${it.segs.map(s => SEG[s.type][1]).join(' → ')}）`;
+      it.segs.forEach(s => {
+        if (s.type === 'ferry' && s.route) desc.push(`渡轮 ${FR[s.route].name}${s.dep != null ? '：' + hhmm(s.dep) + ' 开船' : ''}`);
+        if (s.type === 'flight') desc.push(`飞机 ${s.from} → ${s.to}（航班时间请自己订票时确认）`);
+      });
+      desc.push(`约 ${fmtDur(segMin(it.segs))}`, `导航：https://www.google.com/maps/dir/?api=1&origin=${it.fromPt.lat},${it.fromPt.lng}&destination=${it.toPt.lat},${it.toPt.lng}`);
+    } else return;
+    const [tz, off] = tzAt(pt);
+    const base = Date.UTC(d.date.getFullYear(), d.date.getMonth(), d.date.getDate()) - off * 3600e3;
+    ev.push({uid: `${pl.made}-${di}-${ii}@seatravel.zlc`, title, tz, start: base + it.start * 60e3, end: base + Math.max(it.end, it.start + 15) * 60e3,
+      loc: it.type === 'stop' ? `${PL[it.id].name} ${PL[it.id].en}` : (it.to || ''), desc: desc.join('\n'), lat: pt.lat, lng: pt.lng});
+  }));
+  return ev;
+}
+function icsText(pl) {
+  const e2 = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const ut = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const enc = new TextEncoder();
+  const fold = line => {   // lines of at most 75 bytes, continued with a space
+    const out = []; let cur = '', n = 0;
+    for (const ch of line) { const b = enc.encode(ch).length; if (n + b > 74) { out.push(cur); cur = ' '; n = 1; } cur += ch; n += b; }
+    out.push(cur); return out.join('\r\n');
+  };
+  const now = ut(Date.now());
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//zlc//SEA Travel Guide 1.3//ZH', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + e2(planTitle(pl))];
+  for (const e of calEvents(pl)) L.push('BEGIN:VEVENT', 'UID:' + e.uid, 'DTSTAMP:' + now, 'DTSTART:' + ut(e.start), 'DTEND:' + ut(e.end), 'SUMMARY:' + e2(e.title),
+    'LOCATION:' + e2(e.loc), `GEO:${e.lat.toFixed(5)};${e.lng.toFixed(5)}`, 'DESCRIPTION:' + e2(e.desc), 'END:VEVENT');
+  L.push('END:VCALENDAR');
+  return L.map(fold).join('\r\n') + '\r\n';
+}
+window.onCalendar = (ok, msg) => toast(msg);
+function exportCal() {
+  const pl = CUR_PLAN, n = calEvents(pl).length;
+  const name = `trip-${ymd(pl.days[0].date)}.ics`;
+  const b = sheet(`<h3 style="margin:0 0 2px">把行程放进日历</h3><div class="mini">共 ${n} 条：每个景点和每段长途交通各一条，都按当地时间。</div>
+    <div class="opts">${A && A.calendar
+      ? '<button data-c="add">📅 加入手机日历<small>直接写进手机日历；改了行程再加一次，会替换掉旧的</small></button><button data-c="share">📤 分享日历文件（.ics）<small>发给同行的朋友，或在电脑上导入 Google 日历</small></button>'
+      : '<button data-c="file">⬇️ 下载日历文件（.ics）<small>iPhone：下载后在「文件」里点开，选「全部添加」</small></button>'}</div>`);
+  b.onclick = e => {
+    const c = e.target.closest('[data-c]');
+    if (!c) return;
+    closeSheet();
+    if (c.dataset.c === 'add') { toast('正在加入日历…'); A.calendar(JSON.stringify({tag: 'plan-' + pl.made, events: calEvents(pl)})); }
+    else if (c.dataset.c === 'share') A.shareFile(name, 'text/calendar', icsText(pl));
+    else {
+      const url = URL.createObjectURL(new Blob([icsText(pl)], {type: 'text/calendar'}));
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+  };
 }
 function shareText(text) {
   if (A && A.share) { A.share(text); return; }
@@ -1141,6 +1599,7 @@ function listExplore() {
 /* ---------------- place detail ---------------- */
 let OV = [];
 function overlay(title) {
+  $('undo').hidden = true;
   const el = document.createElement('div');
   el.className = 'ov';
   el.innerHTML = `<div class="ovtop"><button class="ib" data-close="1"><svg viewBox="0 0 24 24"><path d="M15.4 5 8.4 12l7 7-1.4 1.4L5.6 12 14 3.6z"/></svg></button><b>${esc(title)}</b><span class="extra"></span></div><div class="body"></div>`;
@@ -1187,6 +1646,7 @@ function openPlace(id) {
       <button class="btn sm grab" style="flex:1" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">🚕 叫 Grab</button>
     </div>
     <div class="btnrow"><a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}">Google 地图</a><a href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze</a></div>
+    ${CUR_PLAN ? (stopDay(id) >= 0 ? `<div class="tip" style="margin-top:12px">📅 已排在当前行程的第 ${stopDay(id) + 1} 天</div>` : `<button class="btn" id="dAdd" style="margin-top:12px">＋ 加入当前行程</button>`) : ''}
     <button class="btn ghost" id="dMust" style="margin-top:10px">${must.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）'}</button>
     <h2>附近景点</h2><div class="cards" id="near"></div>
   </div>`;
@@ -1202,6 +1662,8 @@ function openPlace(id) {
     e.currentTarget.textContent = f.includes(id) ? '♥' : '♡'; e.currentTarget.style.color = f.includes(id) ? 'var(--acc2)' : 'inherit';
     toast(f.includes(id) ? '已收藏' : '已取消收藏');
   };
+  const add = ov.body.querySelector('#dAdd');
+  if (add) add.onclick = () => chooseDay(id, -1);
   ov.body.querySelector('#dMust').onclick = e => {
     const m = store.get('must', []); toggleIn(m, id); store.set('must', m); F.must = m;
     e.currentTarget.textContent = m.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）';
@@ -1233,6 +1695,7 @@ function spotsHtml(p) {
 let SHEET = null;
 function sheet(html) {
   closeSheet();
+  $('undo').hidden = true;
   const s = document.createElement('div'); s.className = 'scrim';
   const b = document.createElement('div'); b.className = 'sheet';
   b.innerHTML = html + '<button class="btn ghost" data-x="1" style="margin-top:12px">关闭</button>';
@@ -1665,11 +2128,11 @@ function renderMine() {
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
   <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>数据版本：${esc(D.built)}</div>`;
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.3 · 数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');
-    if (pl) { const x = store.get('plans', []).find(y => y.id === pl.dataset.plan); if (x) { CUR_PLAN = deserialize(x); showTab('pPlan'); renderPlanResult(); window.scrollTo(0, 0); } return; }
+    if (pl) { const x = store.get('plans', []).find(y => y.id === pl.dataset.plan); if (x) { $('undo').hidden = true; CUR_PLAN = deserialize(x); showTab('pPlan'); renderPlanResult(); window.scrollTo(0, 0); } return; }
     const d = e.target.closest('[data-del]');
     if (d) { store.set('plans', store.get('plans', []).filter(y => y.id !== d.dataset.del)); renderMine(); return; }
     if (e.target.id === 'fxNow') refreshFx(true);
@@ -1721,6 +2184,26 @@ function runDemo(d) {
   if (k === 'daynav') { showTab('pPlan'); if (CUR_PLAN) openDayNav(+a || 0); }
   if (k === 'ferry') { while (OV.length) closeOverlay(); openFerry(a, b ? new Date(b + 'T00:00:00') : new Date()); }
   if (k === 'follow') { const bt = document.querySelector('#nFollow'); if (bt) bt.click(); }
+  // editing, costs and calendar (v1.3); without a place id: the first spot of the plan
+  const first = () => { for (const dd of CUR_PLAN.days) { const s = dd.items.find(x => x.type === 'stop'); if (s) return s.id; } return null; };
+  if (CUR_PLAN && ['edit', 'swap', 'move', 'pick', 'cost', 'cal', 'caladd', 'calshare'].includes(k)) {
+    while (OV.length) closeOverlay();
+    if ($('pPlan').hidden) showTab('pPlan');
+    const id = a || first();
+    if (k === 'edit') { $('day' + Math.max(0, stopDay(id))).scrollIntoView(); editStop(id); }
+    if (k === 'swap') swapStop(id, stopDay(id));
+    if (k === 'pick') { const pk = document.querySelector('.sheet [data-pick], .sheet [data-day]'); if (pk) pk.click(); }
+    if (k === 'move') {
+      const to = b != null ? +b : CUR_PLAN.days.length - 1;
+      applyEdit(days => { days.forEach(dd => { const i = dd.indexOf(id); if (i >= 0) dd.splice(i, 1); }); insertInto(days[to], id); }, `已把「${PL[id].name}」挪到第 ${to + 1} 天`, to);
+      const el = $('day' + Math.min(to, CUR_PLAN.days.length - 1)); if (el) el.scrollIntoView();
+    }
+    if (k === 'cost') { window.scrollTo(0, 0); openCost('MYR'); }
+    if (k === 'cal') exportCal();
+    if (k === 'caladd' && A) A.calendar(JSON.stringify({tag: 'plan-' + CUR_PLAN.made, events: calEvents(CUR_PLAN)}));
+    if (k === 'calshare' && A) A.shareFile(`trip-${ymd(CUR_PLAN.days[0].date)}.ics`, 'text/calendar', icsText(CUR_PLAN));
+  }
+  if (k === 'addplace') { openPlace(a); if (CUR_PLAN && stopDay(a) < 0) chooseDay(a, -1); }
 }
 window.runDemo = runDemo;
 if (!A && location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

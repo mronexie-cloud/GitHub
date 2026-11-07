@@ -4,10 +4,15 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.database.Cursor;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -16,6 +21,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.CalendarContract;
+import android.provider.CalendarContract.Calendars;
+import android.provider.CalendarContract.Events;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
@@ -25,6 +33,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
@@ -33,7 +42,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
@@ -44,7 +56,9 @@ import java.util.concurrent.Executors;
 /** The app screen (a web page in assets/index.html) plus location, sharing, links and network for it. */
 public class MainActivity extends Activity {
     static final String TAG = "Travel";
-    static final int REQ_LOC = 1, REQ_WATCH = 2;
+    static final int REQ_LOC = 1, REQ_WATCH = 2, REQ_CAL = 3;
+    /** the trip waiting for the calendar permission */
+    private String pendingCal;
     static final String UA = "SEATravelGuide/1.0 (Android; https://github.com/mronexie-cloud/GitHub)";
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -372,9 +386,150 @@ public class MainActivity extends Activity {
         js("window.onLocate&&window.onLocate(0,0," + JSONObject.quote(m) + ")");
     }
 
+    // ---------- the trip in the phone's calendar, and the .ics file
+
+    private boolean hasCalPerm() {
+        return Build.VERSION.SDK_INT < 23
+                || (checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED);
+    }
+
+    private void calDone(boolean ok, String msg) {
+        js("window.onCalendar&&window.onCalendar(" + ok + "," + JSONObject.quote(msg) + ")");
+    }
+
+    /** Writes the trip's events ({tag, events:[{title,start,end,tz,loc,desc}]}) into the phone's calendar.
+     *  The same trip (tag) added again replaces the events it added before. */
+    void addToCalendar(String json) {
+        if (!hasCalPerm()) {
+            pendingCal = json;
+            requestPermissions(new String[]{Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR}, REQ_CAL);
+            return;
+        }
+        bg.execute(() -> {
+            try {
+                JSONObject o = new JSONObject(json);
+                ContentResolver cr = getContentResolver();
+                String[] cal = pickCalendar(cr);
+                long calId = Long.parseLong(cal[0]);
+                SharedPreferences sp = getSharedPreferences("calendar", MODE_PRIVATE);
+                String tag = o.getString("tag");
+                for (String id : sp.getString(tag, "").split(",")) {
+                    if (id.isEmpty()) continue;
+                    try { cr.delete(ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(id)), null, null); } catch (Exception ignored) { }
+                }
+                JSONArray ev = o.getJSONArray("events");
+                StringBuilder ids = new StringBuilder();
+                long first = Long.MAX_VALUE;
+                int n = 0;
+                for (int i = 0; i < ev.length(); i++) {
+                    JSONObject e = ev.getJSONObject(i);
+                    ContentValues v = new ContentValues();
+                    v.put(Events.CALENDAR_ID, calId);
+                    v.put(Events.TITLE, e.getString("title"));
+                    v.put(Events.DESCRIPTION, e.optString("desc"));
+                    v.put(Events.EVENT_LOCATION, e.optString("loc"));
+                    long start = e.getLong("start");
+                    v.put(Events.DTSTART, start);
+                    v.put(Events.DTEND, e.getLong("end"));
+                    v.put(Events.EVENT_TIMEZONE, e.optString("tz", "Asia/Kuala_Lumpur"));
+                    Uri u = cr.insert(Events.CONTENT_URI, v);
+                    if (u == null) continue;
+                    ids.append(ContentUris.parseId(u)).append(',');
+                    first = Math.min(first, start);
+                    n++;
+                }
+                sp.edit().putString(tag, ids.toString()).apply();
+                Log.i(TAG, "calendar: " + n + " events in " + cal[1]);
+                calDone(true, "已加入日历「" + cal[1] + "」，共 " + n + " 条");
+                final long at = first;
+                if (n > 0) ui.postDelayed(() -> {
+                    try {
+                        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("content://com.android.calendar/time/" + at));
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Exception e) {
+                        Log.i(TAG, "no calendar app to show it", e);
+                    }
+                }, 1200);
+            } catch (Exception e) {
+                Log.w(TAG, "calendar", e);
+                calDone(false, "加入日历失败：" + e.getMessage() + "。可以改用「分享日历文件」。");
+            }
+        });
+    }
+
+    /** {id, name}: the main writable calendar (the Google account's own one first); a local one when there is none */
+    private String[] pickCalendar(ContentResolver cr) {
+        String sel = Calendars.VISIBLE + "=1 AND " + Calendars.CALENDAR_ACCESS_LEVEL + ">=" + Calendars.CAL_ACCESS_CONTRIBUTOR;
+        String[] best = null;
+        int bestScore = -1;
+        try (Cursor c = cr.query(Calendars.CONTENT_URI, new String[]{Calendars._ID, Calendars.CALENDAR_DISPLAY_NAME,
+                Calendars.ACCOUNT_TYPE, Calendars.IS_PRIMARY, Calendars.ACCOUNT_NAME, Calendars.OWNER_ACCOUNT}, sel, null, null)) {
+            while (c != null && c.moveToNext()) {
+                boolean google = "com.google".equals(c.getString(2));
+                boolean primary = c.getInt(3) == 1 || (c.getString(4) != null && c.getString(4).equals(c.getString(5)));
+                int score = (primary ? 2 : 0) + (google ? 1 : 0);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = new String[]{String.valueOf(c.getLong(0)), c.getString(1) == null ? "日历" : c.getString(1)};
+                }
+            }
+        }
+        if (best != null) return best;
+        // no calendar on the phone (no account): make one that lives only on this phone
+        Uri uri = Calendars.CONTENT_URI.buildUpon()
+                .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+                .appendQueryParameter(Calendars.ACCOUNT_NAME, "东南亚旅游攻略")
+                .appendQueryParameter(Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL).build();
+        ContentValues v = new ContentValues();
+        v.put(Calendars.ACCOUNT_NAME, "东南亚旅游攻略");
+        v.put(Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL);
+        v.put(Calendars.NAME, "travel");
+        v.put(Calendars.CALENDAR_DISPLAY_NAME, "旅游行程");
+        v.put(Calendars.CALENDAR_COLOR, 0xFF0E7672);
+        v.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER);
+        v.put(Calendars.OWNER_ACCOUNT, "东南亚旅游攻略");
+        v.put(Calendars.VISIBLE, 1);
+        v.put(Calendars.SYNC_EVENTS, 1);
+        v.put(Calendars.CALENDAR_TIME_ZONE, "Asia/Kuala_Lumpur");
+        Uri made = cr.insert(uri, v);
+        if (made == null) throw new IllegalStateException("手机里没有可以写入的日历");
+        return new String[]{String.valueOf(ContentUris.parseId(made)), "旅游行程"};
+    }
+
+    /** Saves the text as a file and opens the share menu with it. */
+    void shareFile(String name, String mime, String text) {
+        try {
+            File dir = FileShare.dir(this);
+            dir.mkdirs();
+            String safe = name.replaceAll("[^A-Za-z0-9._-]", "_");
+            File f = new File(dir, safe);
+            try (Writer w = new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8)) { w.write(text); }
+            Uri u = Uri.parse("content://" + FileShare.AUTHORITY + "/" + safe);
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType(mime);
+            i.putExtra(Intent.EXTRA_STREAM, u);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent ch = Intent.createChooser(i, "分享日历文件");
+            ch.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(ch);
+        } catch (Exception e) {
+            Log.w(TAG, "share file", e);
+            Toast.makeText(this, "分享失败：" + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
         super.onRequestPermissionsResult(code, perms, res);
+        if (code == REQ_CAL) {
+            String j = pendingCal;
+            pendingCal = null;
+            if (hasCalPerm() && j != null) addToCalendar(j);
+            else calDone(false, "没有日历权限，加不进去。可以改用「分享日历文件」。");
+            return;
+        }
         if (code == REQ_WATCH) {
             if (hasLocPerm()) startWatching(); else sendError("没有定位权限，不能显示你的位置");
             return;
@@ -446,6 +601,16 @@ public class MainActivity extends Activity {
                 i.putExtra(Intent.EXTRA_TEXT, text);
                 startActivity(Intent.createChooser(i, "分享攻略"));
             });
+        }
+
+        @JavascriptInterface
+        public void calendar(String json) {
+            ui.post(() -> addToCalendar(json));
+        }
+
+        @JavascriptInterface
+        public void shareFile(String name, String mime, String text) {
+            ui.post(() -> MainActivity.this.shareFile(name, mime, text));
         }
 
         @JavascriptInterface
