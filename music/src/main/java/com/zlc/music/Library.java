@@ -129,12 +129,15 @@ class Library {
         }
         JSONObject next = new JSONObject();
         ArrayDeque<Object[]> stack = new ArrayDeque<>();
-        stack.push(new Object[]{new File(root), 0});
+        stack.push(new Object[]{new File(root), 0, false});
+        java.util.List<String> unindexed = new java.util.ArrayList<>();
         int dirs = 0;
         while (!stack.isEmpty() && dirs < 20000) {
             Object[] top = stack.pop();
             File dir = (File) top[0];
             int depth = (Integer) top[1];
+            // inside a folder marked "hidden from media apps"?
+            boolean hiddenDir = (Boolean) top[2] || new File(dir, ".nomedia").exists();
             dirs++;
             File[] list;
             try {
@@ -148,7 +151,7 @@ class Library {
                 if (f.isDirectory()) {
                     if (depth == 0 && n.equals("Android")) continue; // other apps' private data: not readable anyway
                     if (n.startsWith(".") || depth >= 9) continue;
-                    stack.push(new Object[]{f, depth + 1});
+                    stack.push(new Object[]{f, depth + 1, hiddenDir});
                     continue;
                 }
                 int dot = n.lastIndexOf('.');
@@ -169,10 +172,18 @@ class Library {
                     String id = "f" + Long.toHexString(hash(p));
                     JSONObject s = song(id, Uri.fromFile(f).toString(), p, n, m.optString("t"), m.optString("a"), m.optString("al"),
                             dur, f.length(), f.lastModified() / 1000, root);
-                    s.put("hidden", true);
+                    if (hiddenDir) s.put("hidden", true);
+                    else unindexed.add(p);
                     out.put(id, s);
                 } catch (Exception ignored) {
                 }
+            }
+        }
+        // files Android has not indexed yet (just copied, for example): ask it to, so covers load faster next time
+        if (!unindexed.isEmpty()) {
+            try {
+                android.media.MediaScannerConnection.scanFile(ctx, unindexed.subList(0, Math.min(500, unindexed.size())).toArray(new String[0]), null, null);
+            } catch (Exception ignored) {
             }
         }
         try (FileOutputStream o = new FileOutputStream(cacheFile)) {

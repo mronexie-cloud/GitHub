@@ -10,6 +10,8 @@ adb install -r -g music/build/outputs/apk/debug/music-debug.apk > $OUT/install.t
 adb shell mkdir -p /sdcard/Music/test /sdcard/Download/hidden
 adb push music-fixtures/Music/. /sdcard/Music/test/
 adb push music-fixtures/hidden/. /sdcard/Download/hidden/
+# a phone indexes new files in the background; ask the emulator to do it now
+adb shell content call --method scan_volume --uri content://media --arg external_primary
 sleep 10
 adb shell content query --uri content://media/external/audio/media --projection _display_name:duration:title > $OUT/mediastore.txt 2>&1
 adb logcat -c
@@ -29,6 +31,9 @@ adb shell cmd statusbar expand-notifications
 sleep 2
 shot 3-notification
 adb shell cmd statusbar collapse
+adb shell am start -n com.zlc.music/.MainActivity --es demo "song:测试歌曲一"
+sleep 7
+shot 4-mp3-lyrics
 adb shell am start -n com.zlc.music/.MainActivity --es demo "song:second"
 sleep 7
 shot 4-flac
