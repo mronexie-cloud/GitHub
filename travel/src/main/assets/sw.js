@@ -1,6 +1,6 @@
 // iPhone web version: works offline once opened. Pages, data and photos come from the network when it is
 // available (so updates arrive) and from the cache otherwise; maps, weather and exchange rates need the network.
-const CACHE = 'travel-v1';
+const CACHE = 'travel-v2';
 const CORE = ['./', 'index.html', 'data.js', 'lib/leaflet.js', 'lib/leaflet.css', 'manifest.webmanifest', 'icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
