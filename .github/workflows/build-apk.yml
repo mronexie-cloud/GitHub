@@ -12,6 +12,8 @@ on:
       - ".github/workflows/probe-platforms.yml"
       - ".github/workflows/probe-douyin.yml"
       - ".github/workflows/music-e2e.yml"
+      - ".github/workflows/travel-data.yml"
+      - "travel-data/**"
       - ".github/workflows/downloader-e2e.yml"
       - ".github/workflows/e2e.yml"
       - ".github/workflows/chat-e2e.yml"

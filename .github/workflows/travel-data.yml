@@ -1,0 +1,42 @@
+name: Travel data (photos and travel times)
+
+on:
+  push:
+    paths:
+      - "travel-data/**"
+      - ".github/workflows/travel-data.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: travel-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - run: python travel-data/build.py 2>&1 | tee travel-data.log
+      - name: Publish the photo contact sheet for review
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete travel-data --yes --cleanup-tag || true
+          gh release create travel-data contact-sheet.jpg travel-data.log --title "旅游攻略数据" --notes "photo contact sheet" --latest=false --prerelease || true
+      - name: Commit the generated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add travel/src/main/assets/data.js travel/src/main/assets/img
+          git commit -m "Travel data: Wikipedia photos and road times" || exit 0
+          git pull --rebase
+          git push
