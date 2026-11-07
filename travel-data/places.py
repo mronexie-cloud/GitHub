@@ -891,7 +891,7 @@ PHOTO = {
     "phuketsunday": "Lard Yai|Phuket Sunday market|Phuket Old Town night",
     "krabinight": "Krabi night market",
     "aonangnight": "Gai yang|Thai grilled chicken",
-    "thepprasit": "Moo ping|Mango sticky rice",
+    "thepprasit": "Mango sticky rice",
     "gianyar": "Pasar Gianyar|Gianyar market|Babi guling",
     "sindhu": "Sanur night market|Sate lilit|Sanur",
     "jimbaran": "Jimbaran seafood",
