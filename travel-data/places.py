@@ -65,7 +65,13 @@ def fx(cur, adult, child=None, note=None, src=None, asof=None, approx=False, gro
     """Other countries: the price a Malaysian visitor (foreigner) pays."""
     return {"cur": cur, "intl": (adult, child), "note": note, "src": src, "asof": asof, "approx": approx, "group": group}
 
+def spend(cur, low, high=None, per="每人", note=None, src=None, asof=None, approx=True):
+    """KTV, bars and restaurants: what a visit usually costs (no ticket). per: 每人 / 每人每小时 / 每间每小时 / 每公斤 / 最低消费每人"""
+    return {"spend": True, "cur": cur, "range": [low, high if high is not None else low], "per": per,
+            "note": note, "src": src, "asof": asof, "approx": approx}
+
 # cat: city 城市地标 / culture 文化古迹 / nature 自然风光 / theme 主题乐园 / beach 海岛海滩 / food 美食夜市
+#      ktv KTV / bar 酒吧 / dining 餐厅 / dutyfree 免税店 (planned only when the person picks them)
 # slot: day / morning / evening (sunset) / night / sunrise
 # closed: weekdays the place is closed, 0 = Sunday … 6 = Saturday
 PLACES = []
@@ -676,6 +682,148 @@ P("samosir", "toba", "沙摩西岛", "Samosir Island", "Samosir", 2.5833, 98.816
 P("sipisopiso", "toba", "西皮索皮索瀑布", "Sipiso-piso Waterfall", "Sipiso-piso", 2.9170, 98.5190, "nature", 3, 1.5,
   "白天", None, "120 米高的瀑布从峭壁直落峡谷，可远眺多巴湖。")
 
+# ===================== KTV, BARS, RESTAURANTS, DUTY-FREE (researched 9 Nov 2026) =====================
+ADULT = "酒吧有最低饮酒年龄：马来西亚 18 岁、新加坡 18 岁、泰国 20 岁、印尼 21 岁，记得带护照或身份证。"
+# --- KTV
+P("redboxpav", "kl", "Red Box Plus KTV（柏威年）", "Red Box Plus Karaoke Pavilion KL", None, 3.1489, 101.7133, "ktv", 4, 2,
+  "每日 11:00 至凌晨 3:00", spend("MYR", 38, 43, "每人", "平日约 RM38++、周末约 RM43++（另加 10% 服务费和 8% 服务税）；14:00–17:00 欢乐时段便宜 RM10；学生和 60 岁以上有优惠",
+  "https://thesmartlocal.my/affordable-karaoke-kl/", "2025-05"),
+  "马来西亚最大的连锁 KTV，在柏威年 Pavilion Elite 10 楼，大小包厢都有，适合朋友和公司聚会。", "周末晚上要先打电话订包厢：03-2148 3322。",
+  slot="night", geo="Pavilion Elite, Kuala Lumpur")
+P("manekinekobb", "kl", "招财猫 KTV（武吉免登）", "Karaoke Manekineko Bukit Bintang", None, 3.1466, 101.7110, "ktv", 3, 2,
+  "每日 11:00 至凌晨 3:00", spend("MYR", 12, 15, "每人每小时", "平日 RM12++、周末 RM15++ 每人每小时；平日 11:00–18:00 欢乐时段 RM9++",
+  "https://thesmartlocal.my/affordable-karaoke-kl/", "2025-05"),
+  "日本连锁 KTV，按人头算钱，两三个人去也划算。", slot="night", geo="Karaoke Manekineko Bukit Bintang")
+P("redboxpg", "penang", "Red Box KTV（1st Avenue 商场）", "Red Box Karaoke 1st Avenue Penang", None, 5.4128, 100.3297, "ktv", 3, 2,
+  "约 11:00 至深夜（以门店公告为准）", None,
+  "乔治市市区商场里的 Red Box 分店，吃完新关仔角夜市可以去唱。", "价格各店不同，请看 redbox.com.my 的门店价目表。",
+  slot="night", geo="1st Avenue Mall, Penang")
+P("queenktvjb", "jb", "Queen KTV（新山城中城）", "Queen Karaoke City Square JB", None, 1.4620, 103.7640, "ktv", 3, 2,
+  "每日 11:00 至凌晨 2:00", spend("MYR", 30, None, "每间每小时", "按包厢大小，每间每小时 RM30 起",
+  "https://www.sgmytaxi.com/karaoke-jb", "2024-05"),
+  "在新山关卡旁的城中城 5 楼，新加坡游客常来，过关后走路就到。", slot="night", geo="Johor Bahru City Square")
+P("teohengsuntec", "sg", "Teo Heng KTV（新达城）", "Teo Heng KTV Suntec City", None, 1.2950, 103.8585, "ktv", 3, 2,
+  "约 12:00 至凌晨 1:00（周六和公共假期前夕到 2:00）", spend("SGD", 13, 19, "每间每小时", "小包厢（4 人）中午至 19:00 每小时 S$13、19:00 后 S$19（含消费税）",
+  "https://themoneybees.co/blog/teo-heng-rates", "2026-11"),
+  "新加坡最平价的连锁 KTV，按包厢算钱，几个人分摊很便宜。", slot="night", geo="Suntec City, Singapore")
+P("manekinekobkk", "bangkok", "招财猫 KTV（Silom Edge）", "Karaoke Manekineko Silom Edge", None, 13.7290, 100.5355, "ktv", 3, 2,
+  "每日 11:00 至凌晨 5:00", spend("THB", 100, None, "每人", "优惠价每人 ฿100 唱两小时、汽水任喝（以店内公告为准）",
+  "https://www.timeout.com/bangkok/things-to-do/karaoke-manekineko", "2026"),
+  "曼谷是隆区的日式家庭 KTV，靠近 BTS Sala Daeng 和 MRT Silom 站。",
+  "在泰国要找这种家庭式 KTV；路边招揽的「KTV 酒廊」常有陪酒和高额消费，别跟去。", slot="night", geo="Silom Edge, Bangkok")
+P("inulbatam", "batam", "Inul Vizta 家庭 KTV（Nagoya Hill）", "Inul Vizta Nagoya Hill Batam", None, 1.1446, 104.0117, "ktv", 3, 2,
+  "每日 12:00 至凌晨 3:00", None,
+  "印尼最大的家庭式连锁 KTV，在巴淡岛 Nagoya Hill 商场旁，有中文歌。", "平日比周末便宜；价格请在店里问。",
+  slot="night", geo="Inul Vizta Nagoya Hill Batam")
+# --- bars
+P("helilounge", "kl", "直升机停机坪酒吧 Heli Lounge Bar", "Heli Lounge Bar", None, 3.1525, 101.7090, "bar", 5, 2,
+  "周日至周四 17:00–1:00，周五周六 17:00–2:00", None,
+  "在大楼顶的直升机停机坪上喝酒看日落，四周没有栏杆，双峰塔和吉隆坡塔就在眼前。",
+  "21:00 前穿便服可以，之后要 smart casual。下雨天停机坪会关。" + ADULT, slot="evening", geo="Menara KH, Kuala Lumpur")
+P("marinis57", "kl", "Marini's on 57", "Marini's on 57", "Marini's on 57", 3.1570, 101.7120, "bar", 4, 2,
+  "每日 17:00 至凌晨 3:00；17:00–21:00 有日落优惠", None,
+  "双峰塔旁边第三座塔的 57 楼，窗外就是双峰塔，看夜景最近的地方之一。",
+  "smart casual，不能穿短裤、拖鞋、戴帽子。" + ADULT, slot="evening", geo="Menara 3 Petronas")
+P("changkat", "kl", "Changkat Bukit Bintang 酒吧街", "Changkat Bukit Bintang", "Changkat Bukit Bintang", 3.1468, 101.7067, "bar", 4, 2.5,
+  "大多数店约 16:00–1:00，周末更晚；16:00–20:00 常有欢乐时段", free("进街免费，多数酒吧没有入场费（活动夜除外）"),
+  "老店屋改成的一整条酒吧和西餐馆，晚上 9 点后最热闹，可以一家家逛。", "欢乐时段很多店买一送一。" + ADULT,
+  slot="night", geo="Changkat Bukit Bintang")
+P("celavi", "sg", "CÉ LA VI 金沙空中酒吧", "CÉ LA VI SkyBar Marina Bay Sands", None, 1.2834, 103.8607, "bar", 5, 2,
+  "每日 16:00 至凌晨 1:00（关门前 1 小时停止入场）",
+  fx("SGD", 38, 0, "入场费含一杯饮料：22:00 前 S$38、之后 S$48；12 岁以下和金沙酒店住客免费（特别活动除外）",
+     "https://www.misslobang.com/article/best-rooftop-bars-singapore-2026", "2026-10"),
+  "滨海湾金沙 57 楼的空中酒吧，俯瞰整个滨海湾和城市天际线。", "入场费可以当一杯饮料，傍晚去看日落最划算。" + ADULT,
+  slot="evening", geo="Marina Bay Sands SkyPark")
+P("level33", "sg", "LeVeL33 精酿啤酒屋", "LeVeL33", None, 1.2799, 103.8536, "bar", 4, 2,
+  "每日 12:00–23:00", None,
+  "号称世界最高的城市精酿啤酒厂，在滨海湾金融中心 33 楼，阳台正对金沙和滨海湾。",
+  "平日 14:00–15:30 有「High Beer」下午茶啤酒套餐（每人 S$48++）。" + ADULT, slot="evening", geo="Marina Bay Financial Centre Tower 1")
+P("skybarbkk", "bangkok", "lebua 天空酒吧 Sky Bar", "Sky Bar lebua at State Tower", "State Tower", 13.7215, 100.5168, "bar", 5, 1.5,
+  "傍晚至深夜（具体时间以官网为准）", None,
+  "电影《宿醉 2》取景的露天高空酒吧，金色圆顶下面就是湄南河夜景。",
+  "严格 smart casual：男士要长裤和包头鞋，不能穿运动服、破洞牛仔裤和拖鞋；订位要付订金。" + ADULT,
+  slot="evening", geo="State Tower, Bangkok")
+P("banglaroad", "phuket", "芭东 Bangla 酒吧街", "Bangla Road Patong", "Bang La Road", 7.8932, 98.2970, "bar", 4, 2.5,
+  "约 18:00 封路成步行街，酒吧 21:00 后热闹到凌晨", free("进街免费；啤酒约 ฿90–150，鸡尾酒约 ฿150–400"),
+  "普吉岛最热闹的夜生活街，酒吧、夜店和街头表演一条街。",
+  "点酒前问清价钱、每轮付清；别跟拉客去看「表演」；回酒店用 Grab，比嘟嘟车便宜。" + ADULT,
+  slot="night", geo="Bangla Road, Patong", src="https://travelguidestip.com/phuket-nightlife-guide/", asof="2026-04")
+P("potatohead", "bali", "Potato Head 海滩俱乐部", "Potato Head Beach Club", "Potato Head Beach Club", -8.6800, 115.1520, "bar", 4, 3,
+  "白天到深夜；16:30–19:00 日落时段最热门",
+  free("16:30 前免费入场；16:30–19:00 每人 Rp250,000（可抵消费）；海边沙发床另有最低消费"),
+  "水明漾海边的设计感海滩俱乐部，泳池对着大海，日落时最美。", "不订位也能进，泳池吧台和草坪后排没有最低消费；入口会检查包。" + ADULT,
+  slot="evening", geo="Potato Head Beach Club Seminyak", src="https://www.trvlogue.com/en/potato-head-beach-club-bali", asof="2026-10")
+P("rockbar", "bali", "AYANA 岩石酒吧 Rock Bar", "Rock Bar AYANA Bali", "Ayana Resort and Spa Bali", -8.7900, 115.1360, "bar", 5, 2,
+  "每日 16:00–24:00",
+  spend("IDR", 350000, 550000, "最低消费每人", "非住客最低消费：吧台或小食桌每人 Rp350,000、晚餐桌每人 Rp550,000（另加 21% 税和服务费）",
+  "https://ayana.com/bali/dining/rock-bar/details/", "2026", approx=False),
+  "建在金巴兰海边礁石上的酒吧，海浪就在脚下拍打，是巴厘岛看日落最有名的地方。", "坐缆车下到礁石；日落前一两个小时就开始排队。" + ADULT,
+  slot="evening", geo="Rock Bar Bali")
+# --- restaurants
+P("madamkwan", "kl", "Madam Kwan's（阳光广场）", "Madam Kwan's Suria KLCC", None, 3.1579, 101.7119, "dining", 4, 1.5,
+  "每日 10:00–22:00", spend("MYR", 20, 45, "每人", "椰浆饭 RM20 起", "https://burpple.com/madam-kwans-suria-klcc", "2026"),
+  "双峰塔下面的老字号马来西亚菜，椰浆饭、娘惹叻沙、炒粿条一次吃到，有冷气。", slot="day",
+  eat=[("椰浆饭（Nasi Lemak）", "招牌，配咖喱鸡、虾米松和 acar", "RM20 起"), ("亚参叻沙 · 炒粿条", "", "")],
+  geo="Suria KLCC")
+P("teksen", "penang", "德盛饭店 Tek Sen", "Tek Sen Restaurant", None, 5.4163, 100.3346, "dining", 5, 1.5,
+  "午餐 11:30–14:00，周二休息（晚市以店家公告为准）", spend("MYR", 30, 60, "每人", "人多一起点菜更划算", "https://tablejourney.com/malaysia/penang/restaurants/teksen/", "2026-11"),
+  "乔治市开了几十年的槟城家常中餐馆，米其林必比登推介，排队的人很多。", "饭点前到，或几个人一起去点多几道菜。",
+  closed=[2], slot="day", eat=[("双层烧肉（Double Roast Pork）", "招牌", ""), ("亚参鱼 · 炸虾饼", "", "")],
+  geo="Tek Sen Restaurant, Lebuh Carnarvon")
+P("jumbosg", "sg", "珍宝海鲜（河畔坊）", "JUMBO Seafood Riverside Point", None, 1.2898, 103.8455, "dining", 5, 2,
+  "每日 11:30–23:00", spend("SGD", 100, 120, "每公斤", "辣椒螃蟹按时价，每公斤约 S$100–120（一只约 1 公斤，2–3 人吃）",
+  "https://www.homejourney.sg/blog/best-chilli-crab-singapore-homejourney-ultimate-2026-guide-202603090101", "2026-03"),
+  "新加坡辣椒螃蟹最有名的餐馆之一，就在克拉码头河边。", "一定要先订位；点螃蟹时问清当天每公斤价钱，配炸馒头蘸酱。", slot="evening",
+  eat=[("辣椒螃蟹（Chilli Crab）", "配炸馒头", "时价"), ("黑胡椒螃蟹", "", "时价")], geo="Riverside Point, Singapore")
+P("songfa", "sg", "松发肉骨茶（新桥路）", "Song Fa Bak Kut Teh New Bridge Road", None, 1.2890, 103.8468, "dining", 4, 1,
+  "每日 9:30–21:30", spend("SGD", 10, 20, "每人", "米其林指南最低价位档（$）",
+  "https://guide.michelin.com/ee/en/singapore-region/singapore/restaurant/song-fa-bak-kut-teh-new-bridge-road", "2026"),
+  "胡椒味的新加坡潮州肉骨茶，连续多年米其林必比登推介，汤可以免费加。", "饭点要排队，早上或下午去比较快。", slot="day",
+  eat=[("肉骨茶（Pork Ribs Soup）", "白胡椒清汤，免费加汤", ""), ("卤猪脚 · 油条", "", "")], geo="11 New Bridge Road")
+P("jayfai", "bangkok", "痣姐 Jay Fai", "Raan Jay Fai", None, 13.7524, 100.5046, "dining", 5, 2,
+  "周三至周六 9:00–19:30（周日、一、二休息）", spend("THB", 1200, 1500, "每人", "招牌蟹肉蛋卷约 ฿1,200–1,500 一份；醉面约 ฿400",
+  "https://www.khaosanroad.com/places/raan-jay-fai", "2026-03"),
+  "戴护目镜炭火炒菜的街头米其林一星，蟹肉蛋卷全是大块蟹肉。", "要排长队：到门口先写名字登记；平日下午人比较少。",
+  closed=[0, 1, 2], slot="day", eat=[("蟹肉蛋卷（Crab Omelette）", "招牌", "约 ฿1,200–1,500"), ("醉面（Drunken Noodles）", "", "约 ฿400")],
+  geo="Raan Jay Fai, Maha Chai Road")
+P("thipsamai", "bangkok", "鬼门炒粉 Thipsamai", "Thipsamai Pad Thai", None, 13.7528, 100.5048, "dining", 4, 1,
+  "每日 9:00–24:00，周二休息", spend("THB", 150, 250, "每人", "蛋包泰式炒粉约 ฿150",
+  "https://www.trvlogue.com/en/thipsamai-bangkok-pad-thai", "2026-10"),
+  "曼谷最有名的泰式炒河粉老店，就在痣姐旁边，蛋皮包着炒粉。", "配一杯鲜榨橙汁是标配。", closed=[2], slot="evening",
+  eat=[("蛋包泰式炒粉（Pad Thai wrapped in egg）", "招牌", "约 ฿150"), ("鲜榨橙汁", "", "")], geo="Thipsamai, Maha Chai Road")
+P("rayaphuket", "phuket", "Raya 普吉老宅餐厅", "Raya Restaurant Phuket Town", None, 7.8869, 98.3893, "dining", 4, 1.5,
+  "每日 10:00–22:00", spend("THB", 300, 600, "每人", "", "https://www.eatingthaifood.com/raya-restaurant-phuket", "2024-06"),
+  "普吉老镇百年中葡式老宅里的普吉菜，米其林推介，最有名的是蟹肉咖喱配米线。", slot="evening",
+  eat=[("蟹肉黄咖喱配米线", "招牌", ""), ("普吉炖猪肉（Moo Hong）", "", "")], geo="Raya Restaurant, Dibuk Road, Phuket")
+P("khaosoikhunyai", "chiangmai", "坤奶奶咖喱面 Khao Soi Khun Yai", "Khao Soi Khun Yai", None, 18.7963, 98.9838, "dining", 4, 1,
+  "周一至周六 10:00 起，卖完就收（只有午餐），周日休息", None,
+  "清迈古城北护城河边的小店，泰北咖喱面（Khao Soi）是当地人推荐的味道。", "中午前去，下午常常卖完。",
+  closed=[0], slot="day", eat=[("泰北咖喱面（Khao Soi）", "鸡肉或牛肉", "")], geo="Khao Soi Khun Yai, Chiang Mai")
+# --- duty-free
+LGK_DUTY = "兰卡威整个岛免税：巧克力、香水、化妆品、厨具、行李箱都比本岛便宜；烟草从 2021 年起要缴税；酒类每人限 1 公升。政府宣布将把免税购物额提高到 RM10,000（住满 48 小时），实施日期未定。"
+LGK_SRC = "https://www.malaymail.com/news/malaysia/2026/10/11/rm10000-duty-free-shopping-coming-to-langkawi-and-labuan-what-can-you-buy/238577"
+P("lgkparade", "langkawi", "兰卡威广场 Langkawi Parade", "Langkawi Parade", None, 6.3220, 99.8460, "dutyfree", 3, 1.5,
+  "每日 10:00–21:30", free("免费入场，买东西按价付费"),
+  "瓜镇最老牌的免税商场，40 多家免税店：名牌服饰、电子产品、酒和纪念品。", LGK_DUTY, geo="Langkawi Parade, Kuah",
+  src=LGK_SRC, asof="2026-10")
+P("lgkfair", "langkawi", "兰卡威商场 Langkawi Fair", "Langkawi Fair Shopping Mall", None, 6.3180, 99.8510, "dutyfree", 3, 1.5,
+  "每日 10:00–22:00", free("免费入场，买东西按价付费"),
+  "瓜镇最大的商场，100 多家店和几家免税店，还有大超市，买巧克力和进口零食方便。", LGK_DUTY, geo="Langkawi Fair Shopping Mall",
+  src=LGK_SRC, asof="2026-10")
+P("cenangmall", "langkawi", "珍南商场 Cenang Mall", "Cenang Mall", None, 6.2905, 99.7290, "dutyfree", 3, 1.5,
+  "每日 11:00–23:00", free("免费入场，买东西按价付费"),
+  "珍南海滩旁的免税商场，45 家以上的店，看完日落可以顺便逛。", LGK_DUTY, slot="evening", geo="Cenang Mall, Pantai Cenang",
+  src=LGK_SRC, asof="2026-10")
+P("kingpowerrn", "bangkok", "王权免税店（Rangnam 市区店）", "King Power Rangnam", None, 13.7600, 100.5390, "dutyfree", 4, 2,
+  "每日 10:00–21:00", free("免费入场，买东西按价付费"),
+  "曼谷市区的王权免税店，在胜利纪念碑 BTS 站旁边，名牌化妆品、香水、手表齐全，在市区买、到机场取货。",
+  "免税购物要带护照和回程机票资料，买好的东西在素万那普或廊曼机场出境后的取货柜台领。2025 年王权关了 3 家市区店，Rangnam 仍营业。",
+  geo="King Power Rangnam", src="https://www.visitthailandtoday.com/markets-shopping/bangkok/king-power-rang-nam", asof="2026-10")
+P("kingpowerhkt", "phuket", "王权免税店（普吉市区店）", "King Power Phuket", None, 7.8690, 98.3720, "dutyfree", 3, 1.5,
+  "每日 10:00–19:00", free("免费入场，买东西按价付费"),
+  "普吉镇往查龙路上的王权免税店，离 Central Phuket 不远。", "要带护照和航班资料；买的东西在普吉机场出境时领。",
+  geo="King Power Phuket Complex", src="https://www.phuket101.net/king-power-phuket/", asof="2026-09")
+
 # ---------- curated routes: id, name, days, start region, note, [[place ids per day]]
 # ===================== FOOD & NIGHT MARKETS (more) =====================
 KLNM = "https://the-malaysia-move.pages.dev/kl-night-markets/"
@@ -874,6 +1022,17 @@ NOTES = {
 # ---------- photo choice: a Commons search used when the article's lead photo is missing or unsuitable
 # (e.g. a map or satellite picture). The build logs which photo each place ends up with.
 PHOTO = {
+    # KTV, bars, restaurants, duty-free: the building or street they are in, or the dish they are known for
+    "redboxpav": "Pavilion Kuala Lumpur", "manekinekobb": "Jalan Bukit Bintang", "redboxpg": "1st Avenue Mall Penang|Komtar",
+    "queenktvjb": "Johor Bahru City Square", "teohengsuntec": "Suntec City", "manekinekobkk": "Silom Road|Sala Daeng",
+    "inulbatam": "Nagoya Hill Batam|Batam", "helilounge": "Heli Lounge Bar|Menara KH", "marinis57": "Petronas Towers night|Petronas Twin Towers",
+    "changkat": "Changkat Bukit Bintang", "celavi": "Marina Bay Sands SkyPark", "level33": "Marina Bay Financial Centre",
+    "skybarbkk": "Sky Bar lebua|State Tower Bangkok", "banglaroad": "Bangla Road Patong|Bangla Road", "potatohead": "Potato Head Beach Club",
+    "rockbar": "Rock Bar Bali|Ayana Resort Bali", "madamkwan": "Nasi lemak", "teksen": "Siu yuk|Roast pork belly",
+    "jumbosg": "Chilli crab", "songfa": "Bak kut teh Singapore|Bak kut teh", "jayfai": "Crab omelette|Khai chiao",
+    "thipsamai": "Pad thai", "rayaphuket": "Phuket Old Town|Thalang Road", "khaosoikhunyai": "Khao soi",
+    "lgkparade": "Langkawi Parade|Kuah Langkawi", "lgkfair": "Langkawi Fair|Kuah Langkawi", "cenangmall": "Pantai Cenang",
+    "kingpowerrn": "King Power Rangnam|King Power Complex", "kingpowerhkt": "King Power Phuket|King Power",
     "connaught": "Stinky tofu|Taiwanese street food",
     "newlane": "Char kway teow Penang|Penang hawker food|Char kway teow",
     "airitamlaksa": "Penang asam laksa",

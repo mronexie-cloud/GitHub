@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
     static final int REQ_LOC = 1, REQ_WATCH = 2, REQ_CAL = 3;
     /** the trip waiting for the calendar permission */
     private String pendingCal;
-    static final String UA = "SEATravelGuide/1.6 (Android; https://github.com/mronexie-cloud/GitHub)";
+    static final String UA = "SEATravelGuide/1.7 (Android; https://github.com/mronexie-cloud/GitHub)";
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newFixedThreadPool(3);
