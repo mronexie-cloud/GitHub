@@ -39,6 +39,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- a place shared from Google Maps: 分享 → 东南亚旅游攻略 -->
+            <intent-filter android:label="加到旅游攻略">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- the trip's .ics file, for sharing -->

@@ -199,6 +199,9 @@ table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 /* Google Maps place button */
 .gmb{margin-top:10px;width:100%;text-decoration:none;height:44px;font-size:14.5px}
 .gmb b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:11px;background:#4285F4;color:#fff;font-size:13px;font-weight:800}
+/* Google Maps: see more, add from it */
+.gmrow{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.gmrow a,.gmrow button{font-size:13px;font-weight:700;padding:7px 12px;border-radius:14px;background:var(--accSoft);color:var(--acc);text-decoration:none}
 /* nearby */
 .chip.near{font-weight:700}
 .nearhd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 0 10px;font-size:13.5px;color:var(--sub)}
@@ -292,6 +295,16 @@ const D = window.DATA;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const R = {}; D.regions.forEach(r => R[r.key] = r);
+/* places the person added from Google Maps (kept on this phone only) join the app's own places */
+const SLOT_OF = {ktv: 'night', bar: 'evening', food: 'evening', dining: 'day', beach: 'evening'};
+function minePlace(m) {
+  let best = null, bd = 1e9;
+  for (const r of D.regions) { const d = Math.hypot(r.lat - m.lat, (r.lng - m.lng) * Math.cos(m.lat * Math.PI / 180)) * 111; if (d < bd) { bd = d; best = r; } }
+  return {id: m.id, region: best.key, name: m.name, en: m.name, lat: m.lat, lng: m.lng, cat: m.cat, rank: 4, dur: m.dur || 1.5,
+    hours: '以谷歌地图上的营业时间为准', price: null, desc: '你从谷歌地图添加的地点' + (m.addr ? '：' + m.addr : '。'), tip: '',
+    closed: [], slot: SLOT_OF[m.cat] || 'day', mine: true, gurl: m.gurl || ''};
+}
+try { (JSON.parse(localStorage.getItem('tg_myplaces') || '[]') || []).forEach(m => D.places.push(minePlace(m))); } catch (e) {}
 const PL = {}; D.places.forEach(p => PL[p.id] = p);
 const COUNTRY = {MY:'西马', SG:'新加坡', TH:'泰国', ID:'印尼'};
 const CAT = {city:'城市地标', culture:'文化古迹', nature:'自然风光', theme:'主题乐园', beach:'海岛海滩', food:'美食夜市', dining:'餐厅', ktv:'KTV', bar:'酒吧', dutyfree:'免税店'};
@@ -1674,7 +1687,11 @@ function renderExplore() {
   <div class="hscroll" style="margin-top:12px"><button class="chip near${EX.near ? ' on' : ''}" id="exNear">📍 附近</button>${[['all', '全部'], ...Object.entries(COUNTRY)].map(([k, v]) => `<button class="chip${!EX.near && EX.country === k ? ' on' : ''}" data-c="${k}">${v}</button>`).join('')}</div>
   ${EX.near ? '<div class="nearhd" id="exWhere"></div>' : `<div class="hscroll">${[['all', '全部地区'], ...regs.map(r => [r.key, r.name])].map(([k, v]) => `<button class="chip${EX.region === k ? ' on' : ''}" data-r="${k}">${esc(v)}</button>`).join('')}</div>`}
   <div class="hscroll" style="margin-bottom:10px">${[['all', '全部类型'], ...Object.entries(CAT)].map(([k, v]) => `<button class="chip${EX.cat === k ? ' on' : ''}" data-k="${k}">${v}</button>`).join('')}</div>
+  <div class="gmrow"><a id="exMore" href="#">🔎 在谷歌地图看更多${EX.cat === 'all' ? '好玩的' : esc(CAT[EX.cat])}</a><button id="exAdd">＋ 从谷歌地图添加</button></div>
   <div class="cards" id="exList"></div>`;
+  const morePt = () => EX.near ? EX.pos : EX.region !== 'all' ? R[EX.region] : F.start;
+  $('exMore').onclick = e => { e.preventDefault(); openUrl(gmapsMore(EX.cat === 'all' ? 'city' : EX.cat, morePt())); };
+  $('exAdd').onclick = () => addFromGoogle();
   if (EX.near) nearWhere(); else listExplore();
   $('exQ').oninput = e => { EX.q = e.target.value; listExplore(); };
   $('exNear').onclick = () => { EX.near = !EX.near; renderExplore(); };
@@ -1755,6 +1772,7 @@ function spendRange(pr) {
 }
 function priceTable(p) {
   const pr = p.price;
+  if (!pr && p.mine) return '<p class="note">价钱请看谷歌地图上的资料和评价。</p>';
   if (!pr) return `<p class="note">暂时没有找到可靠的${ASKED.has(p.cat) && p.cat !== 'dutyfree' ? '价钱' : '票价'}资料，请以现场或官网为准。</p>`;
   if (pr.spend) {
     const [lo, hi] = pr.range;
@@ -1782,7 +1800,7 @@ function openPlace(id) {
   ov.extra.innerHTML = `<button class="ib" id="dFav" style="color:${favs.includes(id) ? 'var(--acc2)' : 'inherit'}">${favs.includes(id) ? '♥' : '♡'}</button>`;
   ov.body.innerHTML = `${imgs.length ? `<div class="gal" id="gal">${imgs.map(x => `<img src="${esc(x.url)}" loading="lazy" alt="" onerror="this.remove()">`).join('')}</div><div class="credit" id="credit">${credit(imgs[0].c)}${imgs.length > 1 ? ` · 左右滑动看更多（共 ${imgs.length} 张）` : ''}</div>` : ''}
   <div class="dtl">
-    <div class="row" style="gap:8px;flex-wrap:wrap"><span class="cat ${p.cat}">${CAT[p.cat]}</span><span class="mini">${COUNTRY[r.country]} · ${esc(r.name)}</span><span class="stars">${'★'.repeat(p.rank)}${'☆'.repeat(5 - p.rank)}</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><span class="cat ${p.cat}">${CAT[p.cat]}</span><span class="mini">${COUNTRY[r.country]} · ${esc(r.name)}</span>${p.mine ? '<span class="badge">我的地点</span>' : `<span class="stars">${'★'.repeat(p.rank)}${'☆'.repeat(5 - p.rank)}</span>`}</div>
     <h1>${esc(p.name)}</h1><div class="mini">${esc(p.en)}</div>
     <p style="margin:12px 0 0">${esc(p.desc)}</p>
     ${p.tip ? `<div class="tip">💡 ${esc(p.tip)}</div>` : ''}
@@ -1790,7 +1808,7 @@ function openPlace(id) {
     ${ferriesForPlace(p).length ? '<h2>⛴ 怎么上岛 · 船班</h2><div id="ferryBox"></div>' : ''}
     ${p.spots ? spotsHtml(p) : ''}
     ${p.eat ? eatHtml(p) : ''}
-    ${EAT(p.cat) && p.price && p.price.free ? '' : `<h2>${p.price && p.price.spend ? '大概花费' : p.cat === 'dutyfree' ? '入场' : '门票'}</h2>${priceTable(p)}`}
+    ${EAT(p.cat) && p.price && p.price.free ? '' : `<h2>${p.price && p.price.spend ? '大概花费' : p.cat === 'dutyfree' ? '入场' : ASKED.has(p.cat) || p.mine ? '价钱' : '门票'}</h2>${priceTable(p)}`}
     <div class="acts" style="margin-top:16px">
       <button class="btn sm" style="flex:1" data-nav="${p.id}">🧭 路线导航</button>
       <button class="btn sm grab" style="flex:1" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">🚕 叫 Grab</button>
@@ -1798,6 +1816,7 @@ function openPlace(id) {
     <a class="btn ghost sm gmb" href="${gmapsPlace(p)}"><b>G</b> 在谷歌地图看评分、评论、照片和营业时间</a>
     <div class="btnrow"><a href="${gmapsPlace(p)}">Google 地图</a><a href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze</a></div>
     ${CUR_PLAN ? (stopDay(id) >= 0 ? `<div class="tip" style="margin-top:12px">📅 已排在当前行程的第 ${stopDay(id) + 1} 天</div>` : `<button class="btn" id="dAdd" style="margin-top:12px">＋ 加入当前行程</button>`) : ''}
+    ${p.mine ? '<button class="btn ghost" id="dDelMine" style="margin-top:10px;color:#C2410C">删除这个地点</button>' : ''}
     <button class="btn ghost" id="dMust" style="margin-top:10px">${must.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）'}</button>
     <h2>附近景点</h2><div class="cards" id="near"></div>
   </div>`;
@@ -1813,6 +1832,8 @@ function openPlace(id) {
     e.currentTarget.textContent = f.includes(id) ? '♥' : '♡'; e.currentTarget.style.color = f.includes(id) ? 'var(--acc2)' : 'inherit';
     toast(f.includes(id) ? '已收藏' : '已取消收藏');
   };
+  const dm = ov.body.querySelector('#dDelMine');
+  if (dm) dm.onclick = () => { if (CUR_PLAN && stopDay(id) >= 0) { toast('它还在当前行程里，先在行程里删掉'); return; } removeMine(id); closeOverlay(); toast('已删除'); if (!$('pMine').hidden) renderMine(); if (!$('pExplore').hidden) renderExplore(); };
   const add = ov.body.querySelector('#dAdd');
   if (add) add.onclick = () => chooseDay(id, -1);
   ov.body.querySelector('#dMust').onclick = e => {
@@ -1862,12 +1883,127 @@ function closeSheet() { if (!SHEET) return false; SHEET.s.remove(); SHEET.b.remo
    English name, town and country. Nothing from Google is stored in the app. */
 const CTRY_EN = {MY: 'Malaysia', SG: 'Singapore', TH: 'Thailand', ID: 'Indonesia'};
 function gmapsPlace(p) {
+  if (p.gurl) return p.gurl;
   const t = nearestTown(p);
   const town = t.t && t.d < 40 ? t.t.name.replace(/^[^A-Za-z]*/, '').replace(/\s*\(.*\)$/, '') : '';
   const parts = [p.en];
   for (const x of [town, CTRY_EN[R[p.region].country]]) if (x && !parts.some(y => y.toLowerCase().includes(x.toLowerCase()))) parts.push(x);
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(parts.join(', '));
 }
+
+/* ---------------- more from Google Maps ----------------
+   1) 在谷歌地图看更多: Google Maps searches that kind of place around the area.
+   2) 从谷歌地图添加: a place shared from Google Maps (or its copied link) becomes one of 我的地点. */
+const CAT_Q = {city: 'tourist attractions', culture: 'temples museums heritage', nature: 'nature parks waterfalls', theme: 'theme parks',
+  beach: 'beaches', food: 'night market hawker food', dining: 'restaurants', ktv: 'karaoke KTV', bar: 'bars', dutyfree: 'duty free shops'};
+function gmapsMore(cat, pt) {
+  const t = pt ? nearestTown(pt) : null;
+  const where = t && t.t && t.d < 40 ? t.t.name.replace(/^[^A-Za-z]*/, '') : pt ? pt.lat.toFixed(4) + ',' + pt.lng.toFixed(4) : '';
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((CAT_Q[cat] || 'tourist attractions') + (where ? ' near ' + where : ''));
+}
+/** name, address and position from what Google Maps shares: "Name\nAddress\nhttps://maps.app.goo.gl/…", or a maps URL */
+function parseShared(text) {
+  const s = String(text || '').trim();
+  const url = (s.match(/https?:\/\/\S+/) || [''])[0];
+  const lines = s.replace(url, '').split(/\n+/).map(x => x.trim()).filter(x => x && !/^https?:/.test(x));
+  const out = {url, name: lines[0] || '', addr: lines.slice(1).join(' ')};
+  fromUrl(out, url);
+  return out;
+}
+function fromUrl(out, url) {
+  if (!url) return out;
+  let u = url;
+  try { u = decodeURIComponent(url.replace(/\+/g, ' ')); } catch (e) {}
+  const exact = u.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);           // the place itself
+  const at = u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);                    // the map view
+  const q = u.match(/[?&](?:q|query|ll|center|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  const m = exact || q || at;
+  if (m) { out.lat = +m[1]; out.lng = +m[2]; }
+  const nm = u.match(/\/maps\/(?:place|search)\/([^/@?]+)/);
+  if (nm && !out.name) out.name = nm[1].trim();
+  const qn = u.match(/[?&](?:q|query)=([^&]+)/);
+  if (!out.name && qn && !/^-?\d+\.\d+,/.test(qn[1])) out.name = qn[1].trim();
+  return out;
+}
+/** short links (maps.app.goo.gl) are followed by the app to find the position */
+function resolveLink(url) {
+  return new Promise(res => {
+    if (!A || !A.resolveUrl || !/goo\.gl|g\.co\//.test(url)) { res(url); return; }
+    const tag = 'r' + Date.now();
+    const prev = window.onResolved;
+    window.onResolved = (t, u) => { if (t !== tag) { if (prev) prev(t, u); return; } window.onResolved = prev; res(u || url); };
+    A.resolveUrl(url, tag);
+    setTimeout(() => res(url), 12000);
+  });
+}
+async function readShared(text) {
+  const info = parseShared(text);
+  if (info.url && info.lat == null) fromUrl(info, await resolveLink(info.url));
+  if (info.lat == null && info.name) {   // no position in the link: look the name up
+    try {
+      const r = await getJSON('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=my,sg,th,id&q=' + encodeURIComponent(info.name + (info.addr ? ', ' + info.addr : '')));
+      if (r && r[0]) { info.lat = +r[0].lat; info.lng = +r[0].lon; info.guessed = true; }
+      else {
+        const r2 = await getJSON('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=my,sg,th,id&q=' + encodeURIComponent(info.addr || info.name));
+        if (r2 && r2[0]) { info.lat = +r2[0].lat; info.lng = +r2[0].lon; info.guessed = true; }
+      }
+    } catch (e) {}
+  }
+  return info;
+}
+function addFromGoogle(prefill) {
+  const b = sheet(`<h3 style="margin:0 0 2px">从谷歌地图添加地点</h3>
+    <ol class="mini" style="padding-left:18px;line-height:1.7;margin:6px 0">
+      <li>在谷歌地图里找到想去的地方（KTV、酒吧、餐厅、商店都可以）</li>
+      <li>点「分享」${A ? '，选「东南亚旅游攻略」就会直接加进来' : '，再点「复制链接」'}</li>
+      <li>${A ? '或者复制链接，粘贴到下面' : '回到这里粘贴到下面'}</li></ol>
+    <textarea class="inp" id="gmIn" rows="3" placeholder="粘贴谷歌地图分享的内容或链接" style="width:100%;resize:vertical">${esc(prefill || '')}</textarea>
+    <div class="btnrow" style="margin-top:8px"><a href="https://www.google.com/maps">打开谷歌地图</a></div>
+    <button class="btn" id="gmGo" style="margin-top:10px">读取这个地点</button><div class="mini" id="gmMsg" style="margin-top:6px"></div>`);
+  const go = async () => {
+    const v = b.querySelector('#gmIn').value.trim();
+    if (!v) { b.querySelector('#gmMsg').textContent = '先粘贴谷歌地图分享的内容'; return; }
+    b.querySelector('#gmMsg').innerHTML = '<span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在读取…';
+    const info = await readShared(v);
+    if (info.lat == null) { b.querySelector('#gmMsg').textContent = '读不到这个地点的位置。请在谷歌地图里点开地点本身再分享，或者复制完整链接。'; return; }
+    confirmMine(info);
+  };
+  b.querySelector('#gmGo').onclick = go;
+  if (prefill) go();
+}
+function confirmMine(info) {
+  const guessCat = /karaoke|ktv|卡拉|歌/i.test(info.name) ? 'ktv' : /\bbar\b|pub|lounge|酒吧|brew/i.test(info.name) ? 'bar' : /duty.?free|免税/i.test(info.name) ? 'dutyfree'
+    : /restaurant|restoran|cafe|kopitiam|餐|饭|食|kitchen|seafood/i.test(info.name) ? 'dining' : /market|pasar|夜市/i.test(info.name) ? 'food' : 'city';
+  const st = {cat: guessCat, dur: 1.5};
+  const b = sheet(`<h3 style="margin:0 0 2px">加入「我的地点」</h3>
+    <div class="mini">${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}${info.guessed ? ' · ⚠ 位置是按名字找的，可能不准' : ''} · 离「${esc(R[nearestRegion(info).r.key].name)}」约 ${Math.round(nearestRegion(info).d)} 公里</div>
+    <div class="lbl" style="margin-top:10px">名字</div><input class="inp" id="mnName" value="${esc(info.name || '我的地点')}">
+    <div class="lbl" style="margin-top:10px">类型</div><div class="chips" id="mnCat">${Object.entries(CAT).map(([k, v]) => `<button class="chip${k === st.cat ? ' on' : ''}" data-k="${k}">${v}</button>`).join('')}</div>
+    <div class="lbl" style="margin-top:10px">大概玩多久</div><div class="chips" id="mnDur">${[1, 1.5, 2, 3, 4].map(h => `<button class="chip${h === st.dur ? ' on' : ''}" data-h="${h}">${h} 小时</button>`).join('')}</div>
+    <button class="btn" id="mnSave" style="margin-top:14px">保存</button>`);
+  b.onclick = e => {
+    const k = e.target.closest('[data-k]'); if (k) { st.cat = k.dataset.k; b.querySelectorAll('#mnCat .chip').forEach(x => x.classList.toggle('on', x === k)); }
+    const h = e.target.closest('[data-h]'); if (h) { st.dur = +h.dataset.h; b.querySelectorAll('#mnDur .chip').forEach(x => x.classList.toggle('on', x === h)); }
+  };
+  b.querySelector('#mnSave').onclick = () => {
+    const m = {id: 'my' + Date.now().toString(36), name: b.querySelector('#mnName').value.trim() || '我的地点', lat: info.lat, lng: info.lng, cat: st.cat, dur: st.dur,
+      addr: info.addr || '', gurl: info.url && !/goo\.gl/.test(info.url) ? info.url : info.url || ''};
+    const list = store.get('myplaces', []); list.push(m); store.set('myplaces', list);
+    const p = minePlace(m); D.places.push(p); PL[p.id] = p;
+    closeSheet();
+    toast('已加入「我的地点」');
+    openPlace(p.id);
+  };
+}
+function removeMine(id) {
+  store.set('myplaces', store.get('myplaces', []).filter(m => m.id !== id));
+  const i = D.places.findIndex(p => p.id === id); if (i >= 0) D.places.splice(i, 1);
+  delete PL[id];
+  store.set('must', store.get('must', []).filter(x => x !== id));
+  store.set('favs', store.get('favs', []).filter(x => x !== id));
+}
+/* shared to the app from Google Maps (Android) */
+window.onShared = text => { while (OV.length) closeOverlay(); showTab('pMine'); addFromGoogle(text); };
 
 /* ---------------- Grab ---------------- */
 // The Grab app opens on its booking screen with the drop-off (and pick-up, when given) already filled in.
@@ -2377,6 +2513,7 @@ function renderFood() {
   ${shut.length ? `<p class="mini" style="margin-top:8px">${WD[FD.day]}不开：${shut.map(x => esc(x.name)).join('、')}</p>` : ''}
   <h2>白天吃什么</h2><div class="stack">${dayEat.length ? dayEat.map(x => foodCard(x, FD.day)).join('') : '<div class="mini">这里没有收录</div>'}</div>
   <h2>🍽 餐厅</h2><div class="stack">${restoHere.length ? restoHere.map(x => foodCard(x, FD.day)).join('') : '<div class="mini">这里还没有收录餐厅</div>'}</div>
+  <div class="gmrow" style="margin-top:10px"><a href="${gmapsMore('dining', FD.region !== 'all' ? R[FD.region] : F.start)}">🔎 在谷歌地图看更多餐厅</a><a href="${gmapsMore('food', FD.region !== 'all' ? R[FD.region] : F.start)}">🔎 更多夜市小吃</a></div>
   <p class="mini" style="margin-top:14px">价钱和营业时间来自各美食点下方注明的资料来源（2023–2026 年），小贩常会调整，以现场为准。</p>`;
   P.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { FD.country = b.dataset.c; FD.region = 'all'; renderFood(); });
   P.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { FD.region = b.dataset.r; renderFood(); });
@@ -2392,10 +2529,12 @@ function renderMine() {
   const fxLine = c => `1 ${c} ≈ RM${(FX[c] || 0).toFixed(c === 'IDR' ? 6 : 4)}`;
   p.innerHTML = `<h1>我的</h1>
   <h2>保存的攻略</h2>${plans.length ? `<div class="stack">${plans.map(x => `<div class="card row"><div style="flex:1;min-width:0"><b>${esc(x.title)}</b><div class="mini">${esc(x.input.start.name)} 出发 · ${new Date(x.days[0].date).toLocaleDateString('zh-CN')}</div></div><button class="btn sm" data-plan="${x.id}">打开</button><button class="x" data-del="${x.id}">✕</button></div>`).join('')}</div>` : '<div class="mini">生成攻略后点「保存攻略」就会出现在这里</div>'}
+  <h2>我的地点 <span class="mini" style="font-weight:400">从谷歌地图添加</span></h2>${mini(D.places.filter(x => x.mine).map(x => x.id))}
+  <button class="btn ghost" id="mAdd" style="margin-top:8px">＋ 从谷歌地图添加地点</button>
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
   <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.7 · 数据版本：${esc(D.built)}</div>`;
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.8 · 数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');
@@ -2403,6 +2542,7 @@ function renderMine() {
     const d = e.target.closest('[data-del]');
     if (d) { store.set('plans', store.get('plans', []).filter(y => y.id !== d.dataset.del)); renderMine(); return; }
     if (e.target.id === 'fxNow') refreshFx(true);
+    if (e.target.id === 'mAdd') addFromGoogle();
   };
 }
 
@@ -2435,6 +2575,8 @@ window.onAndroidBack = () => {
   refreshFx(false);
   const demo = A && A.demo ? A.demo() : decodeURIComponent((location.hash || '').slice(1));
   if (demo) runDemo(demo);
+  const sh = A && A.shared ? A.shared() : null;   // opened by sharing a place from Google Maps
+  if (sh) window.onShared(sh);
 })();
 // used by automatic tests: "plan:<town>:<days>", "tab:<id>", "place:<id>", "route:<id>"
 function runDemo(d) {
@@ -2479,6 +2621,9 @@ function runDemo(d) {
   if (k === 'planpub') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.days = +b || 2; F.mode = 'public'; F.fixed = null; renderPlanForm(); go(); } }
   if (k === 'transit') { const tb = document.querySelector('[data-transit]'); if (tb) { tb.scrollIntoView({block: 'center'}); tb.click(); } }
   if (k === 'gmaps') openUrl(gmapsPlace(PL[a]));
+  if (k === 'share') window.onShared(decodeURIComponent(d.slice(6)));
+  if (k === 'shareread') { const r = document.querySelector('#gmGo'); if (r) r.click(); }
+  if (k === 'mineok') { const m = document.querySelector('#mnSave'); if (m) m.click(); }
   if (k === 'addplace') { openPlace(a); if (CUR_PLAN && stopDay(a) < 0) chooseDay(a, -1); }
 }
 window.runDemo = runDemo;

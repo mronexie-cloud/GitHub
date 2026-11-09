@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
     static final int REQ_LOC = 1, REQ_WATCH = 2, REQ_CAL = 3;
     /** the trip waiting for the calendar permission */
     private String pendingCal;
-    static final String UA = "SEATravelGuide/1.7 (Android; https://github.com/mronexie-cloud/GitHub)";
+    static final String UA = "SEATravelGuide/1.8 (Android; https://github.com/mronexie-cloud/GitHub)";
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newFixedThreadPool(3);
@@ -71,12 +71,22 @@ public class MainActivity extends Activity {
     private boolean watchWanted;
     /** for the automatic test, e.g. "plan:吉隆坡:3" */
     private String demo;
+    /** text shared to the app (a place from Google Maps), waiting for the page */
+    private String shared;
+
+    static String sharedText(Intent i) {
+        if (i == null || !Intent.ACTION_SEND.equals(i.getAction())) return null;
+        String t = i.getStringExtra(Intent.EXTRA_TEXT), sub = i.getStringExtra(Intent.EXTRA_SUBJECT);
+        if (t == null) return null;
+        return sub != null && !t.contains(sub) ? sub + "\n" + t : t;
+    }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         demo = getIntent().getStringExtra("demo");
+        shared = sharedText(getIntent());
         lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         web = new WebView(this);
         WebSettings s = web.getSettings();
@@ -120,6 +130,8 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         String d = intent.getStringExtra("demo");
         if (d != null) js("window.runDemo&&window.runDemo(" + JSONObject.quote(d) + ")");
+        String t = sharedText(intent);
+        if (t != null) js("window.onShared&&window.onShared(" + JSONObject.quote(t) + ")");
     }
 
     byte[] tile(Uri u) {
@@ -631,6 +643,45 @@ public class MainActivity extends Activity {
                 }
                 js("window.onHttp&&window.onHttp(" + JSONObject.quote(tag) + "," + (text == null ? "null" : JSONObject.quote(text))
                         + "," + (err == null ? "null" : JSONObject.quote(err)) + ")");
+            });
+        }
+
+        @JavascriptInterface
+        public String shared() {
+            String t = shared;
+            shared = null;
+            return t;
+        }
+
+        /** follows a short link (maps.app.goo.gl) to the full Google Maps address, which holds the position */
+        @JavascriptInterface
+        public void resolveUrl(String url, String tag) {
+            bg.execute(() -> {
+                String u = url;
+                try {
+                    for (int i = 0; i < 8; i++) {
+                        HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                        c.setInstanceFollowRedirects(false);
+                        c.setConnectTimeout(10000);
+                        c.setReadTimeout(10000);
+                        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
+                        int code = c.getResponseCode();
+                        String loc = c.getHeaderField("Location");
+                        c.disconnect();
+                        if (code < 300 || code >= 400 || loc == null) break;
+                        u = new URL(new URL(u), loc).toString();
+                        // a consent page carries the real address in "continue"
+                        Uri cu = Uri.parse(u);
+                        if (cu.getHost() != null && cu.getHost().startsWith("consent.") && cu.getQueryParameter("continue") != null) {
+                            u = cu.getQueryParameter("continue");
+                            break;
+                        }
+                        if (u.contains("/maps/place/") || u.contains("!3d")) break;
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "resolve " + url, e);
+                }
+                js("window.onResolved&&window.onResolved(" + JSONObject.quote(tag) + "," + JSONObject.quote(u) + ")");
             });
         }
 

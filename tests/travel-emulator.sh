@@ -162,6 +162,24 @@ shot 39-bar-page
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dutyfree"
 sleep 6
 shot 40-near-dutyfree
+# v1.8: a place shared from Google Maps (分享 → 东南亚旅游攻略), saved to 我的地点; "more on Google Maps" in Explore
+adb shell "am start -a android.intent.action.SEND -t text/plain -n com.zlc.travel/.MainActivity --es android.intent.extra.TEXT 'Village Park Restaurant https://www.google.com/maps/place/Village+Park+Restaurant/@3.1361,101.6187,17z/data=!3m1!4b1!4m6!3m5!8m2!3d3.1361!4d101.6187'"
+sleep 6
+shot 41-shared-confirm
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "mineok"
+sleep 5
+shot 42-my-place
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "tab:pMine"
+sleep 4
+shot 43-my-places
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:ktv"
+sleep 6
+shot 44-near-ktv
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "place:kruaapsorn"
+sleep 5
+adb shell input swipe 540 1700 540 700 400
+sleep 2
+shot 45-restaurant-page
 adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
 echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"
