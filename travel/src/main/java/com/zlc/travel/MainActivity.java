@@ -63,6 +63,8 @@ public class MainActivity extends Activity {
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newFixedThreadPool(3);
+    // web requests from the page: several at once (the nearby-shop search asks four servers and takes the first answer)
+    private final ExecutorService net = Executors.newFixedThreadPool(8);
     private LocationManager lm;
     private LocationListener listener;
     private boolean locating;
@@ -556,7 +558,7 @@ public class MainActivity extends Activity {
     static String httpGet(String u) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
         c.setConnectTimeout(15000);
-        c.setReadTimeout(u.contains("/api/interpreter") ? 60000 : 20000);   // map searches (Overpass) take longer
+        c.setReadTimeout(u.contains("/api/interpreter") ? 45000 : 20000);   // map searches (Overpass) take longer
         c.setRequestProperty("User-Agent", UA);
         c.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
         int code = c.getResponseCode();
@@ -633,7 +635,7 @@ public class MainActivity extends Activity {
         /** Fetches a URL off the main thread; the answer comes back as window.onHttp(tag, text, error). */
         @JavascriptInterface
         public void httpGet(String url, String tag) {
-            bg.execute(() -> {
+            net.execute(() -> {
                 String text = null, err = null;
                 try {
                     text = MainActivity.httpGet(url);
