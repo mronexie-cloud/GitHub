@@ -945,6 +945,12 @@ P("rantaupanjang", "kb", "Rantau Panjang 免税区", "Rantau Panjang Duty Free Z
   "免税只在区内；带出去时海关可能检查，数量太多会被当作商用而征税，留好收据。", geo="Rantau Panjang",
   src="https://www.bateriku.com/news/rantau-panjang-5-best-shops-cheap-goods", asof="2026-02")
 
+P("zapinforest", "jb", "Zapin 免税店（森林城市）", "Zapin Duty Free Forest City", "Forest City", 1.3345, 103.5935, "dutyfree", 3, 1.5,
+  "每日 10:00–22:00（周四到 20:00）", free("免费入场，买东西按价付费"),
+  "新山西边森林城市（2024 年起是免税岛）里的免税店：8,700 平方尺的洋酒馆，加一间巧克力糖果店和咖啡馆。",
+  "地址：Level 2, Commercial Street, Mahkota Selatan, Pulau Satu, Gelang Patah。带酒回新加坡有入境限额，请先看新加坡海关的规定。" + ADULT,
+  geo="Forest City, Gelang Patah", src="https://www.zapin.com.my/outlets/", asof="2026-11")
+
 # ---------- curated routes: id, name, days, start region, note, [[place ids per day]]
 # ===================== FOOD & NIGHT MARKETS (more) =====================
 KLNM = "https://the-malaysia-move.pages.dev/kl-night-markets/"
@@ -1159,7 +1165,7 @@ PHOTO = {
     "horizonpty": "", "singlefin": "", "skaibar": "Swissôtel The Stamford", "lanternsg": "Fullerton Bay Hotel", "southbridge": "Boat Quay",
     "kinkisg": "", "altitudecoast": "Siloso Beach", "yutkee": "", "ivysnyonya": "", "kruaapsorn": "",
     "huenphen": "", "janggutlaksa": "Katong laksa", "bebekbengil": "", "hajiismail": "", "warisandf": "", "kayapalazzo": "",
-    "kingpowerob": "", "rantaupanjang": "Rantau Panjang",
+    "kingpowerob": "", "zapinforest": "Forest City Johor", "rantaupanjang": "Rantau Panjang",
     "connaught": "Stinky tofu|Taiwanese street food",
     "newlane": "Char kway teow Penang|Penang hawker food|Char kway teow",
     "airitamlaksa": "Penang asam laksa",
