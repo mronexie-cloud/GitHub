@@ -556,7 +556,7 @@ public class MainActivity extends Activity {
     static String httpGet(String u) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
         c.setConnectTimeout(15000);
-        c.setReadTimeout(20000);
+        c.setReadTimeout(u.contains("/api/interpreter") ? 60000 : 20000);   // map searches (Overpass) take longer
         c.setRequestProperty("User-Agent", UA);
         c.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
         int code = c.getResponseCode();

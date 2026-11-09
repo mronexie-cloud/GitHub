@@ -178,21 +178,25 @@ sleep 20
 shot 46-address-only
 # v1.9: KTV, bars, restaurants and duty-free within 100 km, live from OpenStreetMap (GPS is in Shah Alam here)
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:ktv"
-sleep 40
+sleep 70
 shot 44-near-ktv
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dining"
-sleep 30
+sleep 45
 shot 47-near-dining
 adb shell input swipe 540 1700 540 500 400
 sleep 2
 shot 48-near-dining-list
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:bar"
-sleep 40
+sleep 70
 shot 49-near-bars-live
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dutyfree"
-sleep 30
+sleep 45
 shot 50-near-dutyfree-live
 adb logcat -d -s Travel:* | grep -i "live " > $OUT/live-log.txt
+for h in overpass-api.de/api/interpreter overpass.private.coffee/api/interpreter maps.mail.ru/osm/tools/overpass/api/interpreter overpass.kumi.systems/api/interpreter; do
+  echo "$h: $(curl -s -m 70 -o $OUT/op.json -w '%{http_code} %{time_total}s' -A 'SEATravelGuide/1.9' --data-urlencode 'data=[out:json][timeout:25];(nw["amenity"="restaurant"]["name"](around:3000,3.0738,101.5183););out center tags 300;' https://$h) $(grep -c '"name"' $OUT/op.json)" >> $OUT/results.txt
+done
+rm -f $OUT/op.json
 cat $OUT/live-log.txt >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "place:kruaapsorn"
 sleep 5

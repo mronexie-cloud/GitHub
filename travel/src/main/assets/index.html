@@ -1766,13 +1766,14 @@ function listNear(at) {
    Google Maps for ratings, reviews and opening hours) */
 const SHOP_KM = 100;
 const SHOP_Q = {
-  ktv: b => `nwr["amenity"="karaoke_box"]${b};nwr["name"~"karaoke|KTV|卡拉|唱K",i]["amenity"~"^(bar|pub|nightclub|restaurant|karaoke_box)$"]${b};nwr["leisure"~"karaoke"]${b};`,
-  bar: b => `nwr["amenity"~"^(bar|pub|biergarten)$"]["name"]${b};`,
-  dining: b => `nwr["amenity"="restaurant"]["name"]${b};`,
-  dutyfree: b => `nwr["shop"="duty_free"]${b};nwr["duty_free"="yes"]${b};nwr["shop"]["name"~"duty.?free|免税|bebas cukai",i]${b};`,
+  ktv: b => `nw["amenity"="karaoke_box"]${b};nw["name"~"karaoke|KTV|卡拉|唱K",i]["amenity"~"^(bar|pub|nightclub|restaurant|karaoke_box)$"]${b};nw["leisure"~"karaoke"]${b};`,
+  bar: b => `nw["amenity"~"^(bar|pub|biergarten)$"]["name"]${b};`,
+  dining: b => `nw["amenity"="restaurant"]["name"]${b};`,
+  dutyfree: b => `nw["shop"="duty_free"]${b};nw["duty_free"="yes"]${b};nw["shop"]["name"~"duty.?free|免税|bebas cukai",i]${b};`,
 };
 // restaurants are everywhere: start close and widen only when there are few
 const SHOP_RINGS = {dining: [3, 10, 30], ktv: [25, 100], bar: [15, 50, 100], dutyfree: [100]};
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const LIVE = {};
 function liveFor(cat, pt) {
   const key = cat + '@' + pt.lat.toFixed(2) + ',' + pt.lng.toFixed(2);
@@ -1784,9 +1785,9 @@ function liveFor(cat, pt) {
       const b = `(around:${r * 1000},${pt.lat.toFixed(5)},${pt.lng.toFixed(5)})`;
       const q = `[out:json][timeout:25];(${SHOP_Q[cat](b)});out center tags 300;`;
       let j = null;
-      for (const host of ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']) {
-        try { j = await getJSON(host + '?data=' + encodeURIComponent(q)); break; } catch (e) { st.err = e; }
-      }
+      // the public servers are often busy: ask them all, take the first answer
+      try { j = await Promise.any(OVERPASS.map(host => getJSON(host + '?data=' + encodeURIComponent(q)).then(x => { if (!x || !x.elements) throw new Error('no data'); return x; }))); }
+      catch (e) { st.err = (e.errors && e.errors[0]) || e; }
       if (!j) break;
       st.list = osmShops(j, cat); st.r = r; st.err = null;
       if (st.list.length >= 25) break;
