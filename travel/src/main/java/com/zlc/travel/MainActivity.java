@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
     static final int REQ_LOC = 1, REQ_WATCH = 2, REQ_CAL = 3;
     /** the trip waiting for the calendar permission */
     private String pendingCal;
-    static final String UA = "SEATravelGuide/1.8 (Android; https://github.com/mronexie-cloud/GitHub)";
+    static final String UA = "SEATravelGuide/1.8.1 (Android; https://github.com/mronexie-cloud/GitHub)";
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newFixedThreadPool(3);
@@ -681,8 +681,40 @@ public class MainActivity extends Activity {
                 } catch (Exception e) {
                     Log.w(TAG, "resolve " + url, e);
                 }
+                // links like maps.google.com/?q=Name,+address&ftid=… carry no position: read it from the page
+                if (!u.contains("!3d") && !u.matches(".*@-?\\d+\\.\\d+,-?\\d+\\.\\d+.*")) {
+                    String at = pageCoords(u);
+                    if (at != null) u = u + "#@" + at;
+                }
                 js("window.onResolved&&window.onResolved(" + JSONObject.quote(tag) + "," + JSONObject.quote(u) + ")");
             });
+        }
+
+        /** "lat,lng" of the place a Google Maps page shows (the preview image centre, or the first map view), or null */
+        private String pageCoords(String u) {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                c.setConnectTimeout(10000);
+                c.setReadTimeout(15000);
+                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
+                c.setRequestProperty("Accept-Language", "en");
+                c.setRequestProperty("Cookie", "CONSENT=YES+; SOCS=CAI");
+                StringBuilder sb = new StringBuilder();
+                try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                    char[] buf = new char[8192];
+                    int n;
+                    while ((n = r.read(buf)) > 0 && sb.length() < 3000000) sb.append(buf, 0, n);
+                }
+                c.disconnect();
+                String h = sb.toString();
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("center=(-?\\d+\\.\\d+)(?:%2C|,)(-?\\d+\\.\\d+)").matcher(h);
+                if (m.find()) return m.group(1) + "," + m.group(2);
+                m = java.util.regex.Pattern.compile("!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)").matcher(h);
+                if (m.find()) return m.group(1) + "," + m.group(2);
+            } catch (Exception e) {
+                Log.w(TAG, "page coords " + u, e);
+            }
+            return null;
         }
 
         @JavascriptInterface

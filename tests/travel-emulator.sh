@@ -172,6 +172,10 @@ shot 42-my-place
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "tab:pMine"
 sleep 4
 shot 43-my-places
+# only an address copied from Google Maps (no link): looked up step by step, then fixed on the map
+adb shell "am start -a android.intent.action.SEND -t text/plain -n com.zlc.travel/.MainActivity --es android.intent.extra.TEXT 'F-02-18A, Level 2, Commercial Street, Mahkota Selatan, Pulau Satu, 81550 Gelang Patah, Johor'"
+sleep 20
+shot 46-address-only
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:ktv"
 sleep 6
 shot 44-near-ktv
