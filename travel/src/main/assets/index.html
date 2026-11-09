@@ -540,9 +540,12 @@ function timeFerries(segs, t0, date) {
 /* ---------------- planner ---------------- */
 const PACE = {relax: [570, 1050, 7], normal: [540, 1140, 9], tight: [480, 1260, 11]};
 const CAP = {relax: 4, normal: 5, tight: 7}; // most attractions a day
+const onlyAsked = f => f.interests.length > 0 && f.interests.every(c => ASKED.has(c));
 function score(p, f) {
   let s = Math.pow(p.rank, 1.7);
   if (ASKED.has(p.cat) && !f.interests.includes(p.cat) && !f.must.includes(p.id)) return 0;
+  // only KTV / bars / restaurants / duty-free picked: plan just those, no sights the person did not ask for
+  if (onlyAsked(f) && !f.interests.includes(p.cat) && !f.must.includes(p.id)) return 0;
   if (!f.interests.includes(p.cat)) s *= p.rank >= 5 ? 0.6 : 0.3;
   if (f.must.includes(p.id)) s *= 6;
   return s;
@@ -648,7 +651,12 @@ function plan(f, edit) {
   let stayDay = -1;              // the day we decided to stay put (nothing better within reach)
   let triedSwitch = -1, wantSwitch = false;   // free afternoon: look at another area once
   const loose = new Set();     // areas where we also take spots outside the chosen interests
-  const cand = rk => exhausted.has(rk) ? [] : D.places.filter(p => p.region === rk && !used.has(p.id) && score(p, f) >= (loose.has(rk) ? 0.8 : 3.2));
+  // only KTV / bars / restaurants / duty-free picked: stay near the start (no long drives just for a bar)
+  const reach = onlyAsked(f) && !f.end && !fixed ? (() => {
+    const m = Math.min(...D.regions.filter(r => countries.has(r.country) && D.places.some(p => p.region === r.key && score(p, f) > 0)).map(r => km(start, r)));
+    return m <= 60 + 50 * f.days ? Math.max(60, m + 30) : 0;
+  })() : Infinity;
+  const cand = rk => exhausted.has(rk) || km(start, R[rk]) > reach ? [] : D.places.filter(p => p.region === rk && !used.has(p.id) && score(p, f) >= (loose.has(rk) ? 0.8 : 3.2));
   const moreHere = rk => !loose.has(rk) && D.places.some(p => p.region === rk && !used.has(p.id));
   const regionValue = (rk, daysAvail) => {
     const ps = cand(rk).sort((a, b) => score(b, f) - score(a, f));
@@ -731,6 +739,7 @@ function plan(f, edit) {
     let st = t;
     if (p.slot === 'night') st = Math.max(t, 1170);
     if (p.slot === 'evening') st = Math.max(t, Math.min(1050, dayEnd - p.dur * 60));
+    if (onlyAsked(f) && EAT(p.cat) && p.slot === 'day') { st = Math.max(st, 690); day.lunch = true; } // only restaurants picked: wait for lunch
     // waiting for an evening or night attraction: free time, then dinner
     const dinnerAt = !day.dinner && !EAT(p.cat) && st >= 1110 && st - t >= 50 ? st - 60 : null;
     const freeEnd = dinnerAt != null ? dinnerAt : st;
@@ -892,6 +901,7 @@ function plan(f, edit) {
         const tm = segMin(legPlan(loc, Object.assign({rk: p.region}, pt), f.mode));
         let st = t + tm;
         if (p.slot === 'night') st = Math.max(st, 1170);
+        if (onlyAsked(f) && EAT(p.cat) && p.slot === 'day') st = Math.max(st, 690);
         if (p.slot === 'sunrise' && (dayNow.items.some(x => x.type !== 'meal') || t > dayStart + 30)) continue;
         if (p.dur >= 5 && st > 660 && p.slot !== 'night' && (p.cat !== 'beach' || p.dur >= 7)) continue; // full-day parks and tours start in the morning; a beach is fine in the afternoon
         if (EAT(p.cat) && p.slot === 'day' && !f.must.includes(p.id) && (st < 660 || st > 840)) continue; // lunch spots at lunch time
@@ -1190,6 +1200,7 @@ function renderPlanResult() {
     </div>
     ${want && pl.days.length > want ? `<div class="warn">⚠ 调整后行程变成 ${pl.days.length} 天（原定 ${want} 天）。可以删掉几站，或点「修改条件」重新规划。</div>` : ''}
     <div class="mini" style="margin-top:8px">点「调整」可以删掉、换掉或挪动景点，时间和顺序会自动重排。</div>
+    ${onlyAsked(f) ? `<div class="note" style="margin-top:8px">只选了${f.interests.map(c => '「' + CAT[c] + '」').join('')}，所以只排这些${f.interests.some(c => c !== 'dining') ? '（KTV、酒吧、免税店每天最多各一家）' : ''}，不排景点。想白天也有去处，可以点「修改条件」再选城市地标、美食夜市等。</div>` : ''}
   </div>
   <div class="map" id="planMap" style="margin-top:12px"></div>
   <div class="stack" id="daysBox" style="margin-top:12px"></div>
@@ -1237,7 +1248,9 @@ function renderDays() {
       <div class="wx" id="wx${di}"></div></div>
       ${late ? `<div class="warn" style="margin:8px 14px 0">⚠ 这天排得太满，大约 ${hhmm(late)} 才结束。可以删掉一站，或挪到别的天。</div>` : ''}
       <div class="btnrow" style="padding:0 14px">${stops >= 1 ? `<button data-daynav="${di}">🧭 这天的路线导航</button>` : ''}<button data-addday="${di}">＋ 加景点</button></div>
-      <div class="tl">${items || '<div class="mini" style="padding:10px 0">这天没有排景点，可以休息、逛街或自由活动。</div>'}
+      <div class="tl">${items || (onlyAsked(f) ? `<div class="mini" style="padding:10px 0">附近收录的${f.interests.map(c => CAT[c]).join('、')}已经排完了。可以在谷歌地图找更多，分享到 App 加进「我的地点」后，再点「＋ 加景点」排进来。</div>
+        <div class="btnrow gmrow">${f.interests.map(c => `<a href="${esc(gmapsMore(c, (d.region && R[d.region]) || f.start))}">🔎 谷歌地图上的${CAT[c]}</a>`).join('')}</div>`
+        : '<div class="mini" style="padding:10px 0">这天没有排景点，可以休息、逛街或自由活动。</div>')}
       ${sleep && di < pl.days.length - 1 ? `<div class="hotel">🏨 今晚住：${esc(sleep.name)}${sleep.country !== 'MY' ? '（' + COUNTRY[sleep.country] + '）' : ''}</div>` : ''}</div></div>`;
   }).join('');
   $('daysBox').onclick = e => {
