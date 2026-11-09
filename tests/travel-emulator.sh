@@ -178,19 +178,19 @@ sleep 20
 shot 46-address-only
 # v1.9: KTV, bars, restaurants and duty-free within 100 km, live from OpenStreetMap (GPS is in Shah Alam here)
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:ktv"
-sleep 70
+sleep 90
 shot 44-near-ktv
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dining"
-sleep 45
+sleep 60
 shot 47-near-dining
 adb shell input swipe 540 1700 540 500 400
 sleep 2
 shot 48-near-dining-list
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:bar"
-sleep 70
+sleep 60
 shot 49-near-bars-live
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dutyfree"
-sleep 45
+sleep 90
 shot 50-near-dutyfree-live
 adb logcat -d -s Travel:* | grep -i "live " > $OUT/live-log.txt
 for h in overpass-api.de/api/interpreter overpass.private.coffee/api/interpreter maps.mail.ru/osm/tools/overpass/api/interpreter overpass.kumi.systems/api/interpreter; do

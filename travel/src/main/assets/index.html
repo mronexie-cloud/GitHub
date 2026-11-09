@@ -1765,14 +1765,16 @@ function listNear(at) {
    (free open data, ODbL; the app's own list is hand-checked, these are not: the place page says so and links to
    Google Maps for ratings, reviews and opening hours) */
 const SHOP_KM = 100;
+// each kind: steps of [km, query]; tag searches are quick and go out to 100 km, name searches are slow and stay close.
+// A step is skipped once there are enough shops (restaurants are everywhere: start close, widen only when there are few).
+const AR = (km, pt) => `(around:${km * 1000},${pt.lat.toFixed(5)},${pt.lng.toFixed(5)})`;
 const SHOP_Q = {
-  ktv: b => `nw["amenity"="karaoke_box"]${b};nw["name"~"karaoke|KTV|卡拉|唱K",i]["amenity"~"^(bar|pub|nightclub|restaurant|karaoke_box)$"]${b};nw["leisure"~"karaoke"]${b};`,
-  bar: b => `nw["amenity"~"^(bar|pub|biergarten)$"]["name"]${b};`,
-  dining: b => `nw["amenity"="restaurant"]["name"]${b};`,
-  dutyfree: b => `nw["shop"="duty_free"]${b};nw["duty_free"="yes"]${b};nw["shop"]["name"~"duty.?free|免税|bebas cukai",i]${b};`,
+  ktv: [[100, b => `nw["amenity"="karaoke_box"]${b};nw["leisure"="karaoke"]${b};`], [30, b => `nw["amenity"~"^(bar|pub|nightclub)$"]["name"~"karaoke|KTV|卡拉",i]${b};`]],
+  bar: [[10, b => `nw["amenity"~"^(bar|pub|biergarten)$"]["name"]${b};`], [40, b => `nw["amenity"~"^(bar|pub|biergarten)$"]["name"]${b};`], [100, b => `nw["amenity"~"^(bar|pub|biergarten)$"]["name"]${b};`]],
+  dining: [[2, b => `nw["amenity"="restaurant"]["name"]${b};`], [8, b => `nw["amenity"="restaurant"]["name"]${b};`], [30, b => `nw["amenity"="restaurant"]["name"]${b};`]],
+  dutyfree: [[100, b => `nw["shop"="duty_free"]${b};nw["duty_free"="yes"]${b};`], [30, b => `nw["shop"]["name"~"duty.?free|免税",i]${b};`]],
 };
-// restaurants are everywhere: start close and widen only when there are few
-const SHOP_RINGS = {dining: [3, 10, 30], ktv: [25, 100], bar: [15, 50, 100], dutyfree: [100]};
+const SHOP_ADD = {ktv: true, dutyfree: true};   // these steps add to each other (the others replace: a wider circle holds the smaller)
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const LIVE = {};
 function liveFor(cat, pt) {
@@ -1781,16 +1783,20 @@ function liveFor(cat, pt) {
   const st = LIVE[key] = {list: null, r: 0, err: null, cat};
   try { const c = JSON.parse(localStorage.getItem('tg_live_' + key) || 'null'); if (c && Date.now() - c.t < 7 * 864e5) { st.list = c.list; st.r = c.r; return st; } } catch (e) {}
   st.wait = (async () => {
-    for (const r of SHOP_RINGS[cat]) {
-      const b = `(around:${r * 1000},${pt.lat.toFixed(5)},${pt.lng.toFixed(5)})`;
-      const q = `[out:json][timeout:25];(${SHOP_Q[cat](b)});out center tags 300;`;
-      let j = null;
-      // the public servers are often busy: ask them all, take the first answer
-      try { j = await Promise.any(OVERPASS.map(host => getJSON(host + '?data=' + encodeURIComponent(q)).then(x => { if (!x || !x.elements) throw new Error('no data'); return x; }))); }
-      catch (e) { st.err = (e.errors && e.errors[0]) || e; }
-      if (!j) break;
-      st.list = osmShops(j, cat); st.r = r; st.err = null;
-      if (st.list.length >= 25) break;
+    const ask = async q => {
+      for (let n = 0; n < 2; n++) {   // the public servers are often busy: ask them all, take the first answer; once more if all fail
+        try { return await Promise.any(OVERPASS.map(host => getJSON(host + '?data=' + encodeURIComponent(q)).then(x => { if (!x || !x.elements) throw new Error('no data'); return x; }))); }
+        catch (e) { st.err = (e.errors && e.errors[0]) || e; }
+      }
+      return null;
+    };
+    for (const [r, build] of SHOP_Q[cat]) {
+      if (!SHOP_ADD[cat] && st.list && st.list.length >= 25) break;
+      const j = await ask(`[out:json][timeout:20];(${build(AR(r, pt))});out center tags 300;`);
+      if (!j) { if (st.list) break; continue; }
+      const got = osmShops(j, cat);
+      st.list = SHOP_ADD[cat] && st.list ? st.list.concat(got.filter(x => !st.list.some(y => y.id === x.id))) : got;
+      st.r = Math.max(st.r, r); st.err = null;
     }
     if (st.list) try { localStorage.setItem('tg_live_' + key, JSON.stringify({t: Date.now(), list: st.list, r: st.r})); } catch (e) {}
     if (A && A.log) A.log('live ' + cat + ': ' + (st.list ? st.list.length + ' within ' + st.r + ' km' : 'failed ' + (st.err && st.err.message)));
