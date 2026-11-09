@@ -1023,16 +1023,16 @@ NOTES = {
 # (e.g. a map or satellite picture). The build logs which photo each place ends up with.
 PHOTO = {
     # KTV, bars, restaurants, duty-free: the building or street they are in, or the dish they are known for
-    "redboxpav": "Pavilion Kuala Lumpur", "manekinekobb": "Jalan Bukit Bintang", "redboxpg": "1st Avenue Mall Penang|Komtar",
+    "redboxpav": "Pavilion Kuala Lumpur shopping mall|Pavilion KL mall", "manekinekobb": "Bukit Bintang night|Bukit Bintang Kuala Lumpur", "redboxpg": "1st Avenue Mall Penang|Komtar",
     "queenktvjb": "Johor Bahru City Square", "teohengsuntec": "Suntec City", "manekinekobkk": "Silom Road|Sala Daeng",
     "inulbatam": "Nagoya Hill Batam|Batam", "helilounge": "Heli Lounge Bar|Menara KH", "marinis57": "Petronas Towers night|Petronas Twin Towers",
     "changkat": "Changkat Bukit Bintang", "celavi": "Marina Bay Sands SkyPark", "level33": "Marina Bay Financial Centre",
     "skybarbkk": "Sky Bar lebua|State Tower Bangkok", "banglaroad": "Bangla Road Patong|Bangla Road", "potatohead": "Potato Head Beach Club",
     "rockbar": "Rock Bar Bali|Ayana Resort Bali", "madamkwan": "Nasi lemak", "teksen": "Siu yuk|Roast pork belly",
-    "jumbosg": "Chilli crab", "songfa": "Bak kut teh Singapore|Bak kut teh", "jayfai": "Crab omelette|Khai chiao",
-    "thipsamai": "Pad thai", "rayaphuket": "Phuket Old Town|Thalang Road", "khaosoikhunyai": "Khao soi",
-    "lgkparade": "Langkawi Parade|Kuah Langkawi", "lgkfair": "Langkawi Fair|Kuah Langkawi", "cenangmall": "Pantai Cenang",
-    "kingpowerrn": "King Power Rangnam|King Power Complex", "kingpowerhkt": "King Power Phuket|King Power",
+    "jumbosg": "Chilli crab", "songfa": "Bak kut teh Singapore|Bak kut teh", "jayfai": "Khai chiao pu|Thai crab omelette|Khai chiao",
+    "thipsamai": "Pad thai", "rayaphuket": "Phuket Old Town|Thalang Road", "khaosoikhunyai": "Khao soi noodle soup|Khao soi gai|Khao soi Chiang Mai",
+    "lgkparade": "", "lgkfair": "", "cenangmall": "Pantai Cenang",
+    "kingpowerrn": "", "kingpowerhkt": "",
     "connaught": "Stinky tofu|Taiwanese street food",
     "newlane": "Char kway teow Penang|Penang hawker food|Char kway teow",
     "airitamlaksa": "Penang asam laksa",
