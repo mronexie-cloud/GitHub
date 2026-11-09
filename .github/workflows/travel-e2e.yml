@@ -45,7 +45,8 @@ jobs:
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
-          ./gradlew :travel:assembleDebug --no-daemon
+          # services.gradle.org is sometimes slow: try a few times
+          for i in 1 2 3; do ./gradlew :travel:assembleDebug --no-daemon && exit 0; echo "build try $i failed"; sleep 20; done; exit 1
       - name: Run in emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
