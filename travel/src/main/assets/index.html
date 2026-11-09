@@ -976,6 +976,7 @@ function renderPlanForm() {
   const p = $('pPlan');
   const chips = (list, sel, key) => list.map(([k, v]) => `<button class="chip${sel.includes(k) ? ' on' : ''}" data-${key}="${k}">${esc(v)}</button>`).join('');
   p.innerHTML = `<h1>想去哪里玩？</h1><p class="lead">输入出发地和天数，自动排好每天的行程、车程和门票。</p>
+  <button class="btn ghost" id="fNear" style="margin-bottom:12px">📍 附近有什么好玩（从近到远）</button>
   <div class="card stack">
     <div class="field" style="position:relative"><div class="lbl">出发地</div>
       <div class="row"><input class="inp" id="fStart" placeholder="例如：吉隆坡、新山、槟城" autocomplete="off" value="${esc(F.start ? F.start.name : '')}">
@@ -1003,7 +1004,6 @@ function renderPlanForm() {
     ${F.must.length ? `<div class="mini">必去清单：${F.must.map(id => esc(PL[id] ? PL[id].name : id)).join('、')}（在「我的」里管理）</div>` : ''}
     <button class="btn" id="fGo">生成我的攻略</button>
   </div>
-  <button class="btn ghost" id="fNear" style="margin-top:12px">📍 附近有什么好玩（从近到远）</button>
   <p class="mini" style="margin-top:14px">门票价格于 2026 年 11 月整理，每个景点都附来源；价格常有变动，出发前请以官方为准。</p>`;
   p.querySelectorAll('[data-seg]').forEach(s => {
     const k = s.dataset.seg;
