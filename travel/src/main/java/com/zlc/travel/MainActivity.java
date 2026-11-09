@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
     static final int REQ_LOC = 1, REQ_WATCH = 2, REQ_CAL = 3;
     /** the trip waiting for the calendar permission */
     private String pendingCal;
-    static final String UA = "SEATravelGuide/1.9 (Android; https://github.com/mronexie-cloud/GitHub)";
+    static final String UA = "SEATravelGuide/1.9.1 (Android; https://github.com/mronexie-cloud/GitHub)";
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newFixedThreadPool(3);
@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private LocationManager lm;
     private LocationListener listener;
     private boolean locating;
+    private Location bestFix;
     /** continuous position for the navigation page ("跟着我走") */
     private LocationListener watcher;
     private boolean watchWanted;
@@ -321,18 +322,22 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOC);
             return;
         }
-        Location best = lastKnown();
-        if (best != null && System.currentTimeMillis() - best.getTime() < 10 * 60_000L) {
-            sendLocation(best);
+        // a fresh, accurate fix: GPS is asked together with the network; a fix within 30 m is taken at once,
+        // otherwise the most accurate one seen in 12 s (an old or cell-tower position can be kilometres off)
+        Location last = lastKnown();
+        if (last != null && System.currentTimeMillis() - last.getTime() < 20_000L && last.hasAccuracy() && last.getAccuracy() <= 30) {
+            sendLocation(last);
             return;
         }
         if (locating) return;
         locating = true;
+        bestFix = null;
         listener = new LocationListener() {
             @Override
             public void onLocationChanged(Location l) {
-                stopLocating();
-                sendLocation(l);
+                if (!locating) return;
+                if (bestFix == null || !bestFix.hasAccuracy() || (l.hasAccuracy() && l.getAccuracy() < bestFix.getAccuracy())) bestFix = l;
+                if (l.hasAccuracy() && l.getAccuracy() <= 30) finishLocating();
             }
 
             @Override
@@ -346,8 +351,8 @@ public class MainActivity extends Activity {
         };
         boolean any = false;
         try {
-            for (String p : new String[]{LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER}) {
-                if (lm.isProviderEnabled(p)) {
+            for (String p : new String[]{"fused", LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER}) {
+                if (lm.getAllProviders().contains(p) && lm.isProviderEnabled(p)) {
                     lm.requestLocationUpdates(p, 0, 0, listener, Looper.getMainLooper());
                     any = true;
                 }
@@ -357,17 +362,21 @@ public class MainActivity extends Activity {
         }
         if (!any) {
             stopLocating();
-            if (best != null) sendLocation(best);
+            if (last != null) sendLocation(last);
             else sendError("手机的定位服务没有打开，请在设置里打开定位");
             return;
         }
-        ui.postDelayed(() -> {
-            if (!locating) return;
-            stopLocating();
-            Location l = lastKnown();
-            if (l != null) sendLocation(l);
-            else sendError("暂时定位不到，请到户外再试，或直接输入出发地");
-        }, 25_000);
+        final LocationListener mine = listener;
+        // 12 s: take the best so far; nothing yet: wait up to 25 s, then the last known position
+        ui.postDelayed(() -> { if (locating && listener == mine && bestFix != null) finishLocating(); }, 12_000);
+        ui.postDelayed(() -> { if (locating && listener == mine) finishLocating(); }, 25_000);
+    }
+
+    private void finishLocating() {
+        Location l = bestFix != null ? bestFix : lastKnown();
+        stopLocating();
+        if (l != null) sendLocation(l);
+        else sendError("暂时定位不到，请到户外再试，或直接输入出发地");
     }
 
     private Location lastKnown() {
@@ -392,8 +401,8 @@ public class MainActivity extends Activity {
     }
 
     private void sendLocation(Location l) {
-        Log.i(TAG, "location " + l.getLatitude() + "," + l.getLongitude() + " from " + l.getProvider());
-        js("window.onLocate&&window.onLocate(" + l.getLatitude() + "," + l.getLongitude() + ",null)");
+        Log.i(TAG, "location " + l.getLatitude() + "," + l.getLongitude() + " from " + l.getProvider() + " ±" + l.getAccuracy());
+        js("window.onLocate&&window.onLocate(" + l.getLatitude() + "," + l.getLongitude() + ",null," + (l.hasAccuracy() ? Math.round(l.getAccuracy()) : 0) + ")");
     }
 
     private void sendError(String m) {
