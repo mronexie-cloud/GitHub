@@ -13,6 +13,8 @@ CASES.push({town: '吉隆坡', days: 4, mode: 'public'}, {town: '吉隆坡', day
   {town: '吉隆坡', days: 4, countries: ['MY'], interests: ['beach', 'nature']}, {town: '新加坡', days: 4, countries: ['SG', 'ID']},
   {town: '吉隆坡', end: '槟城', days: 3}, {town: '新山', end: '吉隆坡', days: 2}, {town: '吉隆坡', end: '新加坡', days: 4, mode: 'public'},
   {town: '吉隆坡', end: '曼谷', days: 6}, {town: '槟城', end: '马六甲', days: 4, interests: ['beach', 'food']}, {town: '吉隆坡', end: '怡保', days: 1},
+  {town: '吉隆坡', days: 3, interests: ['city', 'food', 'dining', 'bar', 'ktv', 'dutyfree']}, {town: '兰卡威', days: 3, interests: ['beach', 'dutyfree', 'bar']},
+  {town: '曼谷', days: 3, interests: ['culture', 'dining', 'bar', 'dutyfree']}, {town: '新加坡', days: 2, interests: ['city', 'dining', 'bar', 'ktv']},
   {town: '关丹', days: 1, interests: ['city', 'culture']}, {town: '吉隆坡', days: 3, date: '2027-01-10'}, {town: '吉隆坡', days: 6, date: '2026-07-04', party: {a: 2, c: 2}, resident: 'intl'});
 
 (async () => {
@@ -48,6 +50,11 @@ CASES.push({town: '吉隆坡', days: 4, mode: 'public'}, {town: '吉隆坡', day
           });
         });
         for (const id of f.must) if (!seen.has(id)) bad.push(`${what}: must-go ${id} missing`);
+        pl.days.forEach((d, di) => {
+          const cs = d.items.filter(x => x.type === 'stop').map(x => PL[x.id].cat);
+          for (const c of ['dutyfree', 'bar', 'ktv']) if (what === 'plan' && cs.filter(x => x === c).length > 1) bad.push(`${what} D${di + 1}: ${c} twice`);
+          for (const c of cs) if (ASKED.has(c) && !f.interests.includes(c) && what === 'plan') bad.push(`${what} D${di + 1}: ${c} not asked for`);
+        });
         // A to B: the trip ends at B, and does not wander far off the way
         if (f.end) {
           const ld = pl.days[pl.days.length - 1], li = ld.items[ld.items.length - 1];

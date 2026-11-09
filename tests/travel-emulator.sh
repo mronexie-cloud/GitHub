@@ -150,6 +150,18 @@ shot 36-near
 adb shell input swipe 540 1700 540 600 400
 sleep 2
 shot 37-near-more
+# v1.7: KTV, bars, restaurants, duty-free
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:bar"
+sleep 6
+shot 38-near-bars
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "place:celavi"
+sleep 5
+adb shell input swipe 540 1700 540 700 400
+sleep 2
+shot 39-bar-page
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dutyfree"
+sleep 6
+shot 40-near-dutyfree
 adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
 echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"

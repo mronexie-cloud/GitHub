@@ -869,7 +869,9 @@ function plan(f, edit) {
         if (p.slot === 'day') return !dayNow.lunch && t <= 840;
         return !stopsNow.some(x => EAT(PL[x.id].cat) && (PL[x.id].slot === 'night' || PL[x.id].slot === 'evening'));
       };
-      const options = full ? [] : cand(region).filter(p => (openOn(p, dayNow.date) || f.must.includes(p.id)) && mealOk(p));
+      // one duty-free shop, one bar and one KTV a day is plenty
+      const oncePerDay = p => !(p.cat === 'dutyfree' || p.cat === 'bar' || p.cat === 'ktv') || f.must.includes(p.id) || !stopsNow.some(x => PL[x.id].cat === p.cat);
+      const options = full ? [] : cand(region).filter(p => (openOn(p, dayNow.date) || f.must.includes(p.id)) && mealOk(p) && oncePerDay(p));
       // every spot that can still fit today, then keep evening and night spots for later while daytime ones fit
       const feasible = [];
       for (const p of options) {
@@ -1728,7 +1730,7 @@ function listExplore() {
   $('exList').innerHTML = list.length ? list.map(p => {
     const c = cost(p, {a: 1, c: 0}, F.resident);
     return `<button class="pc" data-open="${p.id}"><div class="im">${photo(p, true)}<span class="cat ${p.cat}">${CAT[p.cat]}</span></div>
-      <div class="bd"><b>${esc(p.name)}</b><small><span>${esc(R[p.region].name)}</span><span class="price${c.free && !EAT(p.cat) ? ' free' : c.unknown ? ' unk' : ''}">${esc(EAT(p.cat) ? (p.closed.length >= 4 ? '只在' + openDaysText(p) : p.closed.length ? p.closed.map(d => WD[d]).join('、') + '休' : '') : c.free ? '免费' : c.unknown ? '未定价' : c.spend ? spendRange(p.price) : (c.approx ? '约' : '') + money(c.local, c.cur))}</span></small></div></button>`;
+      <div class="bd"><b>${esc(p.name)}</b><small><span>${esc(R[p.region].name)}</span><span class="price${c.free && !EAT(p.cat) ? ' free' : c.unknown ? ' unk' : ''}">${esc(EAT(p.cat) ? (p.closed.length >= 4 ? '只在' + openDaysText(p) : p.closed.length ? p.closed.map(d => WD[d]).join('、') + '休' : '') : c.free ? '免费' : c.unknown ? (ASKED.has(p.cat) ? '按消费' : '未定价') : c.spend ? spendRange(p.price) : (c.approx ? '约' : '') + money(c.local, c.cur))}</span></small></div></button>`;
   }).join('') : '<div class="empty">没有符合的景点</div>';
 }
 
@@ -1756,7 +1758,7 @@ function priceTable(p) {
   if (!pr) return `<p class="note">暂时没有找到可靠的${ASKED.has(p.cat) && p.cat !== 'dutyfree' ? '价钱' : '票价'}资料，请以现场或官网为准。</p>`;
   if (pr.spend) {
     const [lo, hi] = pr.range;
-    return `<p><b class="price">${esc(pr.per || '每人')} ${esc(spendRange(pr))}</b>${pr.cur !== 'MYR' ? ` <span class="mini">≈${rm(toRM(lo, pr.cur))}${hi !== lo ? '–' + rm(toRM(hi, pr.cur)).replace(/^RM/, '') : ' 起'}</span>` : ''}</p>
+    return `<p><b class="price">${esc(pr.per || '每人')} ${esc(spendRange(pr))}</b>${pr.cur !== 'MYR' ? ` <span class="mini">≈${rm(Math.round(toRM(lo, pr.cur)))}${hi !== lo ? '–' + rm(Math.round(toRM(hi, pr.cur))).replace(/^RM/, '') : ' 起'}</span>` : ''}</p>
       ${pr.note ? `<p class="note">${esc(pr.note)}</p>` : ''}
       ${pr.approx ? '<p class="note">⚠ 这是参考价（来自点评、媒体或博客），实际以店家为准。</p>' : ''}
       ${pr.src ? `<p class="src">价钱来源${pr.asof ? '（资料日期 ' + esc(pr.asof) + '）' : ''}：<a href="${esc(pr.src)}">${esc(pr.src.replace(/^https?:\/\//, '').slice(0, 60))}</a></p>` : ''}`;
