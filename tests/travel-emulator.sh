@@ -176,9 +176,24 @@ shot 43-my-places
 adb shell "am start -a android.intent.action.SEND -t text/plain -n com.zlc.travel/.MainActivity --es android.intent.extra.TEXT 'F-02-18A, Level 2, Commercial Street, Mahkota Selatan, Pulau Satu, 81550 Gelang Patah, Johor'"
 sleep 20
 shot 46-address-only
+# v1.9: KTV, bars, restaurants and duty-free within 100 km, live from OpenStreetMap (GPS is in Shah Alam here)
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:ktv"
-sleep 6
+sleep 40
 shot 44-near-ktv
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dining"
+sleep 30
+shot 47-near-dining
+adb shell input swipe 540 1700 540 500 400
+sleep 2
+shot 48-near-dining-list
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:bar"
+sleep 40
+shot 49-near-bars-live
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "near:dutyfree"
+sleep 30
+shot 50-near-dutyfree-live
+adb logcat -d -s Travel:* | grep -i "live " > $OUT/live-log.txt
+cat $OUT/live-log.txt >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "place:kruaapsorn"
 sleep 5
 adb shell input swipe 540 1700 540 700 400

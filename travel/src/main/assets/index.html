@@ -207,6 +207,12 @@ table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 .nearhd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 0 10px;font-size:13.5px;color:var(--sub)}
 .nearhd b{color:var(--ink)}
 .nearhd button{flex:none;font-size:12.5px;font-weight:700;color:var(--acc);background:var(--accSoft);border-radius:12px;padding:5px 10px}
+.cards .lvnote{grid-column:1/-1;font-size:12.5px;color:var(--sub);line-height:1.5}
+.cards .lv{grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:9px 12px;text-align:left;min-width:0}
+.lv .ic{flex:none;width:38px;height:38px;border-radius:10px;background:var(--chip);display:grid;place-items:center;font-size:19px}
+.lv .tx{flex:1;min-width:0}.lv .tx b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv .tx small{display:block;font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv .km{flex:none;font-size:12.5px;font-weight:700;color:var(--acc)}
 .cards .grp{grid-column:1/-1;font-size:13px;font-weight:800;color:var(--sub);margin:6px 2px 0}
 .pc .dist{position:absolute;right:6px;bottom:6px;background:rgba(20,30,32,.82);color:#fff;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:9px}
 .pc .stars{color:#E8A317;letter-spacing:-1px}
@@ -546,6 +552,7 @@ function score(p, f) {
   if (ASKED.has(p.cat) && !f.interests.includes(p.cat) && !f.must.includes(p.id)) return 0;
   // only KTV / bars / restaurants / duty-free picked: plan just those, no sights the person did not ask for
   if (onlyAsked(f) && !f.interests.includes(p.cat) && !f.must.includes(p.id)) return 0;
+  if (onlyAsked(f) && !f.must.includes(p.id) && km(f.start, p) > SHOP_KM && !(f.end && km(f.end, p) <= SHOP_KM)) return 0;
   if (!f.interests.includes(p.cat)) s *= p.rank >= 5 ? 0.6 : 0.3;
   if (f.must.includes(p.id)) s *= 6;
   return s;
@@ -652,10 +659,7 @@ function plan(f, edit) {
   let triedSwitch = -1, wantSwitch = false;   // free afternoon: look at another area once
   const loose = new Set();     // areas where we also take spots outside the chosen interests
   // only KTV / bars / restaurants / duty-free picked: stay near the start (no long drives just for a bar)
-  const reach = onlyAsked(f) && !f.end && !fixed ? (() => {
-    const m = Math.min(...D.regions.filter(r => countries.has(r.country) && D.places.some(p => p.region === r.key && score(p, f) > 0)).map(r => km(start, r)));
-    return m <= 60 + 50 * f.days ? Math.max(60, m + 30) : 0;
-  })() : Infinity;
+  const reach = onlyAsked(f) && !f.end && !fixed ? SHOP_KM + 40 : Infinity;   // (region centres; each shop is checked in score())
   const cand = rk => exhausted.has(rk) || km(start, R[rk]) > reach ? [] : D.places.filter(p => p.region === rk && !used.has(p.id) && score(p, f) >= (loose.has(rk) ? 0.8 : 3.2));
   const moreHere = rk => !loose.has(rk) && D.places.some(p => p.region === rk && !used.has(p.id));
   const regionValue = (rk, daysAvail) => {
@@ -1710,8 +1714,8 @@ function renderExplore() {
   $('exNear').onclick = () => { EX.near = !EX.near; renderExplore(); };
   p.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { EX.near = false; EX.country = b.dataset.c; EX.region = 'all'; renderExplore(); });
   p.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { EX.region = b.dataset.r; renderExplore(); });
-  p.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { EX.cat = b.dataset.k; renderExplore(); });
-  $('exList').onclick = e => { const b = e.target.closest('[data-open]'); if (b) openPlace(b.dataset.open); };
+  p.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { EX.cat = b.dataset.k; if (SHOP_Q[EX.cat] && !EX.near && EX.region === 'all' && EX.country === 'all') EX.near = true; renderExplore(); });
+  $('exList').onclick = e => { const b = e.target.closest('[data-open]'); if (b) openPlace(b.dataset.open); const l = e.target.closest('[data-live]'); if (l) openLive(l.dataset.live); };
 }
 /* nearby: where to measure from (here, else the planner's starting point) */
 function nearWhere(fresh) {
@@ -1735,14 +1739,19 @@ function nearWhere(fresh) {
   });
 }
 const NEAR_BANDS = [[1, '1 公里内，走路就到'], [5, '5 公里内'], [20, '20 公里内'], [50, '50 公里内'], [150, '150 公里内'], [400, '400 公里内'], [1e9, '更远']];
-function listNear() {
-  const q = EX.q.trim().toLowerCase(), pos = EX.pos, today = new Date().getDay();
+function listNear(at) {
+  const q = EX.q.trim().toLowerCase(), pos = at || EX.pos, today = new Date().getDay();
+  const shops = SHOP_Q[EX.cat];   // KTV, bars, restaurants, duty-free: only within 100 km, and the live list joins in
+  const live = shops ? liveFor(EX.cat, pos) : null;
   const list = D.places.filter(p => (EX.cat === 'all' || p.cat === EX.cat) && (!q || (p.name + p.en + R[p.region].name).toLowerCase().includes(q)))
-    .map(p => ({p, d: km(pos, p)})).sort((a, b) => a.d - b.d).slice(0, 60);
-  let band = -1, html = '';
+    .map(p => ({p, d: km(pos, p)})).filter(x => !shops || x.d <= SHOP_KM)
+    .concat(live && live.list ? live.list.filter(x => !q || x.name.toLowerCase().includes(q)).filter(x => !D.places.some(p => p.cat === x.cat && km(p, x) < 0.15)).map(x => ({p: x, d: km(pos, x)})) : [])
+    .sort((a, b) => a.d - b.d).slice(0, shops ? 150 : 60);
+  let band = -1, html = shops ? liveNote(live, EX.cat) : '';
   for (const {p, d} of list) {
     const bi = NEAR_BANDS.findIndex(x => d < x[0]);
     if (bi !== band) { band = bi; html += `<div class="grp">${NEAR_BANDS[bi][1]}</div>`; }
+    if (p.live) { html += liveCard(p, d); continue; }
     const min = d < 1 ? Math.max(2, Math.round(d / 4.5 * 60)) : segMin(legPlan(Object.assign({}, pos, {rk: nearestRegion(pos).r.key}), {lat: p.lat, lng: p.lng, rk: p.region}, F.mode));
     const how = d < 1 ? '走路' : F.mode === 'car' ? '开车' : '';
     const shut = p.closed.includes(today);
@@ -1750,9 +1759,103 @@ function listNear() {
       <div class="bd"><b>${esc(p.name)}</b><small><span>${how}约 ${fmtDur(min)}</span><span class="${shut ? 'price unk' : 'stars'}">${shut ? '今天休息' : '★'.repeat(p.rank)}</span></small></div></button>`;
   }
   $('exList').innerHTML = html || '<div class="empty">没有符合的景点</div>';
+  if (live && live.wait) live.wait.then(() => { if ($('exList') && EX.cat === live.cat && (at ? !EX.near && R[EX.region] === at : EX.near && EX.pos === pos)) listNear(at); });
+}
+/* ---------------- KTV, bars, restaurants and duty-free near a point, live from OpenStreetMap ----------------
+   (free open data, ODbL; the app's own list is hand-checked, these are not: the place page says so and links to
+   Google Maps for ratings, reviews and opening hours) */
+const SHOP_KM = 100;
+const SHOP_Q = {
+  ktv: b => `nwr["amenity"="karaoke_box"]${b};nwr["name"~"karaoke|KTV|卡拉|唱K",i]["amenity"~"^(bar|pub|nightclub|restaurant|karaoke_box)$"]${b};nwr["leisure"~"karaoke"]${b};`,
+  bar: b => `nwr["amenity"~"^(bar|pub|biergarten)$"]["name"]${b};`,
+  dining: b => `nwr["amenity"="restaurant"]["name"]${b};`,
+  dutyfree: b => `nwr["shop"="duty_free"]${b};nwr["duty_free"="yes"]${b};nwr["shop"]["name"~"duty.?free|免税|bebas cukai",i]${b};`,
+};
+// restaurants are everywhere: start close and widen only when there are few
+const SHOP_RINGS = {dining: [3, 10, 30], ktv: [25, 100], bar: [15, 50, 100], dutyfree: [100]};
+const LIVE = {};
+function liveFor(cat, pt) {
+  const key = cat + '@' + pt.lat.toFixed(2) + ',' + pt.lng.toFixed(2);
+  if (LIVE[key]) return LIVE[key];
+  const st = LIVE[key] = {list: null, r: 0, err: null, cat};
+  try { const c = JSON.parse(localStorage.getItem('tg_live_' + key) || 'null'); if (c && Date.now() - c.t < 7 * 864e5) { st.list = c.list; st.r = c.r; return st; } } catch (e) {}
+  st.wait = (async () => {
+    for (const r of SHOP_RINGS[cat]) {
+      const b = `(around:${r * 1000},${pt.lat.toFixed(5)},${pt.lng.toFixed(5)})`;
+      const q = `[out:json][timeout:25];(${SHOP_Q[cat](b)});out center tags 300;`;
+      let j = null;
+      for (const host of ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']) {
+        try { j = await getJSON(host + '?data=' + encodeURIComponent(q)); break; } catch (e) { st.err = e; }
+      }
+      if (!j) break;
+      st.list = osmShops(j, cat); st.r = r; st.err = null;
+      if (st.list.length >= 25) break;
+    }
+    if (st.list) try { localStorage.setItem('tg_live_' + key, JSON.stringify({t: Date.now(), list: st.list, r: st.r})); } catch (e) {}
+    if (A && A.log) A.log('live ' + cat + ': ' + (st.list ? st.list.length + ' within ' + st.r + ' km' : 'failed ' + (st.err && st.err.message)));
+    st.wait = null;
+  })();
+  return st;
+}
+const AIRSIDE = /airport|terminal|\bT[1-4]\b|arrival|departure|airside|klia|changi|ferry|jeti|jetty|harbou?rfront|lapangan terbang|bandara|สนามบิน/i;
+function osmShops(j, cat) {
+  const seen = new Set();
+  return (j.elements || []).map(e => {
+    const t = e.tags || {}, lat = e.lat != null ? e.lat : e.center && e.center.lat, lng = e.lon != null ? e.lon : e.center && e.center.lon;
+    const name = t['name:zh'] || t.name || t['name:en'];
+    if (!name || lat == null) return null;
+    const k = name.toLowerCase() + Math.round(lat * 500) + Math.round(lng * 500);
+    if (seen.has(k)) return null; seen.add(k);
+    const addr = [t['addr:unit'] && '#' + t['addr:unit'], t['addr:housenumber'], t['addr:street'], t['addr:suburb'] || t['addr:district'], t['addr:postcode'], t['addr:city']].filter(Boolean).join(' ');
+    return {id: 'osm' + e.type[0] + e.id, live: true, cat, name, en: t['name:en'] && t['name:en'] !== name ? t['name:en'] : '', lat, lng,
+      hours: t.opening_hours || '', addr, area: t['addr:suburb'] || t['addr:city'] || t['addr:street'] || '', cuisine: t.cuisine || '', phone: t.phone || t['contact:phone'] || '', web: t.website || t['contact:website'] || '',
+      airside: cat === 'dutyfree' && AIRSIDE.test(name + ' ' + addr)};
+  }).filter(Boolean);
+}
+function liveNote(live, cat) {
+  if (!live) return '';
+  if (live.wait) return `<div class="lvnote"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在找 ${SHOP_KM} 公里内更多的${CAT[cat]}…</div>`;
+  if (!live.list) return `<div class="lvnote">更多${CAT[cat]}暂时读不到（要上网），下面先列出 App 收录的。</div>`;
+  if (!live.list.length) return `<div class="lvnote">OpenStreetMap 上 ${SHOP_KM} 公里内没有找到更多的${CAT[cat]}，下面是 App 收录的；也可以点上面的按钮到谷歌地图找。</div>`;
+  return `<div class="lvnote">App 收录的（有照片和价钱）加上 OpenStreetMap 上 ${live.r} 公里内的 ${live.list.length} 家${CAT[cat]}；点开可以到谷歌地图看评分和营业时间。</div>`;
+}
+function liveCard(p, d) {
+  const sub = [p.airside ? '机场或码头里面' : '', p.cuisine ? cuisineZh(p.cuisine) : '', p.area, p.hours ? ohZh(p.hours) : ''].filter(Boolean).join(' · ');
+  return `<button class="lv" data-live="${p.id}"><span class="ic">${catIcon(p.cat)}</span><span class="tx"><b>${esc(p.name)}</b><small>${esc(sub || CAT[p.cat])}</small></span>
+    <span class="km">${d < 10 ? Math.round(d * 10) / 10 : Math.round(d)} 公里</span></button>`;
+}
+const CUISINE = {chinese: '中餐', malaysian: '马来西亚菜', malay: '马来菜', indian: '印度菜', thai: '泰国菜', japanese: '日本菜', korean: '韩国菜', western: '西餐', italian: '意大利菜',
+  seafood: '海鲜', burger: '汉堡', pizza: '披萨', vegetarian: '素食', cantonese: '粤菜', dim_sum: '点心', noodle: '面', ramen: '拉面', sushi: '寿司', bbq: '烧烤', steak_house: '牛排',
+  coffee_shop: '咖啡', nasi_kandar: '扁担饭', mamak: '嘛嘛档', indonesian: '印尼菜', vietnamese: '越南菜', hotpot: '火锅', asian: '亚洲菜', regional: '本地菜', international: '各国菜',
+  chicken: '鸡', fish: '鱼', halal: '清真', american: '美式', french: '法国菜', mexican: '墨西哥菜', middle_eastern: '中东菜', arab: '阿拉伯菜', nyonya: '娘惹菜', peranakan: '娘惹菜'};
+const cuisineZh = c => c.split(/[;,]/).map(x => CUISINE[x.trim().toLowerCase()] || x.trim().replace(/_/g, ' ')).slice(0, 3).join('、');
+const ohZh = h => h.replace(/\bMo\b/g, '周一').replace(/\bTu\b/g, '周二').replace(/\bWe\b/g, '周三').replace(/\bTh\b/g, '周四').replace(/\bFr\b/g, '周五').replace(/\bSa\b/g, '周六')
+  .replace(/\bSu\b/g, '周日').replace(/\bPH\b/g, '公共假期').replace(/\boff\b|\bclosed\b/gi, '休息').replace(/24\/7/, '24 小时').replace(/;\s*/g, '；');
+function liveById(id) { for (const k in LIVE) { const x = LIVE[k].list && LIVE[k].list.find(p => p.id === id); if (x) return x; } return null; }
+function openLive(id) {
+  const p = liveById(id); if (!p) return;
+  const ov = overlay(p.name);
+  const gq = p.name + (p.addr ? ' ' + p.addr : '') ;
+  const gurl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(gq);
+  ov.body.innerHTML = `<div class="dtl">
+    <div class="row" style="gap:8px;flex-wrap:wrap"><span class="cat ${p.cat}">${CAT[p.cat]}</span><span class="mini">OpenStreetMap 地图资料</span></div>
+    <h1>${esc(p.name)}</h1>${p.en ? `<div class="mini">${esc(p.en)}</div>` : ''}
+    ${p.airside ? '<div class="tip">⚠ 这家在机场或渡轮码头里面，一般要搭飞机或搭船、过了出境检查才能进去。</div>' : ''}
+    <dl class="facts">${p.hours ? `<dt>营业时间</dt><dd>${esc(ohZh(p.hours))}</dd>` : ''}${p.cuisine ? `<dt>菜系</dt><dd>${esc(cuisineZh(p.cuisine))}</dd>` : ''}${p.addr ? `<dt>地址</dt><dd>${esc(p.addr)}</dd>` : ''}${p.phone ? `<dt>电话</dt><dd>${esc(p.phone)}</dd>` : ''}</dl>
+    <p class="note">这家店的资料来自 OpenStreetMap，没有人工核对过；评分、价钱和最新营业时间请看谷歌地图。</p>
+    <div class="acts" style="margin-top:16px">
+      <button class="btn sm" style="flex:1" id="lvNav">🧭 路线导航</button>
+      <button class="btn sm grab" style="flex:1" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en || p.name)}">🚕 叫 Grab</button>
+    </div>
+    <a class="btn ghost sm gmb" href="${esc(gurl)}"><b>G</b> 在谷歌地图看评分、评论、照片和营业时间</a>
+    ${p.web ? `<a class="btn ghost sm" style="margin-top:8px" href="${esc(p.web)}">官网</a>` : ''}
+    <button class="btn" id="lvAdd" style="margin-top:12px">＋ 加入「我的地点」（可以排进行程）</button></div>`;
+  ov.body.querySelector('#lvNav').onclick = () => openNav({lat: p.lat, lng: p.lng, name: p.name, en: p.en});
+  ov.body.querySelector('#lvAdd').onclick = () => confirmMine({name: p.name, addr: p.addr, lat: p.lat, lng: p.lng, url: gurl, cat: p.cat});
 }
 function listExplore() {
   if (EX.near) { if (EX.pos) listNear(); return; }
+  if (SHOP_Q[EX.cat] && EX.region !== 'all' && !EX.q.trim()) { listNear(R[EX.region]); return; }   // shops around the chosen area, within 100 km
   const q = EX.q.trim().toLowerCase();
   const list = D.places.filter(p => (EX.country === 'all' || R[p.region].country === EX.country) && (EX.region === 'all' || p.region === EX.region)
     && (EX.cat === 'all' || p.cat === EX.cat) && (!q || (p.name + p.en + R[p.region].name).toLowerCase().includes(q)))
@@ -2021,7 +2124,7 @@ function confirmMine(info) {
   const nm = (info.name || '') + ' ' + (info.addr || '');
   const guessCat = /karaoke|ktv|卡拉|歌/i.test(nm) ? 'ktv' : /\bbar\b|pub|lounge|酒吧|brew/i.test(nm) ? 'bar' : /duty.?free|免税/i.test(nm) ? 'dutyfree'
     : /restaurant|restoran|cafe|kopitiam|餐|饭|食|kitchen|seafood/i.test(nm) ? 'dining' : /market|pasar|夜市/i.test(nm) ? 'food' : 'city';
-  const st = {cat: guessCat, dur: 1.5, pt: info.lat != null ? {lat: info.lat, lng: info.lng} : null, moved: false};
+  const st = {cat: info.cat || guessCat, dur: 1.5, pt: info.lat != null ? {lat: info.lat, lng: info.lng} : null, moved: false};
   const b = sheet(`<h3 style="margin:0 0 2px">加入「我的地点」</h3>
     <div class="mini" id="mnWhere"></div>
     <div class="map" id="mnMap" style="height:200px;margin-top:8px"></div>
@@ -2602,7 +2705,7 @@ function renderMine() {
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
   <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.8.1 · 数据版本：${esc(D.built)}</div>`;
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.9 · 数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');
