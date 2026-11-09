@@ -197,6 +197,14 @@ table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 /* Google Maps place button */
 .gmb{margin-top:10px;width:100%;text-decoration:none;height:44px;font-size:14.5px}
 .gmb b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:11px;background:#4285F4;color:#fff;font-size:13px;font-weight:800}
+/* nearby */
+.chip.near{font-weight:700}
+.nearhd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 0 10px;font-size:13.5px;color:var(--sub)}
+.nearhd b{color:var(--ink)}
+.nearhd button{flex:none;font-size:12.5px;font-weight:700;color:var(--acc);background:var(--accSoft);border-radius:12px;padding:5px 10px}
+.cards .grp{grid-column:1/-1;font-size:13px;font-weight:800;color:var(--sub);margin:6px 2px 0}
+.pc .dist{position:absolute;right:6px;bottom:6px;background:rgba(20,30,32,.82);color:#fff;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:9px}
+.pc .stars{color:#E8A317;letter-spacing:-1px}
 /* public transport routes */
 .leg .nav a.trbtn{background:var(--accSoft)!important;color:var(--acc)!important;border-color:var(--accSoft)!important;font-weight:700}
 .trc{background:var(--soft);border-radius:12px;padding:10px 12px;margin-top:8px;cursor:pointer}
@@ -626,7 +634,21 @@ function plan(f, edit) {
     }
     return {v, h};
   };
-  const returnMin = from => f.roundtrip ? segMin(legPlan(from, start, f.mode)) : 0;
+  // where the trip ends: a destination (A to B), back at the start, or wherever the last day ends
+  const goal = f.end ? Object.assign({lat: f.end.lat, lng: f.end.lng, name: f.end.name}, {rk: (nearestRegion(f.end).d < 35 ? nearestRegion(f.end).r.key : undefined)})
+    : f.roundtrip ? start : null;
+  const returnMin = from => goal ? segMin(legPlan(from, goal, f.mode)) : 0;
+  // A to B: areas off the way there are skipped (the detour compared with going straight)
+  const offRoute = (from, r) => {
+    if (!f.end) return false;
+    const direct = km(from, goal), via = km(from, r) + km(r, goal);
+    if (km(r, goal) > direct + 15) return true;        // never back away from the destination
+    return via - direct > Math.max(40, Math.min(direct * 0.25, 120));
+  };
+  // A to B: how many days an area gets before moving on, shared among the good areas still ahead
+  const daysIn = rk => days.slice(0, -1).filter(d => d.items.some(x => x.type === 'stop' && PL[x.id].region === rk)).length;
+  const aheadAreas = () => D.regions.filter(r => countries.has(r.country) && r.key !== region && !offRoute(loc, r)
+    && km(r, goal) < km(loc, goal) - 30 && regionValue(r.key, 1).v >= 15).length;
   // must-go places ("必去清单") in the chosen countries that are not planned yet
   const mustLeft = () => f.must.filter(id => PL[id] && !used.has(id) && countries.has(R[PL[id].region].country));
   const mustIn = rk => mustLeft().some(id => PL[id].region === rk);
@@ -778,13 +800,21 @@ function plan(f, edit) {
       // move on when the area is done, or only evening spots are left while most of the day is still ahead
       const hurry = region && !mustIn(region) && mustLeft().length && daysLeft <= needDays() + 0.35;
       const switching = wantSwitch; wantSwitch = false;
-      if (!region || hurry || switching || cand(region).length === 0 || (!daytime(region) && t < 870 && !dayNow0.ended && stayDay !== days.length)) {
+      let pushOn = false;
+      if (f.end && region && !hurry && t <= dayStart + 30 && !mustIn(region)) {
+        const ahead = aheadAreas(), left = f.days - (days.length - 1);
+        if (ahead && left > 1 && daysIn(region) >= Math.max(1, Math.floor(f.days / (Math.min(ahead, f.days - 1) + 1)))) pushOn = true;
+        if (ahead && left === 1 && daysIn(region) >= 1) pushOn = true;   // the last day: on to the destination's area
+      }
+      if (!region || hurry || switching || pushOn || cand(region).length === 0 || (!daytime(region) && t < 870 && !dayNow0.ended && stayDay !== days.length)) {
         // leaving in the middle of the day while spots remain here (only evening ones): just nearby places
-        const nearOnly = switching || (region && !hurry && cand(region).length > 0);
+        const nearOnly = !pushOn && (switching || (region && !hurry && cand(region).length > 0));
         let best = null, bestEff = -1;
         for (const r of D.regions) {
           if (!countries.has(r.country) || r.key === region) continue;
           if (r.ferry && islandClosed(r.key, dateAt(f, days.length - 1)) && !mustIn(r.key)) continue; // boats stop in the monsoon
+          if (offRoute(loc, r) && !mustIn(r.key)) continue;
+          if (pushOn && km(r, goal) >= km(loc, goal) - 20 && !mustIn(r.key)) continue;   // moving on: only areas ahead
           const rp = Object.assign({}, r, {rk: r.key});
           const segs = legPlan(loc, rp, f.mode);
           const travelH = segMin(segs) / 60;
@@ -798,7 +828,9 @@ function plan(f, edit) {
           if (avail < (hasMust ? 0.15 : 0.45)) continue;
           const {v} = regionValue(r.key, Math.min(avail, 3));
           if (v <= 0) continue;
-          const eff = v / (travelH * 1.4 + 2.5);
+          // A to B: going the right way counts for more than going sideways
+          const ahead = f.end ? Math.max(0, km(loc, goal) - km(r, goal)) / 100 : 0;
+          const eff = v / (travelH * 1.4 + 2.5) * (1 + Math.min(ahead, 1.5) * 0.5);
           const mustBoost = hasMust ? 100 : 1;
           if (eff * mustBoost > bestEff) { bestEff = eff * mustBoost; best = rp; }
         }
@@ -866,11 +898,12 @@ function plan(f, edit) {
   }
   while (days.length > f.days && !days[days.length - 1].items.length) days.pop();
   while (days.length < (fixed ? fixed.length : f.days)) newDay();
-  if (f.roundtrip && km(loc, start) > 3) {
+  if (goal && km(loc, goal) > 3) {
     const last = days[days.length - 1];
     if (t < dayStart) t = dayStart;
-    const segs = legPlan(loc, start, f.mode);
-    last.items.push({type: 'leg', segs, start: t, end: t + segMin(segs), from: loc.name, to: start.name, big: true, back: true, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: start});
+    t = Math.max(t, ...last.items.map(x => x.end));
+    const segs = legPlan(loc, goal, f.mode);
+    last.items.push({type: 'leg', segs, start: t, end: t + segMin(segs), from: loc.name, to: goal.name, big: true, back: true, arrive: !!f.end, fromPt: {lat: loc.lat, lng: loc.lng}, toPt: {lat: goal.lat, lng: goal.lng, name: goal.name}});
   }
   days.forEach((d, i) => {
     if (!d.region) { const s = d.items.find(x => x.type === 'stop'); d.region = s ? PL[s.id].region : (i ? days[i - 1].region : (start.rk || null)); }
@@ -878,7 +911,7 @@ function plan(f, edit) {
     let sleep = null;
     for (const it of d.items) {
       if (it.type === 'stop') sleep = PL[it.id].region;
-      else if (it.type === 'leg' && !it.back) sleep = nearestRegion(it.toPt).r.key;
+      else if (it.type === 'leg' && (!it.back || it.arrive)) sleep = nearestRegion(it.toPt).r.key;
     }
     d.sleep = sleep || d.region;
     const seen = [];
@@ -910,6 +943,11 @@ function renderPlanForm() {
       <div class="row"><input class="inp" id="fStart" placeholder="例如：吉隆坡、新山、槟城" autocomplete="off" value="${esc(F.start ? F.start.name : '')}">
       <button class="btn ghost sm" id="fLoc" style="flex:none">📍 定位</button></div>
       <div class="sug" id="fSug" hidden></div></div>
+    <div class="field" style="position:relative"><div class="lbl">终点（可选）</div>
+      <div class="row"><input class="inp" id="fEnd" placeholder="不填就是绕一圈；填了就一路玩到终点" autocomplete="off" value="${esc(F.end ? F.end.name : '')}">
+      ${F.end ? '<button class="btn ghost sm" id="fEndX" style="flex:none" aria-label="不要终点">✕</button>' : ''}</div>
+      <div class="sug" id="fSug2" hidden></div>
+      ${F.end ? '<div class="mini" style="margin-top:4px">从出发地到终点，只排顺路的景点，最后一天到达终点</div>' : ''}</div>
     <div class="grid2">
       <div class="field"><div class="lbl">出发日期</div><input class="inp" type="date" id="fDate" value="${F.date}"></div>
       <div class="field"><div class="lbl">玩几天</div><div class="step" style="height:44px"><button data-step="-1">−</button><b id="fDays">${F.days}</b><button data-step="1">+</button><span class="mini">天</span></div></div>
@@ -923,10 +961,11 @@ function renderPlanForm() {
       <div class="field"><div class="lbl">小孩（12 岁以下）</div><div class="step"><button data-pc="-1">−</button><b id="fC">${F.party.c}</b><button data-pc="1">+</button></div></div>
     </div>
     <div class="field"><div class="lbl">门票身份（大马景点有本地价）</div><div class="seg" data-seg="resident"><button data-v="my">马来西亚公民 MyKad</button><button data-v="intl">外国游客</button></div></div>
-    <button class="row" id="fRound" style="justify-content:space-between;width:100%;text-align:left"><span>最后回到出发地</span><i class="switch${F.roundtrip ? ' on' : ''}"></i></button>
+    ${F.end ? '' : `<button class="row" id="fRound" style="justify-content:space-between;width:100%;text-align:left"><span>最后回到出发地</span><i class="switch${F.roundtrip ? ' on' : ''}"></i></button>`}
     ${F.must.length ? `<div class="mini">必去清单：${F.must.map(id => esc(PL[id] ? PL[id].name : id)).join('、')}（在「我的」里管理）</div>` : ''}
     <button class="btn" id="fGo">生成我的攻略</button>
   </div>
+  <button class="btn ghost" id="fNear" style="margin-top:12px">📍 附近有什么好玩（从近到远）</button>
   <p class="mini" style="margin-top:14px">门票价格于 2026 年 11 月整理，每个景点都附来源；价格常有变动，出发前请以官方为准。</p>`;
   p.querySelectorAll('[data-seg]').forEach(s => {
     const k = s.dataset.seg;
@@ -938,15 +977,22 @@ function renderPlanForm() {
   p.querySelectorAll('[data-pa]').forEach(b => b.onclick = () => { F.party.a = Math.max(1, Math.min(20, F.party.a + +b.dataset.pa)); $('fA').textContent = F.party.a; saveForm(); });
   p.querySelectorAll('[data-pc]').forEach(b => b.onclick = () => { F.party.c = Math.max(0, Math.min(20, F.party.c + +b.dataset.pc)); $('fC').textContent = F.party.c; saveForm(); });
   $('fDate').onchange = e => { F.date = e.target.value || tomorrow(); saveForm(); };
-  $('fRound').onclick = () => { F.roundtrip = !F.roundtrip; saveForm(); renderPlanForm(); };
+  if ($('fRound')) $('fRound').onclick = () => { F.roundtrip = !F.roundtrip; saveForm(); renderPlanForm(); };
   $('fLoc').onclick = locate;
-  const inp = $('fStart');
+  $('fNear').onclick = () => { EX.near = true; showTab('pExplore'); };
+  const inp = $('fStart'), inp2 = $('fEnd');
   inp.oninput = () => suggest(inp.value);
   inp.onfocus = () => { if (!inp.value) suggest(''); };
+  inp2.oninput = () => { if (!inp2.value.trim()) { F.end = null; saveForm(); $('fSug2').hidden = true; return; } suggest(inp2.value, 'end'); };
+  if ($('fEndX')) $('fEndX').onclick = () => { F.end = null; saveForm(); renderPlanForm(); };
   $('fGo').onclick = () => {
     if (!F.start) {
       const m = matchTowns(inp.value)[0];
       if (m) F.start = m; else { toast('请先选择出发地'); inp.focus(); return; }
+    }
+    if (!F.end && inp2.value.trim()) {
+      const m = matchTowns(inp2.value)[0];
+      if (m) F.end = {name: m.name, lat: m.lat, lng: m.lng}; else { toast('没找到这个终点，换个写法或点「在线搜索」'); inp2.focus(); return; }
     }
     F.fixed = null;
     go();
@@ -957,37 +1003,41 @@ function matchTowns(q) {
   q = q.trim().toLowerCase();
   const out = [];
   for (const t of D.towns) if (!q || t.name.toLowerCase().includes(q)) out.push({name: t.name, lat: t.lat, lng: t.lng});
+  // areas (槟城, 金马伦高原, 兰卡威…) by their own name, when no town has it
+  if (q) for (const r of D.regions) if (r.name.toLowerCase().includes(q) && !out.some(x => x.name.toLowerCase().includes(r.name.toLowerCase()) || km(x, r) < 8)) out.push({name: r.name, lat: r.lat, lng: r.lng, sub: '地区'});
   if (q) for (const p of D.places) if (p.name.toLowerCase().includes(q) || p.en.toLowerCase().includes(q)) out.push({name: p.name, lat: p.lat, lng: p.lng, sub: R[p.region].name});
   return out.slice(0, 12);
 }
-function suggest(q) {
-  const box = $('fSug');
+function suggest(q, which) {
+  const box = $(which === 'end' ? 'fSug2' : 'fSug');
   const list = matchTowns(q);
-  F.start = null;
+  F[which === 'end' ? 'end' : 'start'] = null;
   box.innerHTML = list.map((t, i) => `<button data-i="${i}">${esc(t.name)}${t.sub ? ` <small>· ${esc(t.sub)}</small>` : ''}</button>`).join('') +
     (q.trim().length >= 2 ? `<button data-online="1">🔎 在线搜索「${esc(q.trim())}」</button>` : '');
   box.hidden = !box.innerHTML;
   box.onclick = e => {
     const b = e.target.closest('button');
     if (!b) return;
-    if (b.dataset.online) { geocode(q.trim()); return; }
-    pickStart(list[+b.dataset.i]);
+    if (b.dataset.online) { geocode(q.trim(), which); return; }
+    pickStart(list[+b.dataset.i], which);
   };
 }
-function pickStart(t) {
-  F.start = {name: t.name, lat: t.lat, lng: t.lng};
-  $('fStart').value = t.name;
-  $('fSug').hidden = true;
+function pickStart(t, which) {
+  const end = which === 'end';
+  F[end ? 'end' : 'start'] = {name: t.name, lat: t.lat, lng: t.lng};
+  $(end ? 'fEnd' : 'fStart').value = t.name;
+  $(end ? 'fSug2' : 'fSug').hidden = true;
   saveForm();
+  if (end) renderPlanForm();
 }
-function geocode(q) {
-  const box = $('fSug');
+function geocode(q, which) {
+  const box = $(which === 'end' ? 'fSug2' : 'fSug');
   box.innerHTML = '<button disabled>搜索中…</button>';
   const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=zh,en&countrycodes=my,sg,th,id&q=' + encodeURIComponent(q);
   const done = j => {
     const list = (j || []).map(x => ({name: x.display_name.split(',').slice(0, 2).join(','), lat: +x.lat, lng: +x.lon}));
     box.innerHTML = list.length ? list.map((t, i) => `<button data-i="${i}">${esc(t.name)}</button>`).join('') : '<button disabled>没有找到，换个写法试试</button>';
-    box.onclick = e => { const b = e.target.closest('button[data-i]'); if (b) pickStart(list[+b.dataset.i]); };
+    box.onclick = e => { const b = e.target.closest('button[data-i]'); if (b) pickStart(list[+b.dataset.i], which); };
   };
   getJSON(url).then(done).catch(() => { box.innerHTML = '<button disabled>网络不通，请检查网络后再试</button>'; });
 }
@@ -1056,9 +1106,9 @@ function legHtml(it, f, date) {
   const ferryBtn = it.segs.filter(s => s.type === 'ferry' && s.route).map(s => `<button data-ferry="${s.route}" data-day="${date ? +date : ''}">⛴ 船班和票价</button>`).join('');
   const fc = countryAt(it.fromPt), tc = countryAt(it.toPt);
   if (fc !== tc && !it.segs.some(s => s.type === 'flight')) { const k = [fc, tc].sort().join('-').replace('SG-MY', 'MY-SG').replace('TH-MY', 'MY-TH'); if (D.notes[k]) notes.push(D.notes[k]); }
-  if (it.back && it.start >= 1200) notes.push('出发太晚了，可以多住一晚，第二天早上再回去。');
+  if (it.back && it.start >= 1200 && total > 90) notes.push(it.arrive ? '出发太晚了，可以在这里多住一晚，第二天早上再去终点。' : '出发太晚了，可以多住一晚，第二天早上再回去。');
   const roadOnly = it.segs.every(s => s.type === 'drive' || s.type === 'bus' || s.type === 'grab');
-  return `<div class="leg big"><span>${it.back ? '返程：' : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode, it.to, roadOnly && kms < 200, roadOnly && date ? legWhen(it, date) : 0)}${warns.map(n => `<span class="note warn">⚠ ${esc(n)}</span>`).join('')}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}${ferryBtn ? `<span class="btnrow" style="flex-basis:100%;margin:2px 0 0">${ferryBtn}</span>` : ''}</div>`;
+  return `<div class="leg big"><span>${it.back ? (it.arrive ? '前往终点：' : '返程：') : ''}${parts}</span><span class="mini">${hhmm(it.start)} 出发 · 共约 ${fmtDur(total)}</span>${navLinks(it.fromPt, it.toPt, f.mode, it.to, roadOnly && kms < 200, roadOnly && date ? legWhen(it, date) : 0)}${warns.map(n => `<span class="note warn">⚠ ${esc(n)}</span>`).join('')}${notes.map(n => `<span class="note">ⓘ ${esc(n)}</span>`).join('')}${ferryBtn ? `<span class="btnrow" style="flex-basis:100%;margin:2px 0 0">${ferryBtn}</span>` : ''}</div>`;
 }
 function mealHtml(it, pl, di) {
   // nearby food spots that are open that day and suit the meal, not already in the plan
@@ -1104,7 +1154,7 @@ function renderPlanResult() {
   p.innerHTML = `<div class="row" style="justify-content:space-between"><button class="btn ghost sm" id="rEdit">← 修改条件</button><span class="mini">${esc(party)} · ${f.resident === 'my' ? 'MyKad' : '外国游客'}</span></div>
   <div class="card sum" style="margin-top:12px">
     <h3>${esc(planTitle(pl))}</h3>
-    <div class="chain"><span>从 <b>${esc(f.start.name)}</b> 出发</span>${regs.map(k => `<span>→ <b>${esc(R[k].name)}</b></span>`).join('')}${f.roundtrip ? '<span>→ 返回</span>' : ''}</div>
+    <div class="chain"><span>从 <b>${esc(f.start.name)}</b> 出发</span>${regs.map(k => `<span>→ <b>${esc(R[k].name)}</b></span>`).join('')}${f.end ? `<span>→ 终点 <b>${esc(f.end.name)}</b></span>` : f.roundtrip ? '<span>→ 返回</span>' : ''}</div>
     <div class="stats">
       <div class="stat"><b>${tot.stops}</b><small>个景点</small></div>
       <button class="stat tap" id="rCost"><b>约 ${inCur(tc.total, store.get('costCur', 'MYR'))}</b><small>费用估算</small></button>
@@ -1366,7 +1416,12 @@ function drawPlanMap(pl) {
     });
     if (line.length > 1) L.polyline(line, {color: col, weight: 3, opacity: .8, dashArray: '6 6'}).addTo(m);
   });
-  if (pl.input.roundtrip) L.polyline([prev, [st.lat, st.lng]], {color: '#888', weight: 2, dashArray: '2 6'}).addTo(m);
+  const en = pl.input.end;
+  if (en) {
+    L.polyline([prev, [en.lat, en.lng]], {color: '#888', weight: 2, dashArray: '2 6'}).addTo(m);
+    L.marker([en.lat, en.lng], {icon: L.divIcon({className: '', html: '<div class="pin" style="background:#C2410C">终</div>', iconSize: [26, 26]})}).addTo(m);
+    pts.push([en.lat, en.lng]);
+  } else if (pl.input.roundtrip) L.polyline([prev, [st.lat, st.lng]], {color: '#888', weight: 2, dashArray: '2 6'}).addTo(m);
   m.fitBounds(L.latLngBounds(pts).pad(0.15));
 }
 const WMO = c => c === 0 ? ['☀️', '晴'] : c <= 2 ? ['🌤', '多云'] : c === 3 ? ['☁️', '阴'] : c <= 48 ? ['🌫', '雾'] : c <= 67 ? ['🌧', '雨'] : c <= 77 ? ['🌨', '雪'] : c <= 82 ? ['🌦', '阵雨'] : ['⛈', '雷雨'];
@@ -1394,7 +1449,7 @@ function planText(pl) {
     d.items.forEach(it => {
       if (it.type === 'stop') { const p = PL[it.id]; lines.push(`  ${hhmm(it.start)} ${p.name}（${cost(p, f.party, f.resident).text}）`); }
       else if (it.type === 'meal') lines.push(`  ${hhmm(it.start)} ${it.meal === 'lunch' ? '午餐' : '晚餐'}`);
-      else if (it.type === 'leg' && it.big) lines.push(`  ${hhmm(it.start)} ${it.back ? '返回' : '前往'}${it.to || ''}：${it.segs.map(s => SEG[s.type][1]).join(' → ')}，约 ${fmtDur(segMin(it.segs))}`);
+      else if (it.type === 'leg' && it.big) lines.push(`  ${hhmm(it.start)} ${it.back && !it.arrive ? '返回' : '前往'}${it.to || ''}：${it.segs.map(s => SEG[s.type][1]).join(' → ')}，约 ${fmtDur(segMin(it.segs))}`);
     });
   });
   const t = planTotals(pl), c = tripCost(pl);
@@ -1503,7 +1558,7 @@ function calEvents(pl) {
       desc.push(`谷歌地图：${gmapsPlace(p)}`);
     } else if (it.type === 'leg' && (it.big || it.back)) {
       pt = it.fromPt;
-      title = `${it.back ? '返程' : '前往'} ${it.to || ''}（${it.segs.map(s => SEG[s.type][1]).join(' → ')}）`;
+      title = `${it.back && !it.arrive ? '返程' : '前往'} ${it.to || ''}（${it.segs.map(s => SEG[s.type][1]).join(' → ')}）`;
       it.segs.forEach(s => {
         if (s.type === 'ferry' && s.route) desc.push(`渡轮 ${FR[s.route].name}${s.dep != null ? '：' + hhmm(s.dep) + ' 开船' : ''}`);
         if (s.type === 'flight') desc.push(`飞机 ${s.from} → ${s.to}（航班时间请自己订票时确认）`);
@@ -1585,7 +1640,7 @@ function openRoute(id) {
     if (!F.start) { toast('先在「规划」页选出发地'); closeOverlay(); showTab('pPlan'); return; }
     F.fixed = r.days; F.routeName = r.name;
     closeOverlay(); showTab('pPlan');
-    CUR_PLAN = plan(Object.assign({}, F, {must: []}));
+    CUR_PLAN = plan(Object.assign({}, F, {must: [], end: null}));
     store.set('last', serialize(CUR_PLAN));
     renderPlanResult();
     window.scrollTo(0, 0);
@@ -1593,24 +1648,64 @@ function openRoute(id) {
 }
 
 /* ---------------- explore ---------------- */
-let EX = {country: 'all', region: 'all', cat: 'all', q: ''};
+let EX = {country: 'all', region: 'all', cat: 'all', q: '', near: false, pos: null};
 function renderExplore() {
   const p = $('pExplore');
   const regs = D.regions.filter(r => EX.country === 'all' || r.country === EX.country);
   p.innerHTML = `<h1>景点</h1><p class="lead">${D.places.length} 个景点，附实拍照片和门票。</p>
   <div class="search"><svg viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 0 1 5.2 10.4l4.2 4.2-1.4 1.4-4.2-4.2A6.5 6.5 0 1 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><input id="exQ" placeholder="搜索景点或城市" value="${esc(EX.q)}"></div>
-  <div class="hscroll" style="margin-top:12px">${[['all', '全部'], ...Object.entries(COUNTRY)].map(([k, v]) => `<button class="chip${EX.country === k ? ' on' : ''}" data-c="${k}">${v}</button>`).join('')}</div>
-  <div class="hscroll">${[['all', '全部地区'], ...regs.map(r => [r.key, r.name])].map(([k, v]) => `<button class="chip${EX.region === k ? ' on' : ''}" data-r="${k}">${esc(v)}</button>`).join('')}</div>
+  <div class="hscroll" style="margin-top:12px"><button class="chip near${EX.near ? ' on' : ''}" id="exNear">📍 附近</button>${[['all', '全部'], ...Object.entries(COUNTRY)].map(([k, v]) => `<button class="chip${!EX.near && EX.country === k ? ' on' : ''}" data-c="${k}">${v}</button>`).join('')}</div>
+  ${EX.near ? '<div class="nearhd" id="exWhere"></div>' : `<div class="hscroll">${[['all', '全部地区'], ...regs.map(r => [r.key, r.name])].map(([k, v]) => `<button class="chip${EX.region === k ? ' on' : ''}" data-r="${k}">${esc(v)}</button>`).join('')}</div>`}
   <div class="hscroll" style="margin-bottom:10px">${[['all', '全部类型'], ...Object.entries(CAT)].map(([k, v]) => `<button class="chip${EX.cat === k ? ' on' : ''}" data-k="${k}">${v}</button>`).join('')}</div>
   <div class="cards" id="exList"></div>`;
-  listExplore();
+  if (EX.near) nearWhere(); else listExplore();
   $('exQ').oninput = e => { EX.q = e.target.value; listExplore(); };
-  p.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { EX.country = b.dataset.c; EX.region = 'all'; renderExplore(); });
+  $('exNear').onclick = () => { EX.near = !EX.near; renderExplore(); };
+  p.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { EX.near = false; EX.country = b.dataset.c; EX.region = 'all'; renderExplore(); });
   p.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { EX.region = b.dataset.r; renderExplore(); });
   p.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { EX.cat = b.dataset.k; renderExplore(); });
   $('exList').onclick = e => { const b = e.target.closest('[data-open]'); if (b) openPlace(b.dataset.open); };
 }
+/* nearby: where to measure from (here, else the planner's starting point) */
+function nearWhere(fresh) {
+  const box = $('exWhere');
+  const show = (pos, label) => {
+    EX.pos = Object.assign({}, pos, {label});
+    box.innerHTML = `<span>从 <b>${esc(label)}</b> 由近到远</span><button id="exRe">🔄 重新定位</button>`;
+    $('exRe').onclick = () => nearWhere(true);
+    listExplore();
+  };
+  const here = pos => { const n = nearestTown(pos); return '我的位置' + (n.t && n.d < 40 ? '（' + n.t.name.split(' ')[0] + '附近）' : ''); };
+  if (!fresh && LASTPOS && Date.now() - LASTPOS.t < 600e3) { show(LASTPOS, here(LASTPOS)); return; }
+  if (!fresh && EX.pos) { show(EX.pos, EX.pos.label); return; }
+  box.innerHTML = '<span><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span> 正在定位…</span>';
+  $('exList').innerHTML = '';
+  getPosition().then(pos => { if (EX.near && $('exWhere')) show(pos, here(pos)); }).catch(err => {
+    if (!EX.near || !$('exWhere')) return;
+    if (F.start) { show(F.start, F.start.name); toast('定位不到，先按出发地「' + F.start.name + '」排'); return; }
+    box.innerHTML = `<span>${esc(err.message || '定位失败')}，请打开定位，或先在「规划」页填出发地</span><button id="exRe">再试一次</button>`;
+    $('exRe').onclick = () => nearWhere(true);
+  });
+}
+const NEAR_BANDS = [[1, '1 公里内，走路就到'], [5, '5 公里内'], [20, '20 公里内'], [50, '50 公里内'], [150, '150 公里内'], [400, '400 公里内'], [1e9, '更远']];
+function listNear() {
+  const q = EX.q.trim().toLowerCase(), pos = EX.pos, today = new Date().getDay();
+  const list = D.places.filter(p => (EX.cat === 'all' || p.cat === EX.cat) && (!q || (p.name + p.en + R[p.region].name).toLowerCase().includes(q)))
+    .map(p => ({p, d: km(pos, p)})).sort((a, b) => a.d - b.d).slice(0, 60);
+  let band = -1, html = '';
+  for (const {p, d} of list) {
+    const bi = NEAR_BANDS.findIndex(x => d < x[0]);
+    if (bi !== band) { band = bi; html += `<div class="grp">${NEAR_BANDS[bi][1]}</div>`; }
+    const min = d < 1 ? Math.max(2, Math.round(d / 4.5 * 60)) : segMin(legPlan(Object.assign({}, pos, {rk: nearestRegion(pos).r.key}), {lat: p.lat, lng: p.lng, rk: p.region}, F.mode));
+    const how = d < 1 ? '走路' : F.mode === 'car' ? '开车' : '';
+    const shut = p.closed.includes(today);
+    html += `<button class="pc" data-open="${p.id}"><div class="im">${photo(p, true)}<span class="cat ${p.cat}">${CAT[p.cat]}</span><span class="dist">${d < 10 ? Math.round(d * 10) / 10 : Math.round(d)} 公里</span></div>
+      <div class="bd"><b>${esc(p.name)}</b><small><span>${how}约 ${fmtDur(min)}</span><span class="${shut ? 'price unk' : 'stars'}">${shut ? '今天休息' : '★'.repeat(p.rank)}</span></small></div></button>`;
+  }
+  $('exList').innerHTML = html || '<div class="empty">没有符合的景点</div>';
+}
 function listExplore() {
+  if (EX.near) { if (EX.pos) listNear(); return; }
   const q = EX.q.trim().toLowerCase();
   const list = D.places.filter(p => (EX.country === 'all' || R[p.region].country === EX.country) && (EX.region === 'all' || p.region === EX.region)
     && (EX.cat === 'all' || p.cat === EX.cat) && (!q || (p.name + p.en + R[p.region].name).toLowerCase().includes(q)))
@@ -2268,7 +2363,7 @@ function renderMine() {
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
   <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.5 · 数据版本：${esc(D.built)}</div>`;
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.6 · 数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');
@@ -2313,7 +2408,10 @@ window.onAndroidBack = () => {
 function runDemo(d) {
   const [k, a, b] = d.split(':');
   closeSheet();
-  if (k === 'plan') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.days = +b || 3; F.fixed = null; renderPlanForm(); go(); } }
+  if (k === 'plan') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.end = null; F.days = +b || 3; F.fixed = null; renderPlanForm(); go(); } }
+  // from A to B: ab:<from>:<to>[:days]
+  if (k === 'ab') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0], e = matchTowns(b)[0]; if (t && e) { F.start = t; F.end = {name: e.name, lat: e.lat, lng: e.lng}; F.days = +d.split(':')[3] || 3; F.fixed = null; renderPlanForm(); go(); } }
+  if (k === 'near') { while (OV.length) closeOverlay(); EX.near = true; EX.cat = a || 'all'; showTab('pExplore'); }
   if (k === 'tab') { while (OV.length) closeOverlay(); showTab(a); }
   if (k === 'place') openPlace(a);
   if (k === 'route') { showTab('pRoutes'); openRoute(a); }

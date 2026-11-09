@@ -11,6 +11,8 @@ for (const town of towns) for (const days of [1, 3, 5, 8]) CASES.push({town, day
 CASES.push({town: '吉隆坡', days: 4, mode: 'public'}, {town: '吉隆坡', days: 3, pace: 'tight'}, {town: '新山', days: 6, pace: 'relax', mode: 'public'},
   {town: '吉隆坡', days: 5, must: ['tioman', 'bohtea']}, {town: '槟城', days: 3, roundtrip: false},
   {town: '吉隆坡', days: 4, countries: ['MY'], interests: ['beach', 'nature']}, {town: '新加坡', days: 4, countries: ['SG', 'ID']},
+  {town: '吉隆坡', end: '槟城', days: 3}, {town: '新山', end: '吉隆坡', days: 2}, {town: '吉隆坡', end: '新加坡', days: 4, mode: 'public'},
+  {town: '吉隆坡', end: '曼谷', days: 6}, {town: '槟城', end: '马六甲', days: 4, interests: ['beach', 'food']}, {town: '吉隆坡', end: '怡保', days: 1},
   {town: '关丹', days: 1, interests: ['city', 'culture']}, {town: '吉隆坡', days: 3, date: '2027-01-10'}, {town: '吉隆坡', days: 6, date: '2026-07-04', party: {a: 2, c: 2}, resident: 'intl'});
 
 (async () => {
@@ -31,7 +33,8 @@ CASES.push({town: '吉隆坡', days: 4, mode: 'public'}, {town: '吉隆坡', day
       if (!t) return {bad: ['no town ' + c.town]};
       const f = Object.assign({}, F, {start: t, days: c.days, countries: c.countries || ['MY', 'SG', 'TH', 'ID'], interests: c.interests || ['city', 'culture', 'nature', 'food'],
         mode: c.mode || 'car', pace: c.pace || 'normal', roundtrip: c.roundtrip !== false, fixed: null, must: c.must || [], date: c.date || '2026-12-05',
-        party: c.party || {a: 2, c: 0}, resident: c.resident || 'my'});
+        party: c.party || {a: 2, c: 0}, resident: c.resident || 'my', end: null});
+      if (c.end) { const e = matchTowns(c.end)[0]; if (!e) return {bad: ['no town ' + c.end]}; f.end = {name: e.name, lat: e.lat, lng: e.lng}; }
       const check = (pl, what) => {
         const seen = new Set();
         pl.days.forEach((d, di) => {
@@ -45,6 +48,14 @@ CASES.push({town: '吉隆坡', days: 4, mode: 'public'}, {town: '吉隆坡', day
           });
         });
         for (const id of f.must) if (!seen.has(id)) bad.push(`${what}: must-go ${id} missing`);
+        // A to B: the trip ends at B, and does not wander far off the way
+        if (f.end) {
+          const ld = pl.days[pl.days.length - 1], li = ld.items[ld.items.length - 1];
+          const endPt = li ? (li.type === 'leg' ? li.toPt : li.type === 'stop' ? PL[li.id] : li.at) : null;
+          if (!endPt || km(endPt, f.end) > 3.5) bad.push(`${what}: does not end at ${f.end.name}`);
+          const direct = km(f.start, f.end);
+          if (what !== 'move' && what !== 'add' && what !== 'swap') for (const id of seen) { const p = PL[id]; if (km(f.start, p) + km(p, f.end) - direct > Math.max(90, direct * 0.45)) bad.push(`${what}: ${id} off the way`); }
+        }
         // no flying back to where the last flight came from on the next leg (except the trip home)
         const fl = [];
         pl.days.forEach(d => d.items.forEach(it => { if (it.type === 'leg' && !it.back) it.segs.filter(s => s.type === 'flight').forEach(s => fl.push(s)); }));
@@ -106,12 +117,13 @@ CASES.push({town: '吉隆坡', days: 4, mode: 'public'}, {town: '吉隆坡', day
       const nev = lines.filter(l => l === 'BEGIN:VEVENT').length;
       if (nev !== lines.filter(l => l === 'END:VEVENT').length || nev !== calEvents(pl).length) bad.push('ics events do not match');
       if (calEvents(pl).some(e => !(e.end > e.start))) bad.push('event without length');
-      return {bad, days: pl.days.length, stops: ids.length, saved, cost: Math.round(tc.total), events: nev};
+      const route = f.end ? pl.days.map(d => (d.regions || []).map(k => R[k].name.split(' ')[0]).join('+') || '路上').join(' / ') : '';
+      return {bad, route, days: pl.days.length, stops: ids.length, saved, cost: Math.round(tc.total), events: nev};
     }, c);
     n++;
     const tag = JSON.stringify(c);
     if (res.bad.length) fails.push(tag + '\n   ' + res.bad.join('\n   '));
-    console.log(`${res.bad.length ? 'FAIL' : 'ok  '} ${tag} → ${res.days} 天 ${res.stops} 站，顺序省 ${Math.round(res.saved || 0)} 分，费用 RM${res.cost}，日历 ${res.events} 条`);
+    console.log(`${res.bad.length ? 'FAIL' : 'ok  '} ${tag} → ${res.days} 天 ${res.stops} 站${res.route ? ' ' + res.route : ''}，顺序省 ${Math.round(res.saved || 0)} 分，费用 RM${res.cost}，日历 ${res.events} 条`);
   }
   await b.close();
   console.log(`\n${n} plans, ${fails.length} failed, page errors: ${errs.length}`);

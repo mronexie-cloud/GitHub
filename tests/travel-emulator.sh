@@ -137,6 +137,19 @@ shot 34-google-maps
 adb logcat -d -s ActivityTaskManager:I | grep -iE "google|maps|chrome" | tail -5 > $OUT/gmaps-log.txt
 adb shell input keyevent KEYCODE_BACK
 sleep 2
+# v1.6: from A to B, and nearby places from near to far
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "ab:吉隆坡:槟城:3"
+sleep 12
+shot 35-ab-plan
+adb emu geo fix 101.5183 3.0738
+sleep 2
+adb emu geo fix 101.5184 3.0739
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "near"
+sleep 8
+shot 36-near
+adb shell input swipe 540 1700 540 600 400
+sleep 2
+shot 37-near-more
 adb shell run-as com.zlc.travel ls cache/tiles > $OUT/tiles.txt 2>&1
 echo "tiles cached: $(wc -l < $OUT/tiles.txt)" >> $OUT/results.txt
 adb shell am start -n com.zlc.travel/.MainActivity --es demo "route:bali5"
