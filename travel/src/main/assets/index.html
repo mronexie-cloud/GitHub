@@ -2581,6 +2581,8 @@ window.onAndroidBack = () => {
 // used by automatic tests: "plan:<town>:<days>", "tab:<id>", "place:<id>", "route:<id>"
 function runDemo(d) {
   const [k, a, b] = d.split(':');
+  // (save the open 「加入我的地点」 sheet before the sheet is closed below)
+  if (k === 'mineok') { const m = document.querySelector('#mnSave'); if (m) m.click(); return; }
   closeSheet();
   if (k === 'plan') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.end = null; F.days = +b || 3; F.fixed = null; renderPlanForm(); go(); } }
   // from A to B: ab:<from>:<to>[:days]
@@ -2622,8 +2624,6 @@ function runDemo(d) {
   if (k === 'transit') { const tb = document.querySelector('[data-transit]'); if (tb) { tb.scrollIntoView({block: 'center'}); tb.click(); } }
   if (k === 'gmaps') openUrl(gmapsPlace(PL[a]));
   if (k === 'share') window.onShared(decodeURIComponent(d.slice(6)));
-  if (k === 'shareread') { const r = document.querySelector('#gmGo'); if (r) r.click(); }
-  if (k === 'mineok') { const m = document.querySelector('#mnSave'); if (m) m.click(); }
   if (k === 'addplace') { openPlace(a); if (CUR_PLAN && stopDay(a) < 0) chooseDay(a, -1); }
 }
 window.runDemo = runDemo;
