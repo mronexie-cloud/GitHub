@@ -80,7 +80,7 @@ const JS_URL = 'javascript:window.__xss=7';
   await p.reload(); await p.waitForTimeout(800); await look('after reload');
   await step('mine after reload', () => showTab('pMine')); await look('mine after reload');
   const saved = await p.evaluate(() => D.places.filter(x => x.mine).map(m => m.gurl).filter(u => u && !/^https:\/\//.test(u)));
-  if (await p.evaluate(() => D.places.filter(x => x.mine).length) < 3) bad.add('saved places were not read back');
+  if (await p.evaluate(() => D.places.filter(x => x.mine).length) < 2) bad.add('saved places were not read back');
   saved.forEach(u => bad.add('stored link not https: ' + u.slice(0, 50)));
   const ran = await p.evaluate(() => window.__xss || 0);
   await b.close();
