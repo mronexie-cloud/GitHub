@@ -209,7 +209,7 @@ table.pt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 .nearhd button{flex:none;font-size:12.5px;font-weight:700;color:var(--acc);background:var(--accSoft);border-radius:12px;padding:5px 10px}
 .cards .lvnote{grid-column:1/-1;font-size:12.5px;color:var(--sub);line-height:1.5}
 .cards .lv{grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:9px 12px;text-align:left;min-width:0}
-.lv .ic{flex:none;width:38px;height:38px;border-radius:10px;background:var(--chip);display:grid;place-items:center;font-size:19px}
+.lv .ic{flex:none;width:38px;height:38px;border-radius:10px;background:var(--soft);display:grid;place-items:center;font-size:19px}
 .lv .tx{flex:1;min-width:0}.lv .tx b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lv .tx small{display:block;font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lv .km{flex:none;font-size:12.5px;font-weight:700;color:var(--acc)}
@@ -300,6 +300,10 @@ const A = window.A || null;           // Android bridge (absent on the web versi
 const D = window.DATA;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* links: text from outside the app (shared text, map data, saved places) may only become a web link; a link kept as
+   "this place in Google Maps" must be Google's. Anything else is dropped. */
+const webUrl = u => { u = String(u || '').trim(); return /^https?:\/\/[^\s"'<>`\\]+$/i.test(u) ? u : ''; };
+const gmapsUrl = u => { u = webUrl(u); return /^https:\/\/((www|maps)\.google\.(com|com\.my|com\.sg|co\.th|co\.id|com\.hk|com\.tw|co\.uk)|maps\.app\.goo\.gl|goo\.gl|g\.co)\//i.test(u) ? u : ''; };
 const R = {}; D.regions.forEach(r => R[r.key] = r);
 /* places the person added from Google Maps (kept on this phone only) join the app's own places */
 const SLOT_OF = {ktv: 'night', bar: 'evening', food: 'evening', dining: 'day', beach: 'evening'};
@@ -308,7 +312,7 @@ function minePlace(m) {
   for (const r of D.regions) { const d = Math.hypot(r.lat - m.lat, (r.lng - m.lng) * Math.cos(m.lat * Math.PI / 180)) * 111; if (d < bd) { bd = d; best = r; } }
   return {id: m.id, region: best.key, name: m.name, en: m.name, lat: m.lat, lng: m.lng, cat: m.cat, rank: 4, dur: m.dur || 1.5,
     hours: '以谷歌地图上的营业时间为准', price: null, desc: '你从谷歌地图添加的地点' + (m.addr ? '：' + m.addr : '。'), tip: '',
-    closed: [], slot: SLOT_OF[m.cat] || 'day', mine: true, gurl: m.gurl || ''};
+    closed: [], slot: SLOT_OF[m.cat] || 'day', mine: true, gurl: gmapsUrl(m.gurl)};
 }
 try { (JSON.parse(localStorage.getItem('tg_myplaces') || '[]') || []).forEach(m => D.places.push(minePlace(m))); } catch (e) {}
 const PL = {}; D.places.forEach(p => PL[p.id] = p);
@@ -328,7 +332,7 @@ function setDark(d) { document.documentElement.dataset.theme = d ? 'dark' : 'lig
 window.setDark = setDark;
 setDark(A && A.dark ? A.dark() : matchMedia('(prefers-color-scheme: dark)').matches);
 function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2400); }
-function openUrl(u) { if (A && A.open) A.open(u); else window.open(u, '_blank'); }
+function openUrl(u) { u = webUrl(u); if (!u) return; if (A && A.open) A.open(u); else window.open(u, '_blank', 'noopener'); }
 /* network: through the app on Android (no CORS limits, proper user agent), plain fetch on the web */
 const HTTP = {}; let httpSeq = 0;
 window.onHttp = (tag, text, err) => {
@@ -343,6 +347,11 @@ document.addEventListener('click', e => {
   const a = e.target.closest('a[href^="http"]');
   if (a && A && A.open) { e.preventDefault(); A.open(a.href); }
 });
+// no link in the page runs script or opens a local file
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]');
+  if (a && !/^(https?:|#)/i.test(a.getAttribute('href') || '')) { e.preventDefault(); e.stopPropagation(); }
+}, true);
 
 /* ---------------- geography & time ---------------- */
 function km(a, b) {
@@ -638,7 +647,7 @@ function cleanEntries(days) {
     const next = flat.slice(n + 1).find(y => typeof y.x === 'string' || !drop.has(y));
     if (!next || typeof next.x !== 'string' || PL[next.x].region !== e.x.to) drop.add(e);
   });
-  return days.map((d, di) => d.filter((x, i) => !flat.some(e => drop.has(e) && e.di === di && e.i === i)));
+  return days.map((d, di) => d.filter((_, i) => !flat.some(e => drop.has(e) && e.di === di && e.i === i)));
 }
 /** Builds the plan; with "edit" ({days: [[id | {to}]]}) it follows those days and orders each day's spots itself. */
 function plan(f, edit) {
@@ -650,7 +659,6 @@ function plan(f, edit) {
   const used = new Set();
   const days = [];
   let loc = Object.assign({}, start), t = dayStart, region = null;
-  const ctx = {f, dayStart, dayEnd, dayHours};
   const newDay = () => days.push({date: dateAt(f, days.length), items: [], region: null});
   newDay();
   const fixed = edit ? edit.days : f.fixed; // curated route or edited plan: [[ids]]
@@ -828,7 +836,7 @@ function plan(f, edit) {
   } else {
     let guard = 0;
     while (days.length <= f.days && guard++ < 400) {
-      const di = days.length - 1, last = di === f.days - 1;
+      const di = days.length - 1;
       const daysLeft = f.days - di - (t - dayStart) / (dayEnd - dayStart);
       // choose a region when we have none or it ran out of good places
       const dayNow0 = days[days.length - 1];
@@ -1243,8 +1251,7 @@ function renderPlanResult() {
 function renderDays() {
   const pl = CUR_PLAN, f = pl.input;
   $('daysBox').innerHTML = pl.days.map((d, di) => {
-    const r = d.region ? R[d.region] : null;
-    const items = d.items.map((it, ii) => {
+    const items = d.items.map(it => {
       if (it.type === 'leg') return legHtml(it, f, d.date);
       if (it.type === 'meal') return mealHtml(it, pl, di);
       if (it.type === 'free') return `<div class="leg">🕒 自由活动约 ${fmtDur(it.end - it.start)}（逛街、喝茶或回酒店休息）</div>`;
@@ -1651,7 +1658,7 @@ function icsText(pl) {
   L.push('END:VCALENDAR');
   return L.map(fold).join('\r\n') + '\r\n';
 }
-window.onCalendar = (ok, msg) => toast(msg);
+window.onCalendar = (_ok, msg) => toast(msg);
 function exportCal() {
   const pl = CUR_PLAN, n = calEvents(pl).length;
   const name = `trip-${ymd(pl.days[0].date)}.ics`;
@@ -1831,7 +1838,7 @@ function osmShops(j, cat) {
     if (seen.has(k)) return null; seen.add(k);
     const addr = [t['addr:unit'] && '#' + t['addr:unit'], t['addr:housenumber'], t['addr:street'], t['addr:suburb'] || t['addr:district'], t['addr:postcode'], t['addr:city']].filter(Boolean).join(' ');
     return {id: 'osm' + e.type[0] + e.id, live: true, cat, name, en: t['name:en'] && t['name:en'] !== name ? t['name:en'] : '', lat, lng,
-      hours: t.opening_hours || '', addr, area: t['addr:suburb'] || t['addr:city'] || t['addr:street'] || '', cuisine: t.cuisine || '', phone: t.phone || t['contact:phone'] || '', web: t.website || t['contact:website'] || '',
+      hours: t.opening_hours || '', addr, area: t['addr:suburb'] || t['addr:city'] || t['addr:street'] || '', cuisine: t.cuisine || '', phone: t.phone || t['contact:phone'] || '', web: webUrl(t.website || t['contact:website']),
       airside: cat === 'dutyfree' && AIRSIDE.test(name + ' ' + addr)};
   }).filter(Boolean);
 }
@@ -1952,8 +1959,8 @@ function openPlace(id) {
       <button class="btn sm" style="flex:1" data-nav="${p.id}">🧭 路线导航</button>
       <button class="btn sm grab" style="flex:1" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">🚕 叫 Grab</button>
     </div>
-    <a class="btn ghost sm gmb" href="${gmapsPlace(p)}"><b>G</b> 在谷歌地图看评分、评论、照片和营业时间</a>
-    <div class="btnrow"><a href="${gmapsPlace(p)}">Google 地图</a><a href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze</a></div>
+    <a class="btn ghost sm gmb" href="${esc(gmapsPlace(p))}"><b>G</b> 在谷歌地图看评分、评论、照片和营业时间</a>
+    <div class="btnrow"><a href="${esc(gmapsPlace(p))}">Google 地图</a><a href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes">Waze</a></div>
     ${CUR_PLAN ? (stopDay(id) >= 0 ? `<div class="tip" style="margin-top:12px">📅 已排在当前行程的第 ${stopDay(id) + 1} 天</div>` : `<button class="btn" id="dAdd" style="margin-top:12px">＋ 加入当前行程</button>`) : ''}
     ${p.mine ? '<button class="btn ghost" id="dDelMine" style="margin-top:10px;color:#C2410C">删除这个地点</button>' : ''}
     <button class="btn ghost" id="dMust" style="margin-top:10px">${must.includes(id) ? '✓ 已在必去清单（再点移除）' : '＋ 加入必去清单（规划时一定排进去）'}</button>
@@ -2022,7 +2029,7 @@ function closeSheet() { if (!SHEET) return false; SHEET.s.remove(); SHEET.b.remo
    English name, town and country. Nothing from Google is stored in the app. */
 const CTRY_EN = {MY: 'Malaysia', SG: 'Singapore', TH: 'Thailand', ID: 'Indonesia'};
 function gmapsPlace(p) {
-  if (p.gurl) return p.gurl;
+  if (p.gurl && gmapsUrl(p.gurl)) return gmapsUrl(p.gurl);
   const t = nearestTown(p);
   const town = t.t && t.d < 40 ? t.t.name.replace(/^[^A-Za-z]*/, '').replace(/\s*\(.*\)$/, '') : '';
   const parts = [p.en];
@@ -2051,8 +2058,8 @@ function splitAddr(line) {
 }
 function parseShared(text) {
   const s = String(text || '').trim();
-  const url = (s.match(/https?:\/\/\S+/) || [''])[0];
-  const lines = s.replace(url, '').split(/\n+/).map(x => x.trim().replace(/^["“]|["”]$/g, '')).filter(x => x && !/^https?:/.test(x));
+  const raw = (s.match(/https?:\/\/\S+/) || [''])[0], url = gmapsUrl(raw);   // only a Google Maps link is read or followed
+  const lines = s.replace(raw, '').split(/\n+/).map(x => x.trim().replace(/^["“]|["”]$/g, '')).filter(x => x && !/^https?:/.test(x));
   let out;
   if (lines.length > 1) out = looksAddr(lines[0]) ? {name: '', addr: lines.join(', ')} : {name: lines[0], addr: lines.slice(1).join(', ')};
   else out = lines.length ? splitAddr(lines[0]) : {name: '', addr: ''};
@@ -2181,7 +2188,7 @@ function confirmMine(info) {
     if (!st.pt) { where(); b.querySelector('#mnMap').scrollIntoView({block: 'center'}); return; }
     const name = b.querySelector('#mnName').value.trim() || (info.addr ? info.addr.split(',')[0] : '') || '我的地点';
     const m = {id: 'my' + Date.now().toString(36), name, lat: st.pt.lat, lng: st.pt.lng, cat: st.cat, dur: st.dur,
-      addr: info.addr || '', gurl: info.url || ''};
+      addr: info.addr || '', gurl: gmapsUrl(info.url)};
     const list = store.get('myplaces', []); list.push(m); store.set('myplaces', list);
     const p = minePlace(m); D.places.push(p); PL[p.id] = p;
     closeSheet();
@@ -2682,7 +2689,7 @@ function foodCard(p, wd) {
       ${p.closed.length ? days7(p, wd) : ''}
       ${p.eat ? `<div class="dish">🍴 ${p.eat.slice(0, 3).map(e => esc(e.name) + (e.price ? ` <b>${esc(e.price)}</b>` : '')).join(' · ')}</div>` : ''}
       ${p.spots ? `<div class="dish">📍 ${WD[wd]}在：${esc((p.spots.find(x => x.day === wd) || {}).name || '—')}</div>` : ''}
-      <div class="btnrow"><button data-nav="${p.id}">🧭 导航</button><button class="grab" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">Grab</button><a href="${gmapsPlace(p)}">⭐ 谷歌评价</a></div>
+      <div class="btnrow"><button data-nav="${p.id}">🧭 导航</button><button class="grab" data-grab="${p.lat},${p.lng}" data-name="${esc(p.en)}">Grab</button><a href="${esc(gmapsPlace(p))}">⭐ 谷歌评价</a></div>
     </div></div>`;
 }
 function renderFood() {
@@ -2728,7 +2735,7 @@ function renderMine() {
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
   <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.9.1 · 数据版本：${esc(D.built)}</div>`;
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.9.2 · 数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');
@@ -2767,7 +2774,8 @@ window.onAndroidBack = () => {
   renderPlanForm();
   if (last && last.days && last.days.length) { try { CUR_PLAN = deserialize(last); renderPlanResult(); } catch (e) { CUR_PLAN = null; renderPlanForm(); } }
   refreshFx(false);
-  const demo = A && A.demo ? A.demo() : decodeURIComponent((location.hash || '').slice(1));
+  // test commands: from the app's test hook, or (page opened as a local file by the tests) from the address; never on the website
+  const demo = A && A.demo ? A.demo() : location.protocol === 'file:' ? decodeURIComponent((location.hash || '').slice(1)) : '';
   if (demo) runDemo(demo);
   const sh = A && A.shared ? A.shared() : null;   // opened by sharing a place from Google Maps
   if (sh) window.onShared(sh);
@@ -2787,10 +2795,8 @@ function runDemo(d) {
   if (k === 'route') { showTab('pRoutes'); openRoute(a); }
   if (k === 'locate') { while (OV.length) closeOverlay(); CUR_PLAN = null; showTab('pPlan'); renderPlanForm(); locate(); }
   if (k === 'go') { while (OV.length) closeOverlay(); if (F.start) { F.days = +a || F.days; F.fixed = null; go(); } }
-  if (k === 'scroll') window.scrollTo(0, +a || 0);
   if (k === 'nav') { while (OV.length) closeOverlay(); openNavTo(a); }
   if (k === 'grab') { const p = PL[a]; openGrab({lat: p.lat, lng: p.lng, name: p.en}); }
-  if (k === 'daynav') { showTab('pPlan'); if (CUR_PLAN) openDayNav(+a || 0); }
   if (k === 'ferry') { while (OV.length) closeOverlay(); openFerry(a, b ? new Date(b + 'T00:00:00') : new Date()); }
   if (k === 'follow') { const bt = document.querySelector('#nFollow'); if (bt) bt.click(); }
   // editing, costs and calendar (v1.3); without a place id: the first spot of the plan
@@ -2817,7 +2823,6 @@ function runDemo(d) {
   if (k === 'planpub') { while (OV.length) closeOverlay(); showTab('pPlan'); const t = matchTowns(a)[0]; if (t) { F.start = t; F.days = +b || 2; F.mode = 'public'; F.fixed = null; renderPlanForm(); go(); } }
   if (k === 'transit') { const tb = document.querySelector('[data-transit]'); if (tb) { tb.scrollIntoView({block: 'center'}); tb.click(); } }
   if (k === 'gmaps') openUrl(gmapsPlace(PL[a]));
-  if (k === 'share') window.onShared(decodeURIComponent(d.slice(6)));
   if (k === 'addplace') { openPlace(a); if (CUR_PLAN && stopDay(a) < 0) chooseDay(a, -1); }
 }
 window.runDemo = runDemo;

@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
     static final int REQ_LOC = 1, REQ_WATCH = 2, REQ_CAL = 3;
     /** the trip waiting for the calendar permission */
     private String pendingCal;
-    static final String UA = "SEATravelGuide/1.9.1 (Android; https://github.com/mronexie-cloud/GitHub)";
+    static final String UA = "SEATravelGuide/1.9.2 (Android; https://github.com/mronexie-cloud/GitHub)";
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newFixedThreadPool(3);
@@ -77,10 +77,35 @@ public class MainActivity extends Activity {
     /** text shared to the app (a place from Google Maps), waiting for the page */
     private String shared;
 
+    /** Test commands ("demo" in the starting intent) are taken only when the test has put a marker file into the app's
+     *  private folder (adb run-as, which other apps cannot do): no other app can drive this one. */
+    private boolean demoAllowed() {
+        return new File(getFilesDir(), "demo").exists();
+    }
+
+    /** the servers the page may ask through the app (place search, routes, timetables, weather, exchange rates, shops) */
+    static final java.util.Set<String> HOSTS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "nominatim.openstreetmap.org", "photon.komoot.io", "routing.openstreetmap.de", "api.transitous.org", "api.open-meteo.com", "open.er-api.com",
+            "overpass-api.de", "overpass.private.coffee", "maps.mail.ru", "overpass.kumi.systems"));
+
+    static boolean googleMapsHost(String h) {
+        return h != null && h.matches("(?i)((www|maps|consent)\\.google\\.(com|com\\.my|com\\.sg|co\\.th|co\\.id|com\\.hk|com\\.tw|co\\.uk)|maps\\.app\\.goo\\.gl|goo\\.gl|g\\.co)");
+    }
+
+    /** an https address on one of the allowed servers, or an exception */
+    static URL allowed(String u, boolean google) throws Exception {
+        URL url = new URL(u);
+        String h = url.getHost();
+        if (!"https".equals(url.getProtocol()) || !(google ? googleMapsHost(h) : HOSTS.contains(h))) throw new Exception("not allowed: " + h);
+        return url;
+    }
+
     static String sharedText(Intent i) {
         if (i == null || !Intent.ACTION_SEND.equals(i.getAction())) return null;
         String t = i.getStringExtra(Intent.EXTRA_TEXT), sub = i.getStringExtra(Intent.EXTRA_SUBJECT);
         if (t == null) return null;
+        if (t.length() > 4000) t = t.substring(0, 4000);
+        if (sub != null && sub.length() > 300) sub = null;
         return sub != null && !t.contains(sub) ? sub + "\n" + t : t;
     }
 
@@ -88,7 +113,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        demo = getIntent().getStringExtra("demo");
+        demo = demoAllowed() ? getIntent().getStringExtra("demo") : null;
         shared = sharedText(getIntent());
         lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         web = new WebView(this);
@@ -96,7 +121,13 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setTextZoom(100);
-        s.setAllowFileAccess(true);
+        // the page is the app's own asset; it needs no other file or content: address
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
+        s.setAllowFileAccessFromFileURLs(false);
+        s.setAllowUniversalAccessFromFileURLs(false);
+        s.setGeolocationEnabled(false);
+        s.setSaveFormData(false);
         web.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
         web.setBackgroundColor(dark() ? 0xFF0F171A : 0xFFF6F2EA);
         web.setWebViewClient(new WebViewClient() {
@@ -104,7 +135,8 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl();
-                if ("file".equals(u.getScheme())) return false;
+                // the page itself never leaves the app's own asset; web links open in their own apps
+                if (u.toString().startsWith("file:///android_asset/")) return false;
                 open(u.toString());
                 return true;
             }
@@ -131,7 +163,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        String d = intent.getStringExtra("demo");
+        String d = demoAllowed() ? intent.getStringExtra("demo") : null;
         if (d != null) js("window.runDemo&&window.runDemo(" + JSONObject.quote(d) + ")");
         String t = sharedText(intent);
         if (t != null) js("window.onShared&&window.onShared(" + JSONObject.quote(t) + ")");
@@ -141,7 +173,8 @@ public class MainActivity extends Activity {
         List<String> seg = u.getPathSegments();
         if (seg.size() != 3) return null;
         File dir = new File(getCacheDir(), "tiles");
-        File f = new File(dir, seg.get(0) + "_" + seg.get(1) + "_" + seg.get(2).replaceAll("[^0-9.a-z]", ""));
+        if (!seg.get(0).matches("\\d{1,2}") || !seg.get(1).matches("\\d{1,7}") || !seg.get(2).matches("\\d{1,7}\\.png") || !"https".equals(u.getScheme())) return null;
+        File f = new File(dir, seg.get(0) + "_" + seg.get(1) + "_" + seg.get(2));
         if (f.exists() && System.currentTimeMillis() - f.lastModified() < 30L * 86400_000L) {
             try (FileInputStream in = new FileInputStream(f)) {
                 byte[] b = new byte[(int) f.length()];
@@ -207,8 +240,15 @@ public class MainActivity extends Activity {
     }
 
     void open(String url) {
+        Uri uri = Uri.parse(String.valueOf(url));
+        String sc = uri.getScheme();
+        if (!"https".equalsIgnoreCase(sc) && !"http".equalsIgnoreCase(sc)) {   // web links only: no file:, content:, intent: …
+            Log.w(TAG, "link not opened: " + sc);
+            return;
+        }
         try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            Intent i = new Intent(Intent.ACTION_VIEW, uri);
+            i.addCategory(Intent.CATEGORY_BROWSABLE);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
         } catch (ActivityNotFoundException e) {
@@ -283,7 +323,8 @@ public class MainActivity extends Activity {
 
     /** Opens Grab with the trip filled in; without Grab installed, its store page. */
     void grab(String url) {
-        Log.i(TAG, "grab " + url);
+        Log.i(TAG, "grab");
+        if (url == null || !url.startsWith("grab://open?")) return;
         try {
             Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -401,7 +442,7 @@ public class MainActivity extends Activity {
     }
 
     private void sendLocation(Location l) {
-        Log.i(TAG, "location " + l.getLatitude() + "," + l.getLongitude() + " from " + l.getProvider() + " ±" + l.getAccuracy());
+        Log.i(TAG, "location from " + l.getProvider() + " ±" + l.getAccuracy());
         js("window.onLocate&&window.onLocate(" + l.getLatitude() + "," + l.getLongitude() + ",null," + (l.hasAccuracy() ? Math.round(l.getAccuracy()) : 0) + ")");
     }
 
@@ -565,7 +606,8 @@ public class MainActivity extends Activity {
     // ---------- network for the page (geocoding, weather, exchange rates)
 
     static String httpGet(String u) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+        HttpURLConnection c = (HttpURLConnection) allowed(u, false).openConnection();
+        c.setInstanceFollowRedirects(false);
         c.setConnectTimeout(15000);
         c.setReadTimeout(u.contains("/api/interpreter") ? 45000 : 20000);   // map searches (Overpass) take longer
         c.setRequestProperty("User-Agent", UA);
@@ -636,11 +678,6 @@ public class MainActivity extends Activity {
             ui.post(() -> MainActivity.this.shareFile(name, mime, text));
         }
 
-        @JavascriptInterface
-        public void toast(String m) {
-            ui.post(() -> Toast.makeText(MainActivity.this, m, Toast.LENGTH_SHORT).show());
-        }
-
         /** Fetches a URL off the main thread; the answer comes back as window.onHttp(tag, text, error). */
         @JavascriptInterface
         public void httpGet(String url, String tag) {
@@ -650,7 +687,7 @@ public class MainActivity extends Activity {
                     text = MainActivity.httpGet(url);
                 } catch (Exception e) {
                     err = String.valueOf(e.getMessage());
-                    Log.w(TAG, "http " + url, e);
+                    Log.w(TAG, "http " + Uri.parse(String.valueOf(url)).getHost() + ": " + e);
                 }
                 js("window.onHttp&&window.onHttp(" + JSONObject.quote(tag) + "," + (text == null ? "null" : JSONObject.quote(text))
                         + "," + (err == null ? "null" : JSONObject.quote(err)) + ")");
@@ -671,7 +708,7 @@ public class MainActivity extends Activity {
                 String u = url;
                 try {
                     for (int i = 0; i < 8; i++) {
-                        HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                        HttpURLConnection c = (HttpURLConnection) allowed(u, true).openConnection();
                         c.setInstanceFollowRedirects(false);
                         c.setConnectTimeout(10000);
                         c.setReadTimeout(10000);
@@ -683,7 +720,8 @@ public class MainActivity extends Activity {
                         u = new URL(new URL(u), loc).toString();
                         // a consent page carries the real address in "continue"
                         Uri cu = Uri.parse(u);
-                        if (cu.getHost() != null && cu.getHost().startsWith("consent.") && cu.getQueryParameter("continue") != null) {
+                        if (cu.getHost() != null && cu.getHost().startsWith("consent.") && cu.getQueryParameter("continue") != null
+                                && googleMapsHost(Uri.parse(cu.getQueryParameter("continue")).getHost())) {
                             u = cu.getQueryParameter("continue");
                             break;
                         }
@@ -697,6 +735,7 @@ public class MainActivity extends Activity {
                     String at = pageCoords(u);
                     if (at != null) u = u + "#@" + at;
                 }
+                if (!googleMapsHost(Uri.parse(u).getHost())) u = url;   // a link that left Google Maps is not handed to the page
                 js("window.onResolved&&window.onResolved(" + JSONObject.quote(tag) + "," + JSONObject.quote(u) + ")");
             });
         }
@@ -704,12 +743,21 @@ public class MainActivity extends Activity {
         /** "lat,lng" of the place a Google Maps page shows (the preview image centre, or the first map view), or null */
         private String pageCoords(String u) {
             try {
-                HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
-                c.setConnectTimeout(10000);
-                c.setReadTimeout(15000);
-                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
-                c.setRequestProperty("Accept-Language", "en");
-                c.setRequestProperty("Cookie", "CONSENT=YES+; SOCS=CAI");
+                HttpURLConnection c = null;
+                for (int hop = 0; hop < 4; hop++) {   // redirects are followed by hand: every hop must stay on Google Maps
+                    c = (HttpURLConnection) allowed(u, true).openConnection();
+                    c.setInstanceFollowRedirects(false);
+                    c.setConnectTimeout(10000);
+                    c.setReadTimeout(15000);
+                    c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
+                    c.setRequestProperty("Accept-Language", "en");
+                    c.setRequestProperty("Cookie", "CONSENT=YES+; SOCS=CAI");
+                    int code = c.getResponseCode();
+                    String loc = c.getHeaderField("Location");
+                    if (code < 300 || code >= 400 || loc == null) break;
+                    c.disconnect();
+                    u = new URL(new URL(u), loc).toString();
+                }
                 StringBuilder sb = new StringBuilder();
                 try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(c.getInputStream(), "UTF-8"))) {
                     char[] buf = new char[8192];

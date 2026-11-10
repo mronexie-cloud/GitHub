@@ -6,6 +6,7 @@ on:
       - "travel/**"
       - "tests/travel-emulator.sh"
       - "tests/travel-planner.js"
+      - "tests/travel-xss.js"
       - ".github/workflows/travel-e2e.yml"
   workflow_dispatch:
 
@@ -26,6 +27,8 @@ jobs:
           npm install --no-save playwright@1.63.0
           npx playwright install --with-deps chromium
           node tests/travel-planner.js
+      - name: Security check (script injection through shared text, map data, routes, timetables)
+        run: node tests/travel-xss.js
 
   emulator:
     runs-on: ubuntu-24.04

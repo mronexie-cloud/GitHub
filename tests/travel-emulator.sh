@@ -6,6 +6,13 @@ OUT=travel-e2e
 mkdir -p $OUT
 shot() { adb exec-out screencap -p > $OUT/$1.png; }
 adb install -r -g travel/build/outputs/apk/debug/travel-debug.apk > $OUT/install.txt 2>&1
+# without the test marker, "demo" commands from outside must be ignored (no other app may drive this one)
+adb shell am start -n com.zlc.travel/.MainActivity --es demo "tab:pFood"
+sleep 8
+shot 0-demo-ignored
+adb shell am force-stop com.zlc.travel
+# the marker file the app asks for before it takes test commands (only adb can put it there)
+adb shell "run-as com.zlc.travel sh -c 'mkdir -p files && touch files/demo'"
 adb logcat -c
 adb shell am start -n com.zlc.travel/.MainActivity
 sleep 10
