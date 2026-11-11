@@ -2549,4 +2549,21 @@
     <string name="settings_asr_use_glossary">使用术语表辅助识别</string>
     <string name="settings_asr_use_glossary_help">使用已启用词条的原文词，辅助识别人名、地名和专有名词。按当前应用和识别语言筛选，译文仍由翻译设置处理。</string>
     <string name="settings_asr_duration_value">%1$s：%2$s</string>
+    <string name="quick_mode_full">全屏翻译</string>
+    <string name="quick_mode_region">局部翻译</string>
+    <string name="quick_mode_auto">自动翻译</string>
+    <string name="quick_mode_instant">即时翻译</string>
+    <string name="quick_mode_full_desc">点一下悬浮球，翻译整个屏幕。</string>
+    <string name="quick_mode_region_desc">点悬浮球后框选一块区域，只翻译那一块。</string>
+    <string name="quick_mode_auto_desc">画面停稳后自动翻译，翻页、换对话时不用再点。</string>
+    <string name="quick_mode_instant_desc">按固定间隔持续翻译，适合字幕和滚动文字，较耗电。</string>
+    <string name="quick_start">开始</string>
+    <string name="quick_stop">停止</string>
+    <string name="quick_engine_offline">离线免费</string>
+    <string name="quick_engine_online">在线免费</string>
+    <string name="quick_engine_llm">大模型</string>
+    <string name="quick_engine_offline_hint">不联网、不花钱。离线翻译不能自动检测语言，请点左边圆圈选好原文语言；首次使用会下载语言包。</string>
+    <string name="quick_engine_online_hint">使用 Google 免费接口，需要联网，可自动检测语言，偶尔会被限流。</string>
+    <string name="quick_engine_llm_hint">翻译质量最好，需要先在设置里填 API Key，按用量付费。</string>
+    <string name="quick_open_settings">去设置填 API Key</string>
 </resources>

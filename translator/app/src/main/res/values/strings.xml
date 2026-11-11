@@ -2552,4 +2552,21 @@
     <string name="settings_asr_use_glossary">Use glossary for recognition</string>
     <string name="settings_asr_use_glossary_help">Use source terms from enabled glossary entries to help recognize names, places and specialized terms. Entries are filtered by the current app and recognition language.</string>
     <string name="settings_asr_duration_value">%1$s: %2$s</string>
+    <string name="quick_mode_full">Full screen</string>
+    <string name="quick_mode_region">Region</string>
+    <string name="quick_mode_auto">Auto</string>
+    <string name="quick_mode_instant">Instant</string>
+    <string name="quick_mode_full_desc">Tap the floating ball to translate the whole screen.</string>
+    <string name="quick_mode_region_desc">Tap the floating ball, then drag a box to translate just that area.</string>
+    <string name="quick_mode_auto_desc">Translates automatically once the screen settles.</string>
+    <string name="quick_mode_instant_desc">Translates continuously at a fixed interval. Uses more battery.</string>
+    <string name="quick_start">Start</string>
+    <string name="quick_stop">Stop</string>
+    <string name="quick_engine_offline">Offline</string>
+    <string name="quick_engine_online">Online</string>
+    <string name="quick_engine_llm">LLM</string>
+    <string name="quick_engine_offline_hint">Free and offline. Pick the source language on the left; language packs download on first use.</string>
+    <string name="quick_engine_online_hint">Uses Google\'s free endpoint. Needs internet and may be rate limited.</string>
+    <string name="quick_engine_llm_hint">Best quality. Add an API key in Settings first; billed by usage.</string>
+    <string name="quick_open_settings">Open settings</string>
 </resources>

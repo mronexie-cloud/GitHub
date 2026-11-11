@@ -788,6 +788,18 @@ fun MainScreen(
                 .padding(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (!initialCaptureSetupPending) {
+                QuickStartCard(
+                    settings = appSettings,
+                    serviceRunning = serviceRunning,
+                    onUpdate = { transform ->
+                        launchSettingsWrite { viewModel.updateQuickSettings(transform) }
+                    },
+                    onStart = { context.startActivity(CaptureStartRequestActivity.newIntent(context)) },
+                    onStop = { context.startService(CaptureService.stopIntent(context)) },
+                    onOpenSettings = onOpenSettings,
+                )
+            }
             CaptureGalleryCarousel(
                 initialPageIndex = initialCarouselPageIndex,
                 onPageChanged = onCarouselPageChanged,
@@ -2523,6 +2535,9 @@ class MainViewModel @Inject constructor(
     private var sharePromptEntryRecorded = false
     val settings = repo.settings
     val featuredGalleryTasks = galleryTranslationRepository.observeFeaturedTasks()
+    /** zlc fork: writes from the home quick-start card. */
+    suspend fun updateQuickSettings(transform: (com.gameocr.app.data.Settings) -> com.gameocr.app.data.Settings) =
+        repo.update(transform)
 
     suspend fun currentRegion(): CaptureRegion? = repo.get().captureRegion
     suspend fun clearRegion() {
