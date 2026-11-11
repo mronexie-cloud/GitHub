@@ -91,7 +91,8 @@ internal fun planNumericTranslationPassthrough(
  */
 internal fun shouldPassthroughTargetLanguageText(source: String, targetLang: String): Boolean {
     val target = targetLang.trim().lowercase()
-    val wantsChinese = target.startsWith("zh")
+    // Traditional targets still go through translation so simplified text gets converted.
+    val wantsChinese = target == "zh" || target == "zh-cn" || target.startsWith("zh-hans") || target == "zh-sg"
     val wantsJapanese = target.startsWith("ja")
     val wantsKorean = target.startsWith("ko")
     if (!wantsChinese && !wantsJapanese && !wantsKorean) return false

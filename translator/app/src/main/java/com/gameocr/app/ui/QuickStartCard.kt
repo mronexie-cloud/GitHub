@@ -48,6 +48,7 @@ import com.gameocr.app.R
 import com.gameocr.app.data.FloatingSkill
 import com.gameocr.app.data.Languages
 import com.gameocr.app.data.LoopTriggerMode
+import com.gameocr.app.data.OcrEngineKind
 import com.gameocr.app.data.TranslatorEngine
 import com.gameocr.app.data.Settings as AppSettings
 
@@ -98,9 +99,11 @@ internal fun quickEngineOf(engine: TranslatorEngine): QuickEngine? = when (engin
 
 /** The on-device engine needs a concrete source language, so "auto" falls back to English. */
 internal fun applyQuickEngine(settings: AppSettings, engine: QuickEngine): AppSettings = when (engine) {
-    QuickEngine.OFFLINE -> settings.copy(
-        translatorEngine = TranslatorEngine.GOOGLE_ML_KIT,
-        sourceLang = quickOfflineSource(settings.sourceLang, settings.targetLang),
+    QuickEngine.OFFLINE -> applyQuickOcr(
+        settings.copy(
+            translatorEngine = TranslatorEngine.GOOGLE_ML_KIT,
+            sourceLang = quickOfflineSource(settings.sourceLang, settings.targetLang),
+        )
     )
     QuickEngine.ONLINE -> settings.copy(translatorEngine = TranslatorEngine.GOOGLE)
     QuickEngine.LLM ->
@@ -110,6 +113,40 @@ internal fun applyQuickEngine(settings: AppSettings, engine: QuickEngine): AppSe
             settings.copy(translatorEngine = TranslatorEngine.OPENAI)
         }
 }
+
+/**
+ * zlc fork: automatic OCR guesses the script per region and, on mixed Chinese/Japanese screens,
+ * sometimes hands CJK lines to the Latin recognizer (output like "70IVFTh-FEy-y"). When the user
+ * has named the source language, read the screen with that language's recognizer instead.
+ * Languages ML Kit has no recognizer for (Thai, Russian, ...) keep automatic OCR.
+ */
+internal fun quickOcrEngineFor(sourceLang: String): OcrEngineKind {
+    val code = sourceLang.trim().lowercase()
+    return when {
+        code.startsWith("ja") -> OcrEngineKind.ML_KIT_JAPANESE
+        code.startsWith("zh") -> OcrEngineKind.ML_KIT_CHINESE
+        code.startsWith("ko") -> OcrEngineKind.ML_KIT_KOREAN
+        code in QUICK_LATIN_CODES -> OcrEngineKind.ML_KIT_LATIN
+        else -> OcrEngineKind.ML_KIT_AUTO
+    }
+}
+
+/** Only touches the ML Kit choices, so a user-picked Paddle/cloud OCR engine is left alone. */
+internal fun applyQuickOcr(settings: AppSettings): AppSettings {
+    if (settings.ocrEngine !in QUICK_MLKIT_ENGINES) return settings
+    val wanted = quickOcrEngineFor(settings.sourceLang)
+    return if (wanted == settings.ocrEngine) settings else settings.copy(ocrEngine = wanted)
+}
+
+private val QUICK_MLKIT_ENGINES = setOf(
+    OcrEngineKind.ML_KIT_AUTO,
+    OcrEngineKind.ML_KIT_LATIN,
+    OcrEngineKind.ML_KIT_JAPANESE,
+    OcrEngineKind.ML_KIT_CHINESE,
+    OcrEngineKind.ML_KIT_KOREAN,
+)
+
+private val QUICK_LATIN_CODES = setOf("en", "ms", "id", "vi", "fr", "de", "es", "it", "pt", "nl", "tl")
 
 internal fun quickLlmKeyMissing(settings: AppSettings): Boolean =
     if (settings.translatorEngine == TranslatorEngine.ANTHROPIC) {
@@ -167,7 +204,7 @@ internal fun QuickStartCard(
                     codes = QUICK_LANGUAGE_CODES.filter { code ->
                         !code.equals(s.targetLang, ignoreCase = true) && !(offline && code == "auto")
                     },
-                    onPick = { picked -> onUpdate { it.copy(sourceLang = picked) } },
+                    onPick = { picked -> onUpdate { applyQuickOcr(it.copy(sourceLang = picked)) } },
                 )
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowForward,
@@ -262,7 +299,14 @@ internal fun QuickStartCard(
                     }
                 }
                 Button(
-                    onClick = if (serviceRunning) onStop else onStart,
+                    onClick = if (serviceRunning) {
+                        onStop
+                    } else {
+                        {
+                            onUpdate(::applyQuickOcr)
+                            onStart()
+                        }
+                    },
                     modifier = Modifier.weight(1f).height(60.dp),
                     shape = RoundedCornerShape(topEnd = 30.dp, bottomEnd = 30.dp),
                     colors = if (serviceRunning) {
