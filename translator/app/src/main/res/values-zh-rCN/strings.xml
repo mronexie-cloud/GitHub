@@ -2562,8 +2562,10 @@
     <string name="quick_engine_offline">离线免费</string>
     <string name="quick_engine_online">在线免费</string>
     <string name="quick_engine_llm">大模型</string>
-    <string name="quick_engine_offline_hint">不联网、不花钱。离线翻译不能自动检测语言，请点左边圆圈选好原文语言；首次使用会下载语言包。</string>
+    <string name="quick_engine_offline_hint">离线翻译需要先选好左边的原文语言。</string>
     <string name="quick_engine_online_hint">使用 Google 免费接口，需要联网，可自动检测语言，偶尔会被限流。</string>
     <string name="quick_engine_llm_hint">翻译质量最好，需要先在设置里填 API Key，按用量付费。</string>
     <string name="quick_open_settings">去设置填 API Key</string>
+    <string name="quick_more">更多功能与设置</string>
+    <string name="quick_less">收起</string>
 </resources>

@@ -81,3 +81,46 @@ internal fun planNumericTranslationPassthrough(
         passthroughUpdates = passthroughUpdates,
     )
 }
+
+/**
+ * zlc fork: text that is already written in the target language is shown as-is instead of being
+ * "translated" into itself, which only degrades it (seen with Chinese screens and a Chinese target).
+ *
+ * Only script-level evidence is used, so this covers Chinese, Japanese and Korean targets. Latin
+ * targets are left alone because English and, say, Malay cannot be told apart by script.
+ */
+internal fun shouldPassthroughTargetLanguageText(source: String, targetLang: String): Boolean {
+    val target = targetLang.trim().lowercase()
+    val wantsChinese = target.startsWith("zh")
+    val wantsJapanese = target.startsWith("ja")
+    val wantsKorean = target.startsWith("ko")
+    if (!wantsChinese && !wantsJapanese && !wantsKorean) return false
+
+    var han = 0
+    var kana = 0
+    var hangul = 0
+    var otherLetters = 0
+    var offset = 0
+    while (offset < source.length) {
+        val codePoint = Character.codePointAt(source, offset)
+        offset += Character.charCount(codePoint)
+        if (!Character.isLetter(codePoint)) continue
+        when (Character.UnicodeScript.of(codePoint)) {
+            Character.UnicodeScript.HAN -> han += 1
+            Character.UnicodeScript.HIRAGANA, Character.UnicodeScript.KATAKANA -> kana += 1
+            Character.UnicodeScript.HANGUL -> hangul += 1
+            else -> otherLetters += 1
+        }
+    }
+    val letters = han + kana + hangul + otherLetters
+    if (letters == 0) return false
+    return when {
+        wantsChinese -> kana == 0 && hangul == 0 && han >= 2 && han * 2 >= letters
+        wantsJapanese -> kana > 0 && hangul == 0 && (han + kana) * 2 >= letters
+        else -> hangul >= 2 && hangul * 2 >= letters
+    }
+}
+
+internal fun shouldPassthroughTranslation(source: String, targetLang: String): Boolean =
+    shouldPassthroughNumericTranslation(source) ||
+        shouldPassthroughTargetLanguageText(source, targetLang)

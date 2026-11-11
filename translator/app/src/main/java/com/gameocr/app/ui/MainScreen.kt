@@ -263,6 +263,8 @@ fun MainScreen(
     // 一键设置：悬浮窗 → 截屏方式（Shizuku → 无障碍 → 系统截屏）→ 启动；离开去系统设置后在 ON_RESUME 继续。
     var captureSetup by remember { mutableStateOf(CaptureSetupUiState()) }
     var captureSetupActive by rememberSaveable { mutableStateOf(false) }
+    // zlc fork: the original home content is folded away behind "more" to keep the screen simple.
+    var showMoreHome by rememberSaveable { mutableStateOf(false) }
     var captureSetupAwaiting by rememberSaveable { mutableStateOf<String?>(null) }
     var captureSetupResumeTick by remember { mutableIntStateOf(0) }
     var showSharePrompt by rememberSaveable { mutableStateOf(false) }
@@ -764,7 +766,7 @@ fun MainScreen(
                     )
                 },
                 actions = {
-                    TextButton(onClick = onOpenLogs) {
+                    if (showMoreHome) TextButton(onClick = onOpenLogs) {
                         Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
                         Text(" ${stringResource(R.string.main_logs)}", modifier = Modifier.padding(start = 4.dp))
                     }
@@ -799,7 +801,18 @@ fun MainScreen(
                     onStop = { context.startService(CaptureService.stopIntent(context)) },
                     onOpenSettings = onOpenSettings,
                 )
+                TextButton(
+                    onClick = { showMoreHome = !showMoreHome },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        stringResource(
+                            if (showMoreHome) R.string.quick_less else R.string.quick_more
+                        )
+                    )
+                }
             }
+            if (initialCaptureSetupPending || showMoreHome) {
             CaptureGalleryCarousel(
                 initialPageIndex = initialCarouselPageIndex,
                 onPageChanged = onCarouselPageChanged,
@@ -1072,6 +1085,7 @@ fun MainScreen(
                 )
             }
 
+            } // end of folded home content
             // 底部留空
             Box(Modifier.size(24.dp))
         }

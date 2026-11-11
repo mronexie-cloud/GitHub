@@ -197,7 +197,8 @@ data class Settings(
     /** PaddleOCR doc-orientation ONNX model mirror. Empty = official HuggingFace source. */
     val orientationModelMirrorUrl: String = "",
     val a11yVolumeTrigger: Boolean = false,
-    val translatorEngine: TranslatorEngine = TranslatorEngine.OPENAI,
+    // zlc fork: default to the keyless online engine so a fresh install translates out of the box.
+    val translatorEngine: TranslatorEngine = TranslatorEngine.GOOGLE,
     val openAiProvider: OpenAiProvider = OpenAiProvider.CUSTOM,
     val translationGlossaryEnabled: Boolean = true,
     /** Master gate for source-preservation matching; individual entry states remain untouched. */

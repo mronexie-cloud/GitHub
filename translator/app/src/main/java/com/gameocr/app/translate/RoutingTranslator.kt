@@ -51,7 +51,7 @@ class RoutingTranslator @Inject constructor(
         translationMemory.recall(source, settings)?.let { memory ->
             return normalizePlain(memory.correctedTranslation, settings)
         }
-        if (shouldPassthroughNumericTranslation(source)) {
+        if (shouldPassthroughTranslation(source, settings.targetLang)) {
             logNumericPassthrough(stage = "translate", count = 1, total = 1)
             return source
         }
@@ -81,7 +81,7 @@ class RoutingTranslator @Inject constructor(
                 emit(memory.correctedTranslation)
                 return@flow
             }
-            if (shouldPassthroughNumericTranslation(source)) {
+            if (shouldPassthroughTranslation(source, settings.targetLang)) {
                 logNumericPassthrough(stage = "stream", count = 1, total = 1)
                 emit(source)
                 return@flow
@@ -266,7 +266,7 @@ class RoutingTranslator @Inject constructor(
 
         var passthroughCount = 0
         sources.forEachIndexed { index, source ->
-            if (overrides[index] == null && shouldPassthroughNumericTranslation(source)) {
+            if (overrides[index] == null && shouldPassthroughTranslation(source, settings.targetLang)) {
                 overrides[index] = source
                 passthroughCount += 1
             }

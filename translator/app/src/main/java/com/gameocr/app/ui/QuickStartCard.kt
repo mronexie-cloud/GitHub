@@ -111,6 +111,13 @@ internal fun applyQuickEngine(settings: AppSettings, engine: QuickEngine): AppSe
         }
 }
 
+internal fun quickLlmKeyMissing(settings: AppSettings): Boolean =
+    if (settings.translatorEngine == TranslatorEngine.ANTHROPIC) {
+        settings.anthropicApiKey.isBlank()
+    } else {
+        settings.apiKey.isBlank()
+    }
+
 internal fun quickOfflineSource(sourceLang: String, targetLang: String): String {
     if (!sourceLang.equals(Languages.AUTO.code, ignoreCase = true) && sourceLang.isNotBlank()) {
         return sourceLang
@@ -192,25 +199,19 @@ internal fun QuickStartCard(
                         )
                     }
                 }
-                if (engine != null) {
+                if (engine == QuickEngine.OFFLINE) {
                     Text(
-                        text = stringResource(engine.hintRes),
+                        text = stringResource(R.string.quick_engine_offline_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
-                if (engine == QuickEngine.LLM) {
+                if (engine == QuickEngine.LLM && quickLlmKeyMissing(s)) {
                     TextButton(onClick = onOpenSettings) {
                         Text(stringResource(R.string.quick_open_settings))
                     }
                 }
             }
-
-            Text(
-                text = stringResource(mode.descRes),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
 
             // Mode dropdown + Start
             Row(

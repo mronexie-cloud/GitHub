@@ -2565,8 +2565,10 @@
     <string name="quick_engine_offline">Offline</string>
     <string name="quick_engine_online">Online</string>
     <string name="quick_engine_llm">LLM</string>
-    <string name="quick_engine_offline_hint">Free and offline. Pick the source language on the left; language packs download on first use.</string>
+    <string name="quick_engine_offline_hint">Offline translation needs a source language on the left.</string>
     <string name="quick_engine_online_hint">Uses Google\'s free endpoint. Needs internet and may be rate limited.</string>
     <string name="quick_engine_llm_hint">Best quality. Add an API key in Settings first; billed by usage.</string>
     <string name="quick_open_settings">Open settings</string>
+    <string name="quick_more">More features</string>
+    <string name="quick_less">Show less</string>
 </resources>
