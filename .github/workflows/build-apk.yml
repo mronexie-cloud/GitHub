@@ -4,6 +4,9 @@ on:
   push:
     paths-ignore:
       - "tts/**"
+      - "translator/**"
+      - ".github/workflows/translator.yml"
+      - ".gitmodules"
       - "ios/**"
       - ".github/workflows/pages.yml"
       - "tests/**"
