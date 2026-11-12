@@ -29,7 +29,22 @@ jobs:
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
-      - name: Unit tests + live free-voice test
+      - name: Show how the current edge-tts library connects (debug)
+        continue-on-error: true
+        run: |
+          pip install -q edge-tts
+          python - <<'PY' > edge-ref.log 2>&1
+          import edge_tts, inspect, edge_tts.constants as c, edge_tts.drm as d
+          print("version", getattr(edge_tts, "__version__", "?"))
+          print(inspect.getsource(c))
+          print(inspect.getsource(d))
+          import edge_tts.communicate as m
+          src = inspect.getsource(m)
+          i = src.find("ws_connect"); print(src[max(0, i-1500):i+600])
+          PY
+          cat edge-ref.log
+          edge-tts --voice zh-CN-XiaoxiaoNeural --text "测试" --write-media py.mp3 && ls -la py.mp3
+            - name: Unit tests + live free-voice test
         id: voice
         continue-on-error: true
         env:
@@ -48,7 +63,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          { echo "voice test: ${{ steps.voice.outcome }}"; tail -c 120000 test.log 2>/dev/null; echo; echo "----- build -----"; tail -c 120000 build.log 2>/dev/null; } > video-build-tail.log
+          { echo "voice test: ${{ steps.voice.outcome }}"; cat edge-ref.log 2>/dev/null; echo "----- test -----"; tail -c 120000 test.log 2>/dev/null; echo; echo "----- build -----"; tail -c 120000 build.log 2>/dev/null; } > video-build-tail.log
           gh release delete video-build-log --yes --cleanup-tag || true
           gh release create video-build-log video-build-tail.log --target "$GITHUB_SHA" --title "video build log" --notes "last failed video build or voice test" --latest=false --prerelease
       - name: Publish APK

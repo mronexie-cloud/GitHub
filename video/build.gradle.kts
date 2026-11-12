@@ -49,5 +49,9 @@ dependencies {
 tasks.withType<Test>().configureEach {
     environment("EDGE_TTS_LIVE", System.getenv("EDGE_TTS_LIVE") ?: "")
     environment("EDGE_TTS_OUT", System.getenv("EDGE_TTS_OUT") ?: "")
-    testLogging { events("passed", "skipped", "failed"); showStandardStreams = true }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
 }
