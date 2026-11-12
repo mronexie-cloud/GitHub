@@ -44,7 +44,7 @@ jobs:
           PY
           cat edge-ref.log
           edge-tts --voice zh-CN-XiaoxiaoNeural --text "测试" --write-media py.mp3 && ls -la py.mp3
-            - name: Unit tests + live free-voice test
+      - name: Unit tests + live free-voice test
         id: voice
         continue-on-error: true
         env:
