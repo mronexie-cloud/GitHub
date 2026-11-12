@@ -9,6 +9,7 @@
 | 三国身份局 | `sanguo/` | [sanguo.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/sanguo.apk) |
 | 译聊（多人聊天 + 翻译） | `chat/` | [chat.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/chat.apk) |
 | 二人麻将（联网） | `mahjong/` | [mahjong.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/mahjong.apk) |
+| AI成片（免费生成知识短视频） | `video/` | [video.apk](https://github.com/mronexie-cloud/GitHub/releases/download/video/video.apk) |
 
 **苹果手机版：** 用 Safari 打开 https://mronexie-cloud.github.io/GitHub/ ，选游戏后通过"分享 → 添加到主屏幕"安装。苹果版文件在 `ios/` 目录，和安卓版互不影响。
 
