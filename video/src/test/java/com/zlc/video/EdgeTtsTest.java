@@ -15,10 +15,19 @@ import org.junit.Test;
 public class EdgeTtsTest {
 
     @Test
-    public void tokenIsUppercaseSha256() {
-        String t = EdgeTts.secMsGec();
-        assertEquals(64, t.length());
-        assertTrue(t.matches("[0-9A-F]{64}"));
+    public void tokenFormat() {
+        assertTrue(EdgeTts.secMsGec().matches("[0-9A-F]{16}-[0-9A-F]{64}"));
+    }
+
+    /** Values produced by edge-tts 7.3.1's Python generate_sec_ms_gec_v2(). */
+    @Test
+    public void tokenMatchesPythonReference() {
+        String c = EdgeTts.TOKEN;
+        assertEquals("52BC7A17B50DFEC9-28C4394775C8751CD2F6859C030C06DB1489ACAB3B3A7651831FC26895177ED6", EdgeToken.generate(0, c));
+        assertEquals("2CD23A2CA0B2595A-F3C846C370E05F9CC83ACC5F995C5F5D87A4D0F14CE8936A0F902E64099E38A2", EdgeToken.generate(1700000000, c));
+        assertEquals("E0C192438A7C909A-C389582981D42F275F5D785525F979F6CCB04CCD1236B7970924A7E798DA1CBF", EdgeToken.generate(1762937215.5, c));
+        assertEquals("65B83946959CD719-3564CA014DB4BB08121011A239CDEF0F3DEE7350F9E8DA69E90A7B6BFF497E1C", EdgeToken.generate(1794470000, c));
+        assertEquals("498DEBEC091E9FBB-48F566F30D363EA955F305452BB7D7029DA9E2E43FF809AEEF3ACB5964B2A49B", EdgeToken.generate(2000000123, c));
     }
 
     @Test

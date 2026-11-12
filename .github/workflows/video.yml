@@ -33,6 +33,7 @@ jobs:
         continue-on-error: true
         run: |
           pip install -q edge-tts
+          pip show edge-tts | grep -i -E "^(version|license)"
           python - <<'PY' > edge-ref.log 2>&1
           import edge_tts, inspect, edge_tts.constants as c, edge_tts.drm as d
           print("version", getattr(edge_tts, "__version__", "?"))

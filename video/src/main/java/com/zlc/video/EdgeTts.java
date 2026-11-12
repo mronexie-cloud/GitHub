@@ -3,7 +3,6 @@ package com.zlc.video;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -35,7 +34,6 @@ public final class EdgeTts {
     static final String WSS = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=" + TOKEN;
     static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"
             + CHROMIUM_MAJOR + ".0.0.0 Safari/537.36 Edg/" + CHROMIUM_MAJOR + ".0.0.0";
-    private static final long WIN_EPOCH = 11644473600L;
     private static volatile long skewSeconds = 0;
 
     private final OkHttpClient client;
@@ -56,19 +54,9 @@ public final class EdgeTts {
         }
     }
 
-    /** The anti-abuse token the service expects: SHA-256 of the 5-minute-rounded Windows time + client token. */
+    /** The anti-abuse token the service expects (v2 format, see {@link EdgeToken}). */
     static String secMsGec() {
-        long ticks = System.currentTimeMillis() / 1000 + skewSeconds + WIN_EPOCH;
-        ticks -= ticks % 300;
-        String s = (ticks * 10_000_000L) + TOKEN;
-        try {
-            byte[] d = MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.US_ASCII));
-            StringBuilder b = new StringBuilder();
-            for (byte x : d) b.append(String.format(Locale.US, "%02X", x));
-            return b.toString();
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
+        return EdgeToken.generate(System.currentTimeMillis() / 1000.0 + skewSeconds, TOKEN);
     }
 
     /** "zh-CN-XiaoxiaoNeural" -> "Microsoft Server Speech Text to Speech Voice (zh-CN, XiaoxiaoNeural)". */
@@ -134,13 +122,14 @@ public final class EdgeTts {
 
     private byte[] once(String text, String voice, String rate, String pitch, int timeoutSec) throws IOException {
         String url = WSS + "&ConnectionId=" + UUID.randomUUID().toString().replace("-", "")
-                + "&Sec-MS-GEC=" + secMsGec() + "&Sec-MS-GEC-Version=1-" + CHROMIUM_FULL;
+                + "&Sec-MS-GEC=" + secMsGec() + "&Sec-MS-GEC-Version=2-" + CHROMIUM_FULL;
         Request req = new Request.Builder()
                 .url(url)
                 .header("Pragma", "no-cache")
                 .header("Cache-Control", "no-cache")
                 .header("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold")
                 .header("User-Agent", UA)
+                .header("Accept-Encoding", "gzip, deflate, br, zstd")
                 .header("Accept-Language", "en-US,en;q=0.9")
                 .header("Cookie", "muid=" + randomMuid() + ";")
                 .build();
