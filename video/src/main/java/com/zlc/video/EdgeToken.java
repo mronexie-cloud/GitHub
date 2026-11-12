@@ -7,8 +7,11 @@ import java.util.Locale;
  * The "v2" Sec-MS-GEC token Edge's read-aloud service has required since late 2026:
  * "&lt;CS64 hex&gt;-&lt;salted SHA-256 hex&gt;" of the 5-minute-rounded Windows time + client token.
  *
- * Straight port of edge_tts/drm.py (edge-tts 7.3.1, LGPL-3.0 library by rany2) to Java.
- * All arithmetic is mod 2^32, which Java ints do natively. EdgeTokenTest pins it to values
+ * Straight port of edge_tts/drm.py from edge-tts 7.3.1 (https://github.com/rany2/edge-tts,
+ * by rany2). Because it is derived from that LGPL-3.0 library, THIS FILE is licensed under the
+ * GNU Lesser General Public License v3.0 (see video/licenses/LGPL-3.0.txt and GPL-3.0.txt).
+ *
+ * All arithmetic is mod 2^32, which Java ints do natively. EdgeTtsTest pins it to values
  * produced by the Python original.
  */
 final class EdgeToken {
