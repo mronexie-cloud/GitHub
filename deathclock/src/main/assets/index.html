@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>死亡倒计时</title>
+<style>
+/* 死亡倒计时：设定现在的年龄和想倒数到的年龄，实时显示剩余的年月日时分秒，每年发一封提醒到 Gmail。 */
+:root{--bg:#000;--card:#111114;--card2:#1b1b20;--line:#26262d;--ink:#F2F2F5;--muted:#8a8a95;--red:#FF3B30;--green:#34C759}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif}
+button,input,textarea,select{font:inherit;color:inherit}
+#app{max-width:520px;margin:0 auto;min-height:100vh}
+.scr{padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 28px);display:flex;flex-direction:column;gap:16px}
+.top{display:flex;align-items:center;gap:10px;min-height:44px}
+.top h1{margin:0;font-size:20px;flex:1;letter-spacing:2px;font-weight:800}
+.top h1 i{font-style:normal;color:var(--red)}
+.ib{border:0;background:var(--card2);width:42px;height:42px;border-radius:12px;font-size:19px;cursor:pointer}
+.lead{color:var(--muted);font-size:15px;margin:8px 0 -6px;letter-spacing:1px}
+.lead b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 6px 10px;text-align:center}
+.num{font-family:"SF Mono","Roboto Mono","DejaVu Sans Mono",ui-monospace,monospace;font-weight:800;font-size:44px;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.cell.big .num{font-size:56px}
+.cell small{display:block;color:var(--muted);font-size:13px;margin-top:4px;letter-spacing:2px}
+.cell.sec .num{color:var(--red)}
+.tick{animation:tick .35s ease-out}
+@keyframes tick{from{opacity:.35;transform:translateY(-3px)}}
+.prog-h{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+.prog-h b{color:var(--ink);font-family:ui-monospace,monospace;font-size:16px}
+.bar{height:10px;border-radius:99px;background:var(--card2);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--red);border-radius:99px}
+.facts{color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6}
+.facts b{color:var(--ink);font-weight:700}
+.years{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.y{aspect-ratio:1;border-radius:4px;border:1px solid #2a2a31}
+.y.on{background:#d9d9de;border-color:#d9d9de}
+.y.now{background:var(--red);border-color:var(--red);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.cap{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.card h3{margin:0;font-size:15px}
+.mut{color:var(--muted);font-size:13px;line-height:1.6}
+.ok{color:var(--green)}.bad{color:var(--red)}
+.note{white-space:pre-wrap;font-size:14px;line-height:1.6;border-left:3px solid var(--red);padding-left:12px;color:#ddd}
+.btn{border:0;border-radius:14px;padding:14px;font-weight:800;font-size:16px;background:var(--card2);cursor:pointer;width:100%}
+.btn.red{background:var(--red);color:#fff}
+.btn:disabled{opacity:.5}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;outline:none;font-size:16px}
+input:focus,select:focus,textarea:focus{border-color:var(--red)}
+textarea{resize:vertical;min-height:90px;line-height:1.5}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.sw{display:flex;align-items:center;gap:12px;cursor:pointer}
+.sw .tx{flex:1}
+.tg{width:50px;height:30px;border-radius:99px;background:#3a3a42;position:relative;flex:none;transition:background .2s}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s}
+.tg.on{background:var(--green)}.tg.on::after{left:23px}
+.steps{margin:0;padding-left:20px;color:#cfcfd6;font-size:14px;line-height:1.75}
+.msg{border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.55}
+.msg.e{background:rgba(255,59,48,.12);border:1px solid rgba(255,59,48,.4)}
+.msg.g{background:rgba(52,199,89,.12);border:1px solid rgba(52,199,89,.4)}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+a{color:#ff6b61}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 40px);transform:translateX(-50%);background:#2a2a31;color:#fff;padding:10px 18px;border-radius:999px;font-weight:700;z-index:50}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+// ---------- 和 LifeMath.java 相同的计算规则 ----------
+const YEAR_MS=31556952000,DAY_MS=86400000;
+function addMonths(t,n){const d=new Date(t),day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);
+  const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d.getTime();}
+function deathTime(c){return addMonths(c.setupAt,(c.deathAge-c.age)*12);}
+function remaining(now,target){
+  const passed=now>target,a=passed?target:now,b=passed?now:target;
+  let y=0;while(addMonths(a,(y+1)*12)<=b)y++;
+  let m=0;while(m<11&&addMonths(a,y*12+m+1)<=b)m++;
+  let c=addMonths(a,y*12+m),d=0;
+  while(true){const n=new Date(c);n.setDate(n.getDate()+1);if(n.getTime()>b)break;c=n.getTime();d++;}
+  const rest=b-c;
+  return{passed,years:y,months:m,days:d,hours:Math.floor(rest/3600000),minutes:Math.floor(rest/60000)%60,seconds:Math.floor(rest/1000)%60,totalDays:Math.floor((b-a)/DAY_MS)};
+}
+function wholeAge(c,now){return now<=c.setupAt?c.age:c.age+remaining(c.setupAt,now).years;}
+function ageFloat(c,now){return c.age+(now-c.setupAt)/YEAR_MS;}
+
+// ---------- 设置（App 里存在手机上；浏览器里用 localStorage 预览） ----------
+const hasNative=!!(window.Android&&Android.getConfig);
+const pending={};let seq=0;
+window.__nativeCb=(id,ok,p)=>{const x=pending[id];if(!x)return;delete pending[id];ok?x.res(p):x.rej(new Error(p));};
+function loadCfg(){
+  if(hasNative){try{return JSON.parse(Android.getConfig());}catch(e){return{};}}
+  try{return JSON.parse(localStorage.getItem('dc')||'{}');}catch(e){return{};}
+}
+function saveCfg(o){
+  if(hasNative)return Android.saveConfig(JSON.stringify(o));
+  const c=loadCfg(),now=Date.now();
+  const agesChanged=!c.setupAt||c.age!==o.age||c.deathAge!==o.deathAge;
+  const n=Object.assign(c,o,{configured:true,hasPass:!!(o.pass||c.hasPass)});delete n.pass;if(agesChanged)n.setupAt=now;
+  try{localStorage.setItem('dc',JSON.stringify(n));}catch(e){}return'ok';
+}
+function sendTest(){if(!hasNative)return Promise.reject(new Error('浏览器里不能发邮件，请在安卓 App 里使用'));
+  return new Promise((res,rej)=>{const id='t'+(++seq);pending[id]={res,rej};Android.sendTest(id);});}
+
+// ---------- 小工具 ----------
+const $=s=>document.querySelector(s);const app=$('#app');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const fmtN=n=>Number(n).toLocaleString('en-US');
+function fmtDate(t,withTime){const d=new Date(t);return`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`+(withTime?` ${pad(d.getHours())}:${pad(d.getMinutes())}`:'');}
+function toast(t){const o=$('.toast');if(o)o.remove();const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200);}
+function vib(ms){try{hasNative&&Android.vibrate(ms);}catch(e){}}
+
+let cfg=loadCfg(),screen=cfg.configured?'main':'setup',timer=0;
+function go(n){clearInterval(timer);screen=n;cfg=loadCfg();app.innerHTML=V[n]();(after[n]||(()=>{}))();window.scrollTo(0,0);}
+window.refreshStatus=()=>{if(screen==='main'){cfg=loadCfg();const s=$('#status');if(s)s.innerHTML=statusHtml();}};
+
+// ---------- 主界面：倒计时 ----------
+const V={},after={};
+V.main=()=>{
+  const c=cfg;
+  return `<div class="scr">
+  <div class="top"><h1>死亡<i>倒计时</i></h1><button class="ib" data-act="setup" aria-label="设置">⚙️</button></div>
+  <div class="lead" id="lead"></div>
+  <div class="grid">
+    <div class="cell big"><div class="num" id="Y">0</div><small>年</small></div>
+    <div class="cell big"><div class="num" id="M">0</div><small>月</small></div>
+    <div class="cell big"><div class="num" id="D">0</div><small>天</small></div>
+    <div class="cell"><div class="num" id="h">00</div><small>时</small></div>
+    <div class="cell"><div class="num" id="m">00</div><small>分</small></div>
+    <div class="cell sec"><div class="num" id="s">00</div><small>秒</small></div>
+  </div>
+  <div><div class="prog-h"><span>人生进度</span><b id="pct">0%</b></div><div class="bar"><i id="pbar"></i></div><div class="facts" id="facts"></div></div>
+  <div><div class="years" id="years"></div><div class="cap"><span>每一格 = 1 年</span><span id="ycap"></span></div></div>
+  <div class="card" id="status">${statusHtml()}</div>
+  ${c.note?`<div class="card"><h3>写给自己的话</h3><div class="note">${esc(c.note)}</div></div>`:''}
+  </div>`;
+};
+function statusHtml(){
+  const c=cfg;
+  if(!c.email||!c.hasPass)return `<h3>📧 每年提醒邮件</h3><div class="mut">还没设置 Gmail，设置后每年 ${c.month||'?'} 月 ${c.day||'?'} 日会自动发一封提醒到你的邮箱。</div><button class="btn red" data-act="setup">去设置邮箱</button>`;
+  if(c.enabled===false)return `<h3>📧 每年提醒邮件</h3><div class="mut">已关闭。可以在设置里打开。</div>`;
+  const last=c.lastSentAt?`上次发送：${fmtDate(c.lastSentAt,true)} <span class="ok">成功</span>`:'还没发送过（可以先在设置里发一封测试邮件）';
+  const err=c.lastResult&&c.lastResult!=='ok'?`<div class="mut bad">最近一次自动发送失败：${esc(c.lastResult)}（有网时会自动重试）</div>`:'';
+  return `<h3>📧 每年提醒邮件</h3>
+    <div class="mut">下一封：<b style="color:var(--ink)">${c.nextAt?fmtDate(c.nextAt,true):'—'}</b><br>发到：${esc(c.to||c.email)}<br>${last}</div>${err}`;
+}
+after.main=()=>{
+  const c=cfg,death=deathTime(c);
+  const yb=$('#years');const total=Math.max(1,c.deathAge);let html='';
+  for(let i=0;i<total;i++)html+=`<div class="y" data-i="${i}"></div>`;yb.innerHTML=html;
+  let prev={};
+  const set=(id,v)=>{if(prev[id]===v)return;prev[id]=v;const el=$('#'+id);el.textContent=v;el.classList.remove('tick');void el.offsetWidth;el.classList.add('tick');};
+  const tick=()=>{
+    const now=Date.now(),r=remaining(now,death),age=wholeAge(c,now),af=ageFloat(c,now);
+    $('#lead').innerHTML=r.passed?`已经超过设定的 <b>${c.deathAge}</b> 岁，多出来`:`你 <b>${age}</b> 岁 · 距离 <b>${c.deathAge}</b> 岁还剩`;
+    set('Y',String(r.years));set('M',String(r.months));set('D',String(r.days));set('h',pad(r.hours));set('m',pad(r.minutes));set('s',pad(r.seconds));
+    const pct=Math.min(100,Math.max(0,af/c.deathAge*100));
+    $('#pct').textContent=pct.toFixed(4)+'%';$('#pbar').style.width=pct+'%';
+    const lived=Math.floor(af*365.2425);
+    $('#facts').innerHTML=r.passed?`多活了 <b>${fmtN(r.totalDays)}</b> 天，每一天都是赚的。`
+      :`已经过了约 <b>${fmtN(lived)}</b> 天 · 还剩约 <b>${fmtN(r.totalDays)}</b> 天 · 约 <b>${fmtN(Math.floor(r.totalDays/7))}</b> 个周末`;
+    if(prev.age!==age){prev.age=age;yb.querySelectorAll('.y').forEach((el,i)=>{el.className='y'+(i<age?' on':i===age?' now':'');});
+      $('#ycap').textContent=r.passed?'':`剩 ${Math.max(0,c.deathAge-age)} 格`;}
+  };
+  tick();timer=setInterval(tick,1000);
+};
+
+// ---------- 设置 ----------
+V.setup=()=>{
+  const c=cfg,first=!c.configured,d=new Date();
+  const month=c.month||d.getMonth()+1,day=c.day||d.getDate();
+  const opts=(n,from,sel)=>Array.from({length:n},(_,i)=>i+from).map(v=>`<option value="${v}" ${v===sel?'selected':''}>${v}</option>`).join('');
+  return `<div class="scr">
+  <div class="top">${first?'':'<button class="ib" data-act="main" aria-label="返回">‹</button>'}<h1>${first?'设定你的<i>倒计时</i>':'设置'}</h1></div>
+  ${first?'<div class="mut">填两个数字就能开始。邮箱可以现在填，也可以以后再填。</div>':''}
+  <div class="row"><div><label>现在几岁</label><input id="age" type="number" inputmode="numeric" min="1" max="120" value="${c.age||''}" placeholder="30"></div>
+    <div><label>倒数到几岁</label><input id="deathAge" type="number" inputmode="numeric" min="2" max="150" value="${c.configured?c.deathAge:''}" placeholder="80"></div></div>
+  ${c.configured?`<div class="mut">倒计时从 ${fmtDate(c.setupAt,true)} 开始算。只有改了这两个年龄，才会从现在重新开始算。</div>`:''}
+  <div class="card"><h3>📧 每年发提醒到 Gmail</h3>
+    <div class="sw" data-act="toggle"><div class="tx">每年发送提醒邮件</div><span class="tg ${c.enabled===false?'':'on'}" id="en"></span></div>
+    <div><label>Gmail 邮箱（用它来发信）</label><input id="email" type="email" autocomplete="email" placeholder="you@gmail.com" value="${esc(c.email||'')}"></div>
+    <div><label>应用专用密码（16 位，不是 Gmail 登录密码）</label><input id="pass" type="password" autocomplete="off" placeholder="${c.hasPass?'已保存，不改就留空':'xxxx xxxx xxxx xxxx'}"></div>
+    <div><label>收件邮箱（可不填，默认发给自己）</label><input id="to" type="email" placeholder="${esc(c.email||'默认同上')}" value="${esc(c.to||'')}"></div>
+    <div><label>每年哪一天发（当天上午 9 点）</label><div class="row"><select id="month">${opts(12,1,month)}</select><select id="day">${opts(31,1,day)}</select></div></div>
+    <div><label>写给自己的话（会写进每年的邮件，可不填）</label><textarea id="note" placeholder="比如：今年想做完的三件事……">${esc(c.note||'')}</textarea></div>
+  </div>
+  <div id="msg"></div>
+  <button class="btn red" data-act="save">${first?'开始倒计时':'保存'}</button>
+  <button class="btn" data-act="test">保存并发一封测试邮件</button>
+  <div class="card"><h3>怎么拿到“应用专用密码”？</h3>
+    <ol class="steps"><li>打开 Google 账号 → 安全性 → 开启<b>两步验证</b>（必须先开）。</li>
+      <li>打开 <a href="#" data-act="open" data-url="https://myaccount.google.com/apppasswords">myaccount.google.com/apppasswords</a>，随便起个名字（如“死亡倒计时”）→ 创建。</li>
+      <li>把显示的 16 位密码复制到上面。它只能用来发邮件，随时可以在同一页删掉。</li></ol>
+    <div class="mut">密码只保存在这台手机的 App 里，邮件直接从手机发到 Gmail，不经过任何别的服务器。</div>
+  </div>
+  </div>`;
+};
+let enabled=true;
+after.setup=()=>{enabled=cfg.enabled!==false;};
+function readForm(){
+  const age=parseInt($('#age').value,10),deathAge=parseInt($('#deathAge').value,10);
+  if(!(age>=1&&age<=120))throw new Error('请填写现在的年龄（1~120）');
+  if(!(deathAge>age&&deathAge<=150))throw new Error('倒数到的年龄要比现在大（最多 150）');
+  const email=$('#email').value.trim(),to=$('#to').value.trim(),pass=$('#pass').value.replace(/\s+/g,'');
+  if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new Error('Gmail 邮箱格式不对');
+  if(to&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to))throw new Error('收件邮箱格式不对');
+  if(pass&&pass.length!==16)throw new Error('应用专用密码应该是 16 位（空格可以不管）');
+  return{age,deathAge,email,to,pass,month:+$('#month').value,day:+$('#day').value,note:$('#note').value.trim(),enabled};
+}
+function msg(html,cls){$('#msg').innerHTML=html?`<div class="msg ${cls||'e'}">${html}</div>`:'';}
+const ACT={
+  setup:()=>go('setup'),main:()=>go('main'),
+  toggle(){enabled=!enabled;$('#en').classList.toggle('on',enabled);},
+  open(d){if(hasNative)Android.openUrl(d.url);else window.open(d.url,'_blank');},
+  save(){let o;try{o=readForm();}catch(e){msg(esc(e.message));return;}
+    const r=saveCfg(o);if(r!=='ok'){msg(esc(r));return;}vib(30);toast('已保存');go('main');},
+  async test(d,el){let o;try{o=readForm();}catch(e){msg(esc(e.message));return;}
+    if(!o.email){msg('先填 Gmail 邮箱');return;}if(!o.pass&&!cfg.hasPass){msg('先填应用专用密码');return;}
+    const r=saveCfg(o);if(r!=='ok'){msg(esc(r));return;}cfg=loadCfg();
+    el.disabled=true;el.innerHTML='<span class="spin"></span> 正在发送…';msg('');
+    try{await sendTest();vib(40);msg(`✅ 已发出，去 ${esc(o.to||o.email)} 的收件箱看看（没看到的话查一下垃圾邮件）。`,'g');}
+    catch(e){msg(esc(e.message));}
+    el.disabled=false;el.textContent='保存并发一封测试邮件';$('#pass').value='';$('#pass').placeholder='已保存，不改就留空';},
+};
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;if(el.tagName==='A')e.preventDefault();const f=ACT[el.dataset.act];if(f)f(el.dataset,el);});
+window.onAndroidBack=()=>{if(screen==='setup'&&cfg.configured){go('main');return true;}return false;};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&screen==='main')refreshStatus();});
+go(screen);
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+name: Build deathclock APK
+
+# 死亡倒计时：先跑单元测试（倒计时计算、邮件内容、用假邮件服务器走一遍发信流程），
+# 再编译 APK，发布到固定的 "deathclock" 下载链接（不用等合并到 main）。
+on:
+  push:
+    paths:
+      - "deathclock/**"
+      - ".github/workflows/deathclock.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deathclock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Test and build
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew :deathclock:testDebugUnitTest --no-daemon 2>&1 | tee test.log
+          for i in 1 2 3; do ./gradlew :deathclock:assembleDebug --no-daemon 2>&1 | tee build.log && break; echo "build try $i failed"; [ $i = 3 ] && exit 1; sleep 20; done
+      - name: Publish log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          { tail -c 150000 test.log 2>/dev/null; echo "----- build -----"; tail -c 150000 build.log 2>/dev/null; } > deathclock-build-tail.log
+          gh release delete deathclock-build-log --yes --cleanup-tag || true
+          gh release create deathclock-build-log deathclock-build-tail.log --target "$GITHUB_SHA" --title "deathclock build log" --notes "last failed deathclock build" --latest=false --prerelease
+      - name: Publish APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp deathclock/build/outputs/apk/debug/deathclock-debug.apk deathclock.apk
+          gh release delete deathclock --yes --cleanup-tag || true
+          gh release create deathclock "deathclock.apk#死亡倒计时（每年邮件提醒）.apk" --target "$GITHUB_SHA" --title "死亡倒计时 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译（单元测试已通过）。" --latest=false
