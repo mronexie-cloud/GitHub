@@ -97,7 +97,7 @@ const TITLES=[[1e9,'交易传奇'],[1e8,'对冲基金大佬'],[1e7,'私募大佬
 let G=null,M=null,draft=null;
 function genChar(){const gender=R()<.5?'男':'女',city=pick(CITIES);const bl=Object.keys(BGS);let tw=bl.reduce((s,k)=>s+BGS[k][1],0),x=R()*tw,bg=bl[0];for(const k of bl){x-=BGS[k][1];if(x<0){bg=k;break}}
   const tk=Object.keys(TRAITS),tr=[];while(tr.length<2){const t=pick(tk);if(tr.includes(t)||(tr[0]==='钢铁心态'&&t==='玻璃心')||(tr[0]==='玻璃心'&&t==='钢铁心态'))continue;tr.push(t)}
-  return{name:pick(SUR)+pick(gender==='男'?MN:FN),gender,city:city[0],mul:city[1],bg,cash:BGS[bg][0],age:ri(22,26),int:ri(35,85),luck:ri(30,80),body:ri(40,90),traits:tr}}
+  return{look:{skin:pick(['#f6d2b0','#f2c59a','#e0ac7e','#c98f62']),hair:pick(['#1d1a17','#2b2118','#4a3222','#6b4423'])},name:pick(SUR)+pick(gender==='男'?MN:FN),gender,city:city[0],mul:city[1],bg,cash:BGS[bg][0],age:ri(22,26),int:ri(35,85),luck:ri(30,80),body:ri(40,90),traits:tr}}
 const hasT=t=>G.traits.includes(t),own=id=>!!G.up[id];
 function newGame(c){G={...c,day:1,t:510,nextTick:516,energy:100,health:Math.round(55+c.body*.4),stress:15,family:60,comply:80,lvl:1,xp:0,up:{},pos:[],prices:{},open:{},hist:{},sig:{},trend:{},regime:pick(['bull','range','range','bear']),news:'',
   coffee:0,calls:0,ring:0,ringEv:null,flow:0,startNw:c.cash,flags:{},aum:0,peak:c.cash,view:'idx',life:[],over:null,closed:false,rent:1};
@@ -144,16 +144,20 @@ function closePos(id,auto){const i=G.pos.findIndex(p=>p.id===id);if(i<0)return;i
   const p=G.pos[i],v=Math.max(0,posVal(p)),nt=p.margin*p.lev*(G.prices[p.k]/p.entry),fee=Math.min(v,nt*(.0005+clamp(nt/3e10,0,.04)));G.cash+=v-fee;G.pos.splice(i,1);sfx(v-fee>p.margin?'coin':'sell');save()}
 // ============ 生活动作 ============
 function useEnergy(e){if(G.energy<e){toast('😩 精力不够了，喝杯咖啡或去睡觉');sfx('bad');return false}G.energy-=e;return true}
-const ST={
- desk(){M={type:'desk',tab:'trade'};sfx('tap');renderModal()},
- board(){if(Object.keys(G.sig).length>=5)return toast('五个品种都研究过了');if(!useEnergy(20))return;addTime(30);addStress(1);const k=research();sfx('research');
-   toast(`🔍 研究了${ASSETS[k].n}：${G.closed?'明天':'今天'}${G.sig[k].dir>0?'看涨📈':'看跌📉'}（把握${Math.round(G.sig[k].conf*100)}%）`)},
- tread(){if(!useEnergy(25))return;addTime(60);G.health=clamp(G.health+6,0,100);addStress(-8);sfx('gym');toast('🏃 跑了一小时，健康+6 压力-8')},
- coffee(){if(G.coffee>=3)return toast('今天已经喝了三杯，再喝心脏受不了');G.coffee++;const up=own('coffee');G.energy=Math.min(maxEnergy(),G.energy+(up?40:25));if(!up)G.health=clamp(G.health-2,0,100);addTime(10);sfx('coin');toast(up?'☕ 一杯好咖啡，精力+40':'☕ 速溶咖啡，精力+25 健康-2')},
- sofa(){if(!useEnergy(15))return;addTime(60);const g=hasT('社交达人')?20:10;G.family=clamp(G.family+g,0,100);addStress(-6);sfx('calm');toast(`🛋️ 陪家人聊了会儿天，家庭+${g}`)},
- bed(){const warn=marketOpen()&&G.pos.length;M={type:'confirm',title:'睡觉，结束今天？',desc:(warn?'⚠️ 还没收盘，你还有持仓，睡着后没人盯盘。':'')+(G.t<900?'现在睡会直接跳到收盘后。':'好好睡一觉，明天精力恢复。'),yes:'sleep()'};renderModal()},
- phone(){if(!G.ring)return toast('没有来电');const e=EV.find(x=>x.id===G.ringEv);G.ring=0;G.ringEv=null;showEvent(e)}
+function needE(e){if(G.energy<e){toast('😩 精力不够了，喝杯咖啡或去睡觉');sfx('bad');return false}return true}
+// 每个物品：check 能不能做；arrive 走到后马上发生的事；done 小人做完动作后的结果
+const ACT={
+ desk:{arrive(){hold('desk');M={type:'desk',tab:'trade'};sfx('tap');renderModal()}},
+ board:{check(){if(Object.keys(G.sig).length>=5){toast('五个品种都研究过了');return false}return needE(20)},
+  done(){G.energy-=20;addTime(30);addStress(1);const k=research();sfx('research');toast(`🔍 研究了${ASSETS[k].n}：${G.closed?'明天':'今天'}${G.sig[k].dir>0?'看涨📈':'看跌📉'}（把握${Math.round(G.sig[k].conf*100)}%）`)}},
+ tread:{check:()=>needE(25),done(){G.energy-=25;addTime(60);G.health=clamp(G.health+6,0,100);addStress(-8);sfx('good');toast('🏃 跑了一小时，健康+6 压力-8')}},
+ coffee:{check(){if(G.coffee>=3){toast('今天已经喝了三杯，再喝心脏受不了');return false}return true},
+  done(){G.coffee++;const up=own('coffee');G.energy=Math.min(maxEnergy(),G.energy+(up?40:25));if(!up)G.health=clamp(G.health-2,0,100);addTime(10);sfx('coin');toast(up?'☕ 一杯好咖啡，精力+40':'☕ 速溶咖啡，精力+25 健康-2')}},
+ sofa:{check:()=>needE(15),done(){G.energy-=15;addTime(60);const g=hasT('社交达人')?20:10;G.family=clamp(G.family+g,0,100);addStress(-6);sfx('calm');toast(`🛋️ 陪家人聊了会儿天，家庭+${g}`)}},
+ bed:{arrive(){const warn=marketOpen()&&G.pos.length;M={type:'confirm',title:'睡觉，结束今天？',desc:(warn?'⚠️ 还没收盘，你还有持仓，睡着后没人盯盘。':'')+(G.t<900?'现在睡会直接跳到收盘后。':'好好睡一觉，明天精力恢复。'),yes:'sleepAnim()'};renderModal()}},
+ phone:{check(){if(!G.ring){toast('没有来电');return false}return true},arrive(){hold('phone');const e=EV.find(x=>x.id===G.ringEv);G.ring=0;G.ringEv=null;showEvent(e)}}
 };
+function sleepAnim(){M=null;renderModal();P.act={id:'bed',t:0,dur:1.8,done:()=>sleep()}}
 // ============ 事件 ============
 const EV=[
  {id:'dad',w:g=>g.day>6?1:0,once:1,t:'父亲住院',d:'老家来电话，父亲突发心梗住进ICU，要尽快手术。',ch:[
@@ -210,7 +214,7 @@ function sleep(forced){if(G.over)return;M=null;if(G.t<900)addTime(900-G.t+1);if(
   G.energy=Math.round(maxEnergy()*(.55+G.health*.0045));G.flow=0;G.startNw=nw();AK.forEach(k=>{G.open[k]=G.prices[k]});
   if(G.health<=0)G.over='health';else if(n<0)G.over='bankrupt';
   rep.tilt=ret<=-.2&&!G.over&&R()<(hasT('赌徒血统')?.9:.6);
-  M=rep;sfx(lvUp?'level':tradePL>0?'profit':tradePL<0?'loss':'tap');save();renderModal();buildWorld()}
+  P.walk=null;P.act={id:'bed',hold:true,t:5};M=rep;sfx(lvUp?'level':tradePL>0?'profit':tradePL<0?'loss':'tap');save();renderModal();buildWorld()}
 function xpNeed(){return 3+G.lvl*3}
 function ackReport(){const tilt=M.tilt;M=null;if(G.over)return finish();if(tilt){showEvent(TILT);return}renderModal();toast(`☀️ 第${G.day}天 · 📰 ${G.news}`)}
 function ackResult(){M=null;if(G.over)return finish();renderModal()}
@@ -250,7 +254,45 @@ function flash(){const f=$('flash');f.style.transition='none';f.style.opacity=.4
 // ============ 3D 引擎（WebGL 方块） ============
 const cv=$('cv'),gl=cv.getContext('webgl',{antialias:true})||cv.getContext('experimental-webgl');
 let prog,bufS,bufD,nS=0,OBS=[],STN=[];
-const cam={x:0,z:2.2,yaw:0,pitch:-.08};
+const P={x:0,z:2,yaw:0,ph:0,moving:false,walk:null,act:null};
+const camS={e:[0,4.8,7.8],t:[0,.9,1.4]};
+const SPOT={desk:{ap:[0,-2.6],pos:[0,-.24,-3.25],yaw:0,pose:'type'},board:{ap:[-5.9,-1.6],pos:[-5.9,0,-1.6],yaw:Math.PI/2,pose:'point',dur:2},
+ tread:{ap:[4.3,-3.2],pos:[5.2,.25,-3.4],yaw:0,pose:'run',dur:2.8},coffee:{ap:[5.75,.9],pos:[5.75,0,.9],yaw:-Math.PI/2,pose:'drink',dur:2.2},
+ sofa:{ap:[-4.4,3.35],pos:[-4.4,-.33,4.05],yaw:0,pose:'sit',dur:2.6},bed:{ap:[3.55,3.6],pos:[5,.73,3.0],yaw:0,pose:'sleep'},phone:{ap:[2.3,-3.85],pos:[2.3,0,-3.85],yaw:0,pose:'phone'}};
+// ---- 小人：外形跟随机生成的角色一致（性别、出身、体质、年龄、特质）
+function lookOf(c){const L=c.look||{skin:'#f2c59a',hair:'#2b2118'},bg={寒门:['#9aa5b1','#4a5560'],工薪:['#4ea3ff','#34495e'],中产:['#ffffff','#2c3e50'],富二代:['#6c3fc4','#1f1f2e']}[c.bg]||['#4ea3ff','#34495e'];
+  return{skin:L.skin,hair:c.age>=45?'#a7a7a7':L.hair,long:c.gender==='女',shirt:bg[0],pants:bg[1],tie:c.bg==='中产',chain:c.bg==='富二代',glasses:c.int>=72||c.traits.includes('数学天才'),W:.36+c.body/100*.12+(c.traits.includes('身体倍儿棒')?.04:0)}}
+const rx=(a,v)=>{const c=Math.cos(a),s=Math.sin(a);return[v[0],v[1]*c-v[2]*s,v[1]*s+v[2]*c]};
+function tbox(a,col,x0,y0,z0,x1,y1,z1,fp,fn){const c=hex(col),q=(p,n)=>{const N=fn(n);[0,1,2,0,2,3].forEach(i=>{const v=fp(p[i]);a.push(v[0],v[1],v[2],N[0],N[1],N[2],c[0],c[1],c[2])})};
+  q([[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]],[1,0,0]);q([[x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[x0,y0,z1]],[-1,0,0]);q([[x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]],[0,1,0]);
+  q([[x0,y0,z0],[x0,y0,z1],[x1,y0,z1],[x1,y0,z0]],[0,-1,0]);q([[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],[0,0,1]);q([[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0]],[0,0,-1])}
+function poseOf(n,t,ph){const s=Math.sin;switch(n){
+  case'walk':return{lL:.65*s(ph),lR:-.65*s(ph),aL:-.5*s(ph),aR:.5*s(ph),kL:.6*Math.max(0,-s(ph)),kR:.6*Math.max(0,s(ph))};
+  case'run':{const p=t*13;return{lL:.95*s(p),lR:-.95*s(p),aL:.4-.9*s(p),aR:.4+.9*s(p),kL:.2+.9*Math.max(0,-s(p)),kR:.2+.9*Math.max(0,s(p)),by:Math.abs(s(p))*.07}}
+  case'type':return{sit:1,aL:1.15+.14*s(t*15),aR:1.15+.14*s(t*15+2)};
+  case'sit':return{sit:1,aL:.3,aR:.7+.6*Math.max(0,s(t*4))};
+  case'drink':{const k=(s(t*3.4-1.2)+1)/2;return{aR:.9+1.35*k,aL:.05,prop:'#ffffff'}}
+  case'point':return{aR:2.2+.35*s(t*5),aL:.1};
+  case'phone':return{aR:2.3,aL:.05+.05*s(t*2),prop:'#1f262e'};
+  case'sleep':return{tilt:Math.PI/2*Math.min(1,t*1.4),aL:0,aR:0};
+  default:return{aL:.06*s(t*2),aR:-.06*s(t*2)}}}
+function charMesh(a,L,px,py,pz,yaw,ps){const tilt=ps.tilt||0,cy=Math.cos(yaw),sy=Math.sin(yaw),ct=Math.cos(tilt),st=Math.sin(tilt);py+=ps.by||0;
+  const rot=v=>{const y=v[1]*ct-v[2]*st,z=v[1]*st+v[2]*ct;return[v[0]*cy+z*sy,y,-v[0]*sy+z*cy]},pt=v=>{const r=rot(v);return[r[0]+px,r[1]+py,r[2]+pz]};
+  const W=L.W,h=W/2,dark='#20242b';
+  tbox(a,L.shirt,-h,.75,-.12,h,1.3,.12,pt,rot);tbox(a,L.pants,-h,.68,-.125,h,.8,.125,pt,rot);
+  if(L.tie)tbox(a,'#d9382c',-.035,.95,-.13,.035,1.28,-.12,pt,rot);if(L.chain)tbox(a,'#ffc93c',-.09,1.14,-.13,.09,1.19,-.12,pt,rot);
+  tbox(a,L.skin,-.14,1.32,-.13,.14,1.6,.13,pt,rot);tbox(a,L.skin,-.05,1.27,-.05,.05,1.33,.05,pt,rot);
+  tbox(a,L.hair,-.155,1.57,-.145,.155,1.68,.145,pt,rot);tbox(a,L.hair,-.155,L.long?1.12:1.4,.1,.155,1.6,.16,pt,rot);
+  if(L.long){tbox(a,L.hair,-.17,1.22,-.02,-.14,1.6,.14,pt,rot);tbox(a,L.hair,.14,1.22,-.02,.17,1.6,.14,pt,rot)}
+  if(L.glasses){tbox(a,dark,-.15,1.45,-.145,.15,1.52,-.13,pt,rot);tbox(a,'#bfe6ff',-.12,1.46,-.148,-.03,1.51,-.144,pt,rot);tbox(a,'#bfe6ff',.03,1.46,-.148,.12,1.51,-.144,pt,rot)}
+  else{tbox(a,dark,-.09,1.46,-.135,-.05,1.5,-.13,pt,rot);tbox(a,dark,.05,1.46,-.135,.09,1.5,-.13,pt,rot)}
+  const limb=(ang,piv)=>({p:v=>{const r=rx(ang,v);return pt([r[0]+piv[0],r[1]+piv[1],r[2]+piv[2]])},n:v=>rot(rx(ang,v))});
+  [[-1,ps.aL||0],[1,ps.aR||0]].forEach(([sd,ang])=>{const T=limb(ang,[sd*(h+.055),1.27,0]);tbox(a,L.shirt,-.055,-.3,-.06,.055,.02,.06,T.p,T.n);tbox(a,L.skin,-.05,-.5,-.055,.05,-.3,.055,T.p,T.n);
+    if(sd>0&&ps.prop)tbox(a,ps.prop,-.05,-.62,-.13,.05,-.48,-.03,T.p,T.n)});
+  [[-1,ps.lL||0,ps.kL||0],[1,ps.lR||0,ps.kR||0]].forEach(([sd,ang,k])=>{if(ps.sit){ang=Math.PI/2;k=Math.PI/2}const piv=[sd*.1,.75,0],T=limb(ang,piv);tbox(a,L.pants,-.075,-.38,-.085,.075,0,.085,T.p,T.n);
+    const kn=rx(ang,[0,-.38,0]),T2=limb(ang-k,[piv[0]+kn[0],piv[1]+kn[1],piv[2]+kn[2]]);tbox(a,L.pants,-.07,-.3,-.08,.07,0,.08,T2.p,T2.n);tbox(a,dark,-.075,-.37,-.16,.075,-.3,.08,T2.p,T2.n)})}
+function charState(){if(P.act){const s=SPOT[P.act.id];return{x:s.pos[0],y:s.pos[1],z:s.pos[2],yaw:s.yaw,pose:s.pose,t:P.act.t}}return{x:P.x,y:0,z:P.z,yaw:P.yaw,pose:P.moving?'walk':'idle',t:performance.now()/1000}}
+
 function hex(h){if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];const n=parseInt(h.slice(1),16);return[(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]}
 function box(a,x,y,z,w,h,d,col){const c=typeof col==='string'?hex(col):col,x0=x-w/2,x1=x+w/2,y0=y,y1=y+h,z0=z-d/2,z1=z+d/2;
   const q=(p,n)=>{[0,1,2,0,2,3].forEach(i=>a.push(p[i][0],p[i][1],p[i][2],n[0],n[1],n[2],c[0],c[1],c[2]))};
@@ -265,10 +307,10 @@ function windowAt(a,x){box(a,x,1.05,-4.98,2.7,1.6,.05,'#ffffff');box(a,x,1.12,-4
   [[-.9,.5],[-.5,.9],[-.1,.6],[.35,1.1],[.8,.7]].forEach((b,i)=>box(a,x+b[0],1.12,-4.93,.33,b[1],.02,i%2?'#5f86b3':'#7399c4'));box(a,x,1.12,-4.92,.05,1.45,.03,'#ffffff')}
 function buildWorld(){const a=[];OBS=[];STN=[];const U=G?G.up:{};
   box(a,0,-.1,0,14,.1,10,'#e6a55c');for(let i=-6;i<=6;i+=2)box(a,i,-.005,0,.03,.01,10,'#d4924a');
-  box(a,0,0,-5.1,14.4,3.2,.2,'#f8eecf');box(a,0,0,5.1,14.4,3.2,.2,'#f8eecf');box(a,-7.1,0,0,.2,3.2,10.4,'#f3e6c0');box(a,7.1,0,0,.2,3.2,10.4,'#f3e6c0');box(a,0,3.2,0,14.4,.1,10.4,'#fffaf0');
+  box(a,0,0,-5.1,14.4,3.2,.2,'#f8eecf');box(a,-7.1,0,0,.2,3.2,10.4,'#f3e6c0');box(a,7.1,0,0,.2,3.2,10.4,'#f3e6c0');box(a,0,-.3,0,40,.18,40,'#bfe3c0');
   box(a,0,0,-4.97,14,.12,.04,'#c9b78a');box(a,0,.001,-2.3,4.6,.02,2.6,'#3f7fcf');box(a,0,.002,-2.3,4.1,.02,2.1,'#5a97e0');
-  windowAt(a,-3.9);windowAt(a,3.9);box(a,0,0,4.98,1.1,2.2,.05,'#8d5a3a');box(a,.4,1,4.94,.08,.08,.05,'#ffd54a');
-  for(let i=-1;i<=1;i++){box(a,i*4,3.1,0,1.2,.08,.4,'#ffffff')}
+  windowAt(a,-3.9);windowAt(a,3.9);
+  
   // 交易台
   box(a,0,.72,-4.2,2.8,.08,1.05,'#ffffff');[[-1.3,-4.65],[1.3,-4.65],[-1.3,-3.75],[1.3,-3.75]].forEach(l=>box(a,l[0],0,l[1],.08,.72,.08,'#9aa5b1'));solid(0,-4.2,2.8,1.05);
   const mons=U.screen?[0,-.95,.95]:[0];mons.forEach(mx=>{box(a,mx,.8,-4.5,.1,.22,.1,'#555');box(a,mx,.98,-4.5,.88,.58,.05,'#222b36');if(mx)box(a,mx,1.01,-4.47,.8,.52,.02,'#12324d')});
@@ -294,7 +336,7 @@ function buildWorld(){const a=[];OBS=[];STN=[];const U=G?G.up:{};
   [1.1,1.35,1.6].forEach(z=>box(a,6.5,.96,z,.12,.14,.12,'#ffffff'));STN.push({id:'coffee',n:'咖啡',ic:'☕',x:6.4,z:.9,y:1.75});
   // 沙发 + 家人
   box(a,-4.9,0,4.2,2.6,.42,1,'#ef7b52');box(a,-4.9,.42,4.6,2.6,.6,.22,'#e0653d');box(a,-6.1,.42,4.2,.22,.3,1,'#e0653d');box(a,-3.7,.42,4.2,.22,.3,1,'#e0653d');solid(-4.9,4.25,2.6,1.1);
-  person(a,-5.4,.42,4.05,'#ffb6c1','#5a3825',true);box(a,-4.9,0,2.9,1.2,.35,.6,'#b77b43');box(a,-4.7,.35,2.9,.2,.12,.2,'#ffffff');solid(-4.9,2.9,1.2,.6);
+  person(a,-5.4,.42,4.05,'#ffb6c1','#5a3825',true);
   STN.push({id:'sofa',n:'陪家人',ic:'🛋️',x:-4.9,z:3.9,y:1.65});
   // 床
   box(a,5,0,3.8,2.1,.35,2.3,'#8d6e63');box(a,5,.35,3.8,2,.18,2.2,'#ffffff');box(a,5,.53,3.4,2,.08,1.4,'#4f86c6');box(a,5,.53,4.6,1.2,.14,.45,'#fff3c4');box(a,5,0,4.95,2.1,1.1,.12,'#6d4c41');solid(5,3.8,2.1,2.3);
@@ -303,7 +345,8 @@ function buildWorld(){const a=[];OBS=[];STN=[];const U=G?G.up:{};
   if(U.asst){box(a,-3.6,.7,-3.6,1.2,.06,.7,'#ffffff');box(a,-3.6,0,-3.6,1.1,.7,.6,'#dfe6ee');box(a,-3.6,.76,-3.75,.5,.36,.05,'#222b36');solid(-3.6,-3.6,1.2,.7);person(a,-3.6,0,-2.95,'#4ea3ff','#222',false)}
   if(U.fund){box(a,0,2.72,-4.97,1.6,.3,.04,'#ffc93c');box(a,0,2.78,-4.95,1.3,.06,.02,'#8a6a10')}
   nS=a.length/9;gl.bindBuffer(gl.ARRAY_BUFFER,bufS);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(a),gl.STATIC_DRAW);mkLabels()}
-function dynMesh(){const a=[];if(!G)return a;const now=performance.now()/1000;
+function dynMesh(){const a=[];if(!G){if(draft)charMesh(a,lookOf(draft),0,0,1.5,Math.PI+Math.sin(performance.now()/1400)*.5,poseOf('idle',performance.now()/1000,0));return a}const now=performance.now()/1000;
+  {const c=charState();charMesh(a,lookOf(G),c.x,c.y,c.z,c.yaw,poseOf(c.pose,c.t,P.ph));if(c.pose==='sleep'&&c.t>1){const k=(now*.5)%1;box(a,5.3+k*.3,1.3+k*.7,4.3,.12+k*.1,.12+k*.1,.03,'#ffffff')}}
   // 主屏幕 K 线
   box(a,0,1.01,-4.47,.8,.52,.02,'#0d1b2a');const h=G.hist[G.view]||[],n=Math.min(h.length,22),s=h.slice(-n),mn=Math.min(...s),mx=Math.max(...s),rg=(mx-mn)||1;
   for(let i=1;i<n;i++){const y0=(Math.min(s[i],s[i-1])-mn)/rg,y1=(Math.max(s[i],s[i-1])-mn)/rg;box(a,-.36+i*(.72/22),1.04+y0*.42,-4.455,.022,Math.max(.012,(y1-y0)*.42),.01,s[i]>=s[i-1]?'#ff4d4f':'#18c27a')}
@@ -318,39 +361,52 @@ function bindAttr(){const st=36;['p','n','c'].forEach((n,i)=>{const l=gl.getAttr
 let MVP=new Float32Array(16),W=1,H=1;
 function mul(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
 function resize(){const d=Math.min(window.devicePixelRatio||1,2);W=window.innerWidth;H=window.innerHeight;cv.width=W*d;cv.height=H*d;gl.viewport(0,0,cv.width,cv.height)}
-function draw(){const asp=W/H,fov=asp<1?1.25:1.05,f1=1/Math.tan(fov/2),nr=.08,fr=40;
-  const P=new Float32Array([f1/asp,0,0,0,0,f1,0,0,0,0,(fr+nr)/(nr-fr),-1,0,0,2*fr*nr/(nr-fr),0]);
-  const cp=Math.cos(cam.pitch),f=[-Math.sin(cam.yaw)*cp,Math.sin(cam.pitch),-Math.cos(cam.yaw)*cp],r=[Math.cos(cam.yaw),0,-Math.sin(cam.yaw)],u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];
-  const e=[cam.x,1.55+Math.sin(bob)*.03,cam.z],d=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
-  const V=new Float32Array([r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-d(r,e),-d(u,e),d(f,e),1]);MVP=mul(P,V);
+function camUpdate(dt){let e,t;const zoom=asp=>asp<1?1:.8;
+  if(!G){e=[0,2.1,4.9];t=[0,.35,1.5]}
+  else{const c=charState(),m=M?1:0;if(P.act){e=[c.x+(c.yaw?0:.0),c.y+2.5,c.z+3.4+m*.6];t=[c.x,c.y+1.0-m*1.25,c.z+(c.pose==='sleep'?.9:0)];if(c.pose==='point'||c.pose==='drink'){e[0]=c.x+(c.yaw>0?1.6:-1.6);t[0]=c.x+(c.yaw>0?-.5:.5)}}
+    else{e=[c.x*.82,4.3,c.z+5.2];t=[c.x,.9-m*1.6,c.z-.5]}}
+  const k=dt>0?1-Math.exp(-dt*5):1;for(let i=0;i<3;i++){camS.e[i]+=(e[i]-camS.e[i])*k;camS.t[i]+=(t[i]-camS.t[i])*k}}
+function draw(){const asp=W/H,fov=asp<1?1.15:.95,f1=1/Math.tan(fov/2),nr=.1,fr=60;
+  const Pm=new Float32Array([f1/asp,0,0,0,0,f1,0,0,0,0,(fr+nr)/(nr-fr),-1,0,0,2*fr*nr/(nr-fr),0]);
+  const e=camS.e,tg=camS.t,d=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];let f=[tg[0]-e[0],tg[1]-e[1],tg[2]-e[2]];const fl=Math.hypot(...f);f=f.map(v=>v/fl);
+  let r=[-f[2],0,f[0]];const rl=Math.hypot(...r);r=r.map(v=>v/rl);const u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];
+  const V=new Float32Array([r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-d(r,e),-d(u,e),d(f,e),1]);MVP=mul(Pm,V);
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.uniformMatrix4fv(gl.getUniformLocation(prog,'m'),false,MVP);
   gl.bindBuffer(gl.ARRAY_BUFFER,bufS);bindAttr();gl.drawArrays(gl.TRIANGLES,0,nS);
   const dm=dynMesh();if(dm.length){gl.bindBuffer(gl.ARRAY_BUFFER,bufD);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(dm),gl.DYNAMIC_DRAW);bindAttr();gl.drawArrays(gl.TRIANGLES,0,dm.length/9)}}
 function proj(x,y,z){const m=MVP,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<.1)return null;return[((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*W,(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5+.5))*H,w]}
 // ============ 标签 & 交互 ============
-function mkLabels(){$('labels').innerHTML=STN.map(s=>`<div class="lab" id="lab_${s.id}" onclick="tapLab('${s.id}')">${s.ic} ${s.n}</div>`).join('')}
+function mkLabels(){$('labels').innerHTML=STN.map(s=>`<div class="lab" id="lab_${s.id}" onclick="go('${s.id}')">${s.ic} ${s.n}</div>`).join('')}
 let near=null;
-function updLabels(){near=null;let best=3;const fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw);
-  STN.forEach(s=>{const el=$('lab_'+s.id);if(!el)return;const p=proj(s.x,s.y,s.z),dx=s.x-cam.x,dz=s.z-cam.z,dist=Math.hypot(dx,dz);
+function updLabels(){near=null;let best=2.4;
+  STN.forEach(s=>{const el=$('lab_'+s.id);if(!el)return;const p=proj(s.x,s.y,s.z),ap=SPOT[s.id].ap,dist=Math.hypot(ap[0]-P.x,ap[1]-P.z);
     const ring=s.id==='phone'&&G.ring>0;el.className='lab'+(ring?' ring':'');if(s.id==='phone')el.textContent=ring?'📞 来电！':'📞 电话';
-    if(!p||(dist>8&&!ring)||M){el.style.display='none'}else{el.style.display='block';el.style.left=p[0]+'px';el.style.top=p[1]+'px';el.style.opacity=dist<3?1:.65;el.style.zIndex=Math.round(100-dist*5)}
-    const dot=(dx*fx+dz*fz)/(dist||1);if(dist<best&&dot>.2){best=dist;near=s}});
-  const hb=$('hand');if(near&&!M){hb.style.display='block';hb.innerHTML=`🖐<small>${near.n}</small>`}else hb.style.display='none'}
-function interact(){if(near&&!M&&G&&!G.over){ST[near.id]();renderHud()}}
-function tapLab(id){const s=STN.find(x=>x.id===id);if(Math.hypot(s.x-cam.x,s.z-cam.z)<3.4){ST[id]();renderHud()}else toast('走近一点再操作')}
+    if(M||P.act){el.style.display='none'}else{const q=p||[s.x<camS.e[0]?0:W,H];el.style.display='block';el.style.left=clamp(q[0],56,W-56)+'px';el.style.top=clamp(q[1],128,H-190)+'px'}
+    if(dist<best){best=dist;near=s}});
+  const hb=$('hand');if(near&&!M&&!P.act&&!P.walk){hb.style.display='block';hb.innerHTML=`🖐<small>${near.n}</small>`}else hb.style.display='none'}
+function interact(){if(near)go(near.id)}
+// 点物品名字：小人自己走过去，然后做动作
+function go(id){if(!G||G.over||M||P.act)return;const A=ACT[id];if(A.check&&!A.check())return;const s=SPOT[id];P.walk={id,x:s.ap[0],z:s.ap[1],t:0};sfx('tap')}
+function hold(id){P.act={id,hold:true,t:0}}
+function arrive(id){P.walk=null;P.moving=false;const A=ACT[id];if(A.check&&!A.check())return;if(A.arrive)A.arrive();else{P.act={id,t:0,dur:SPOT[id].dur,done:A.done};if(id==='tread')sfx('gym')}renderHud()}
+function release(){const s=SPOT[P.act.id];P.x=s.ap[0];P.z=s.ap[1];P.yaw=s.yaw;P.act=null}
 // ============ 操作 ============
-const joy={id:null,ox:0,oy:0,x:0,y:0},look={id:null,x:0,y:0},keys={};let bob=0;
-cv.addEventListener('pointerdown',e=>{if(M)return;if(e.pointerType!=='mouse'&&e.clientX<W*.45&&e.clientY>H*.45&&joy.id===null){joy.id=e.pointerId;joy.ox=e.clientX;joy.oy=e.clientY;joy.x=joy.y=0;const j=$('joy');j.style.left=(e.clientX-60)+'px';j.style.bottom=(H-e.clientY-60)+'px'}
-  else if(look.id===null){look.id=e.pointerId;look.x=e.clientX;look.y=e.clientY}try{cv.setPointerCapture(e.pointerId)}catch(x){}});
-cv.addEventListener('pointermove',e=>{if(e.pointerId===joy.id){let dx=(e.clientX-joy.ox)/45,dy=(e.clientY-joy.oy)/45;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}joy.x=dx;joy.y=dy;$('knob').style.transform=`translate(${dx*32}px,${dy*32}px)`}
-  else if(e.pointerId===look.id){cam.yaw-=(e.clientX-look.x)*.006;cam.pitch=clamp(cam.pitch-(e.clientY-look.y)*.005,-.9,.7);look.x=e.clientX;look.y=e.clientY}});
-const pend=e=>{if(e.pointerId===joy.id){joy.id=null;joy.x=joy.y=0;$('knob').style.transform='';const j=$('joy');j.style.left='26px';j.style.bottom='34px'}if(e.pointerId===look.id)look.id=null};
+const joy={id:null,ox:0,oy:0,x:0,y:0},keys={};
+cv.addEventListener('pointerdown',e=>{if(M||!G||joy.id!==null)return;joy.id=e.pointerId;joy.ox=e.clientX;joy.oy=e.clientY;joy.x=joy.y=0;const j=$('joy');j.style.left=(e.clientX-60)+'px';j.style.bottom=(H-e.clientY-60)+'px';try{cv.setPointerCapture(e.pointerId)}catch(x){}});
+cv.addEventListener('pointermove',e=>{if(e.pointerId!==joy.id)return;let dx=(e.clientX-joy.ox)/45,dy=(e.clientY-joy.oy)/45;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}joy.x=dx;joy.y=dy;$('knob').style.transform=`translate(${dx*32}px,${dy*32}px)`});
+const pend=e=>{if(e.pointerId===joy.id){joy.id=null;joy.x=joy.y=0;$('knob').style.transform='';const j=$('joy');j.style.left='26px';j.style.bottom='34px'}};
 cv.addEventListener('pointerup',pend);cv.addEventListener('pointercancel',pend);
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(e.key==='e'||e.key===' ')interact()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
 function blocked(x,z){if(x<-6.65||x>6.65||z<-4.65||z>4.65)return true;const r=.32;for(const o of OBS)if(x>o[0]-r&&x<o[1]+r&&z>o[2]-r&&z<o[3]+r)return true;return false}
-function move(dt){let mx=joy.x+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),my=joy.y+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
-  if(keys.q)cam.yaw+=dt*2;if(!mx&&!my)return;const l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l}const sp=3.4*dt,fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw),rx=Math.cos(cam.yaw),rz=-Math.sin(cam.yaw);
-  const nx=cam.x+(fx*-my+rx*mx)*sp,nz=cam.z+(fz*-my+rz*mx)*sp;if(!blocked(nx,cam.z))cam.x=nx;if(!blocked(cam.x,nz))cam.z=nz;const pb=bob;bob+=dt*9;if(Math.floor(pb/Math.PI)!==Math.floor(bob/Math.PI))sfx('step')}
+function step(mx,mz,dt){const sp=3.6*dt,nx=P.x+mx*sp,nz=P.z+mz*sp;let ok=false;if(!blocked(nx,P.z)){P.x=nx;ok=true}if(!blocked(P.x,nz)){P.z=nz;ok=true}
+  P.yaw+=((Math.atan2(-mx,-mz)-P.yaw+Math.PI*3)%(Math.PI*2)-Math.PI)*Math.min(1,dt*12);const pb=P.ph;P.ph+=dt*10;if(Math.floor(pb/Math.PI)!==Math.floor(P.ph/Math.PI))sfx('step');P.moving=true;return ok}
+function update(dt){P.moving=false;
+  if(P.act){const a=P.act;a.t+=dt;if(a.hold){if(!M)release()}else if(a.t>=a.dur){const d=a.done;release();if(d)d();renderHud()}return}
+  if(M)return;
+  let mx=joy.x+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),mz=joy.y+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);const l=Math.hypot(mx,mz);
+  if(l>.15){P.walk=null;if(l>1){mx/=l;mz/=l}step(mx,mz,dt);return}
+  if(P.walk){const w=P.walk,dx=w.x-P.x,dz=w.z-P.z,d=Math.hypot(dx,dz);w.t+=dt;if(d<.18||w.t>5){P.x=w.x;P.z=w.z;arrive(w.id);return}
+    if(!step(dx/d,dz/d,dt)){const sx=blocked(P.x+Math.sign(dx)*.1,P.z)?0:Math.sign(dx),sz=blocked(P.x,P.z+Math.sign(dz)*.1)?0:Math.sign(dz);if(sx||sz)step(sx,sz,dt);else w.t+=dt*3}}}
 // ============ HUD & 面板 ============
 function hm(t){t=Math.floor(t);const h=Math.floor(t/60)%24,m=t%60,ap=h>=12?'PM':'AM',h12=h%12||12;return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ap}`}
 function renderHud(){if(!G)return;const n=nw(),op=marketOpen();
@@ -361,12 +417,12 @@ function renderHud(){if(!G)return;const n=nw(),op=marketOpen();
 function updDesk(){if(!M||M.type!=='desk')return;AK.forEach(k=>{const a=$('pr_'+k),b=$('ch_'+k);if(a){a.textContent=fmtP(G.prices[k]);const c=G.prices[k]/G.open[k]-1;b.textContent=pct(c);b.className=cls(c)}});
   G.pos.forEach(p=>{const el=$('pp_'+String(p.id).replace('.','_'));if(el){const pl=posVal(p)-p.margin;el.textContent=`${pl>=0?'+':''}${money(pl)} (${pct(pl/p.margin)})`;el.className=cls(pl)}});const c=$('dcash');if(c)c.textContent=money(G.cash)}
 const fmtP=p=>p>=1000?p.toFixed(0):p.toFixed(2);
-function renderModal(){const el=$('modal');if(!M){el.style.display='none';el.innerHTML='';return}el.style.display='flex';let h='';
+function renderModal(){const el=$('modal');if(!M){el.style.display='none';el.innerHTML='';return}el.style.display='flex';el.style.background=['desk','event','result','report','confirm'].includes(M.type)?'rgba(20,26,36,.12)':'rgba(20,26,36,.45)';let h='';
   if(M.type==='start'){const c=draft;h=`<h3>📈 天才交易员 3D</h3><p class="dim">在自己的交易室里走动、盯盘、生活。盈亏只是人生的一部分。</p>
    <div class="row"><b style="font-size:20px">${c.name}</b><span class="tag">${c.bg}</span><span class="sp"></span><span class="dim">${c.gender} · ${c.age}岁 · ${c.city}</span></div>
    <div class="attr"><div><b>${c.int}</b>智力</div><div><b>${c.body}</b>体质</div><div><b>${c.luck}</b>运气</div></div><p>启动资金 <b class="up">${money(c.cash)}</b></p>
    ${c.traits.map(t=>`<div><span class="tag">${t}</span><span class="dim">${TRAITS[t]}</span></div>`).join('')}
-   <p class="dim" style="font-size:12px">左下摇杆走路，滑动屏幕转头，走到物品旁点右下 🖐。9:30 开盘、15:00 收盘，行情实时跳动。<span class="up">红涨</span><span class="down">绿跌</span>。</p>
+   <p class="dim" style="font-size:12px">点物品的名字，小人会自己走过去做事；也可以按住屏幕拖动来走路。9:30 开盘、15:00 收盘，行情实时跳动。<span class="up">红涨</span><span class="down">绿跌</span>。</p>
    <div class="row" style="margin-top:8px"><button class="btn" style="flex:1" onclick="draft=genChar();sfx('research');renderModal()">🎲 重新投胎</button><button class="btn pri" style="flex:2" onclick="start()">开始</button></div>`}
   else if(M.type==='desk'){h=`<div class="row"><h3 style="margin:0">交易台</h3><span class="sp"></span><span class="dim">现金 <b id="dcash">${money(G.cash)}</b></span><button class="btn sm" onclick="closeM()">✕ 离开</button></div>
    <div class="tabs" style="margin-top:8px"><button class="btn sm ${M.tab==='trade'?'on':''}" onclick="M.tab='trade';M.pick=null;renderModal()">📈 交易</button><button class="btn sm ${M.tab==='up'?'on':''}" onclick="M.tab='up';renderModal()">🛒 升级</button></div>`;
@@ -397,13 +453,13 @@ function renderModal(){const el=$('modal');if(!M){el.style.display='none';el.inn
 function closeM(){M=null;sfx('tap');renderModal()}
 function openStatus(){if(!G||(M&&M.type!=='desk'))return;M={type:'status'};renderModal()}
 function buy(id){const u=UPG.find(x=>x.id===id);if(G.cash<u.c||G.lvl<u.lv||own(id))return;pay(-u.c);G.up[id]=1;if(id==='fund'){G.aum=5e7;life('成立私募基金')}else life('购入'+u.n);sfx('level');toast('✅ 已购买：'+u.n);buildWorld();save();renderModal();renderHud()}
-function start(){newGame(draft);draft=null;M=null;cam.x=0;cam.z=2.2;cam.yaw=0;sfx('level');renderModal();renderHud();toast(`☀️ 第1天 8:30 · 📰 ${G.news}。先去白板研究，9:30 开盘`)}
+function start(){newGame(draft);draft=null;M=null;P.x=0;P.z=1.5;P.yaw=Math.PI;P.act=null;P.walk=null;sfx('level');renderModal();renderHud();toast(`☀️ 第1天 8:30 · 📰 ${G.news}。点「研究白板」让小人去研究，9:30 开盘`)}
 function restart(){try{localStorage.removeItem('trader3d_v1')}catch(e){}G=null;draft=genChar();M={type:'start'};buildWorld();renderModal();$('hud').innerHTML=$('bars').innerHTML=$('pnl').innerHTML=''}
 // ============ 主循环 ============
 let last=0,hudT=0;
 function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
-  if(G&&!G.over){if(!M)move(dt);if(!M||M.type==='desk'){addTime(dt*3);hudT+=dt;if(hudT>.5){hudT=0;renderHud()}}}
-  draw();if(G)updLabels();requestAnimationFrame(frame)}
+  if(G&&!G.over){update(dt);if(!M||M.type==='desk'){addTime(dt*3);hudT+=dt;if(hudT>.5){hudT=0;renderHud()}}}
+  camUpdate(dt);draw();if(G)updLabels();requestAnimationFrame(frame)}
 initGL();resize();addEventListener('resize',resize);
 $('sndBtn').textContent=SND.on?'🔊':'🔇';$('bgmBtn').style.opacity=SND.bgm?1:.4;
 try{const s=localStorage.getItem('trader3d_v1');if(s){const g=JSON.parse(s);if(g&&g.prices&&g.up)G=g}}catch(e){}
