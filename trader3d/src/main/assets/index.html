@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>天才交易员 3D</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#cfe8ff;font:14px/1.4 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#243}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.up{color:#e5352b}.down{color:#12a05c}.dim{color:#7a8794}
+#hud{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:5px;flex-wrap:wrap;pointer-events:none;z-index:3}
+.chip{background:rgba(40,48,60,.82);color:#fff;border-radius:8px;padding:4px 8px;font-weight:700;font-size:13px;line-height:1.2;box-shadow:0 2px 0 rgba(0,0,0,.25);pointer-events:auto}
+.chip small{display:block;font-size:10px;font-weight:400;opacity:.8}
+.chip.red{background:#d9382c}.chip.green{background:#1f9d57}.chip.gold{background:#e09a12}.chip.blue{background:#2f7fd6}
+#bars{position:fixed;top:54px;left:8px;z-index:3;pointer-events:none;width:118px}
+.mb{display:flex;align-items:center;gap:4px;font-size:10px;color:#fff;text-shadow:0 1px 2px #000;margin-bottom:3px}
+.mb i{flex:1;height:6px;background:rgba(0,0,0,.35);border-radius:4px;overflow:hidden;display:block}
+.mb i b{display:block;height:100%;border-radius:4px}
+#pnl{position:fixed;top:54px;right:8px;z-index:3;text-align:right;font-weight:800;font-size:15px;text-shadow:0 1px 0 #fff,0 0 6px #fff;pointer-events:none}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:2}
+.lab{position:absolute;transform:translate(-50%,-50%);background:#fff;border:2px solid #243;border-radius:14px;padding:3px 9px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:auto;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.lab.ring{background:#d9382c;color:#fff;border-color:#fff;animation:shake .4s infinite}
+@keyframes shake{25%{margin-left:-3px}75%{margin-left:3px}}
+#joy{position:fixed;left:26px;bottom:34px;width:120px;height:120px;border-radius:50%;background:rgba(40,48,60,.28);border:2px solid rgba(255,255,255,.6);z-index:2;pointer-events:none}
+#knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(40,48,60,.7);border:2px solid #fff}
+#hand{position:fixed;right:26px;bottom:44px;width:92px;height:92px;border-radius:50%;border:3px solid #fff;background:rgba(70,60,45,.85);color:#fff;font-size:34px;z-index:4;display:none;line-height:1;padding:0}
+#hand small{display:block;font-size:11px;font-weight:700;margin-top:2px}
+#hand:active{transform:scale(.94)}
+#side{position:fixed;right:8px;top:92px;z-index:3;display:flex;flex-direction:column;gap:6px}
+.rb{width:40px;height:40px;border-radius:50%;border:2px solid #fff;background:rgba(40,48,60,.8);color:#fff;font-size:18px;padding:0}
+#toast{position:fixed;left:50%;top:112px;transform:translateX(-50%);background:rgba(30,36,46,.92);color:#fff;padding:8px 14px;border-radius:12px;font-size:13px;z-index:8;max-width:86%;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+#flash{position:fixed;inset:0;background:#d9382c;opacity:0;pointer-events:none;z-index:7;transition:opacity .5s}
+#modal{position:fixed;inset:0;z-index:6;display:none;align-items:flex-end;justify-content:center;background:rgba(20,26,36,.45)}
+.sheet{background:#fffdf6;border-radius:18px 18px 0 0;width:100%;max-width:520px;max-height:84vh;overflow:auto;padding:14px 14px 20px;border-top:4px solid #243;animation:up .2s}
+@keyframes up{from{transform:translateY(50px);opacity:0}}
+.sheet h3{margin:0 0 6px;font-size:18px}.sheet p{margin:6px 0}
+.btn{border:2px solid #243;background:#fff;border-radius:11px;padding:8px 10px;font-size:14px;font-weight:700;color:#243;box-shadow:0 3px 0 #243}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #243}.btn:disabled{opacity:.4}
+.btn.pri{background:#ffc93c}.btn.long{background:#ffe1de;color:#d9382c;border-color:#d9382c;box-shadow:0 3px 0 #d9382c}.btn.short{background:#dcf5e7;color:#12a05c;border-color:#12a05c;box-shadow:0 3px 0 #12a05c}
+.btn.sm{padding:5px 9px;font-size:12px}.btn.on{background:#243;color:#fff}
+.choice{display:block;width:100%;text-align:left;margin-top:9px;padding:10px 12px}
+.choice small{display:block;font-weight:400;color:#7a8794;font-size:12px}
+.row{display:flex;align-items:center;gap:8px}.sp{flex:1}
+.as{display:flex;align-items:center;gap:6px;padding:7px 0;border-top:1px solid #e6dfcc}
+.as .nm{width:74px;font-weight:700}.as .pr{width:78px;text-align:right;font-variant-numeric:tabular-nums}
+.sig{font-size:10px;padding:1px 5px;border-radius:5px;background:#f1ead6}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 9px}
+.upg{border:2px solid #243;border-radius:12px;padding:8px 10px;margin-top:8px;display:flex;align-items:center;gap:8px;background:#fff}
+.upg.own{background:#e9f8ee;border-color:#12a05c}
+table.rep{width:100%;border-collapse:collapse}table.rep td{padding:4px 2px;border-bottom:1px solid #e6dfcc}table.rep td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.attr{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}.attr div{background:#f3ecd8;border-radius:8px;padding:6px;text-align:center}.attr b{display:block;font-size:17px}
+.tag{display:inline-block;border:2px solid #243;border-radius:20px;padding:1px 8px;font-size:12px;font-weight:700;margin:2px 4px 2px 0;background:#ffc93c}
+.big{font-size:46px;text-align:center}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="labels"></div>
+<div id="hud"></div><div id="bars"></div><div id="pnl"></div>
+<div id="side"><button class="rb" onclick="openStatus()">👤</button><button class="rb" id="sndBtn" onclick="toggleSnd()">🔊</button><button class="rb" id="bgmBtn" onclick="toggleBgm()">🎵</button></div>
+<div id="joy"><div id="knob"></div></div>
+<button id="hand" onclick="interact()"></button>
+<div id="toast"></div><div id="flash"></div>
+<div id="modal"></div>
+<script>
+'use strict';
+// ============ 工具 ============
+const R=Math.random,ri=(a,b)=>a+Math.floor(R()*(b-a+1)),pick=a=>a[Math.floor(R()*a.length)],clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function gauss(){let u=0,v=0;while(!u)u=R();while(!v)v=R();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function money(v){const s=v<0?'-':'';v=Math.abs(v);if(v>=1e8)return s+(v/1e8).toFixed(2)+'亿';if(v>=1e4)return s+(v/1e4).toFixed(v>=1e6?0:1)+'万';return s+Math.round(v)}
+const pct=(v,d=1)=>(v>=0?'+':'')+(v*100).toFixed(d)+'%',cls=v=>v>0?'up':v<0?'down':'dim';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// ============ 数据 ============
+const SUR='王李张刘陈杨黄赵吴周徐孙马朱胡郭何林罗高郑梁谢宋唐许韩冯邓曹'.split('');
+const MN='浩然 子轩 宇航 俊杰 志强 明哲 一鸣 天佑 博文 嘉豪'.split(' '),FN='梓涵 欣怡 诗琪 雨桐 思颖 佳怡 若曦 可馨 婉清 语嫣'.split(' ');
+const CITIES=[['上海',1.4],['北京',1.4],['深圳',1.35],['杭州',1.15],['广州',1.15],['成都',.95],['武汉',.95],['重庆',.85],['西安',.85]];
+const BGS={寒门:[5e4,3],工薪:[15e4,4],中产:[5e5,2.4],富二代:[3e6,.6]};
+const TRAITS={数学天才:'研究更准',钢铁心态:'压力增长减少四成',赌徒血统:'杠杆上限+2，容易上头',天选之子:'运气好，常有意外之财',夜猫子:'每天精力+20',玻璃心:'压力增长多四成',身体倍儿棒:'健康下降减半',社交达人:'陪家人效果翻倍'};
+const ASSETS={idx:{n:'沪深300',p:4000,sd:3,mu:{bull:1.5,range:0,bear:-1.5,crash:-7}},tech:{n:'科技股',p:100,sd:5,mu:{bull:2.5,range:0,bear:-2.5,crash:-10}},
+ gold:{n:'黄金',p:600,sd:2,mu:{bull:.3,range:.2,bear:.6,crash:2.5}},oil:{n:'原油',p:80,sd:5,mu:{bull:1,range:0,bear:-1.5,crash:-8}},btc:{n:'比特币',p:60000,sd:9,mu:{bull:5,range:0,bear:-5,crash:-14}}};
+const AK=Object.keys(ASSETS),REG={bull:'牛市',range:'震荡',bear:'熊市',crash:'股灾'};
+const TRANS={bull:{bull:.7,range:.2,bear:.08,crash:.02},range:{bull:.25,range:.5,bear:.2,crash:.05},bear:{bull:.12,range:.33,bear:.45,crash:.1},crash:{bull:.15,range:.3,bear:.45,crash:.1}};
+const NEWS={bull:['央行意外降息，情绪升温','外资持续流入','经济数据超预期'],range:['市场缺乏方向','消息面清淡','多空分歧加大'],bear:['资金外流加剧','企业盈利下滑','避险情绪升温'],crash:['大型机构传出流动性危机','杠杆资金集中平仓','地缘冲突突然升级']};
+const UPG=[
+ {id:'chair',n:'人体工学椅',ic:'🪑',c:2e4,lv:1,d:'压力增长 -30%'},
+ {id:'screen',n:'多屏工作站',ic:'🖥️',c:8e4,lv:2,d:'杠杆上限提到 5×'},
+ {id:'coffee',n:'专业咖啡机',ic:'☕',c:5e4,lv:2,d:'咖啡精力+40，不再伤身'},
+ {id:'term',n:'专业行情终端',ic:'📡',c:4e5,lv:4,d:'研究更准，杠杆上限 10×'},
+ {id:'stop',n:'智能止损系统',ic:'🛡️',c:15e5,lv:6,d:'亏到本金80%自动平仓，不再爆仓'},
+ {id:'asst',n:'聘请助理',ic:'🧑‍💼',c:3e6,lv:7,d:'每天收盘后自动研究2个品种，日开销+2万'},
+ {id:'fund',n:'成立私募基金',ic:'🏦',c:1e7,lv:9,d:'管理5000万外部资金，赚管理费和业绩提成'}];
+const TITLES=[[1e9,'交易传奇'],[1e8,'对冲基金大佬'],[1e7,'私募大佬'],[1e6,'职业交易员'],[0,'散户']];
+// ============ 状态 ============
+let G=null,M=null,draft=null;
+function genChar(){const gender=R()<.5?'男':'女',city=pick(CITIES);const bl=Object.keys(BGS);let tw=bl.reduce((s,k)=>s+BGS[k][1],0),x=R()*tw,bg=bl[0];for(const k of bl){x-=BGS[k][1];if(x<0){bg=k;break}}
+  const tk=Object.keys(TRAITS),tr=[];while(tr.length<2){const t=pick(tk);if(tr.includes(t)||(tr[0]==='钢铁心态'&&t==='玻璃心')||(tr[0]==='玻璃心'&&t==='钢铁心态'))continue;tr.push(t)}
+  return{name:pick(SUR)+pick(gender==='男'?MN:FN),gender,city:city[0],mul:city[1],bg,cash:BGS[bg][0],age:ri(22,26),int:ri(35,85),luck:ri(30,80),body:ri(40,90),traits:tr}}
+const hasT=t=>G.traits.includes(t),own=id=>!!G.up[id];
+function newGame(c){G={...c,day:1,t:510,nextTick:516,energy:100,health:Math.round(55+c.body*.4),stress:15,family:60,comply:80,lvl:1,xp:0,up:{},pos:[],prices:{},open:{},hist:{},sig:{},trend:{},regime:pick(['bull','range','range','bear']),news:'',
+  coffee:0,calls:0,ring:0,ringEv:null,flow:0,startNw:c.cash,flags:{},aum:0,peak:c.cash,view:'idx',life:[],over:null,closed:false,rent:1};
+  AK.forEach(k=>{G.prices[k]=ASSETS[k].p*(.85+R()*.3);G.open[k]=G.prices[k];G.hist[k]=[G.prices[k]]});
+  rollTrend(false);G.energy=maxEnergy();life(`${G.age}岁，在${G.city}租下一间小交易室，带着${money(G.cash)}开始全职交易`);buildWorld();save()}
+function life(t){G.life.push(`第${G.day}天：${t}`)}
+function posVal(p){return p.margin*(1+p.lev*p.dir*(G.prices[p.k]/p.entry-1))}
+function posTotal(){return G.pos.reduce((s,p)=>s+Math.max(0,posVal(p)),0)}
+function posPL(){return G.pos.reduce((s,p)=>s+Math.max(0,posVal(p))-p.margin,0)}
+function nw(){return G.cash+posTotal()}
+function levCap(){return (own('term')?10:own('screen')?5:3)+(hasT('赌徒血统')?2:0)}
+function maxEnergy(){return 100+(hasT('夜猫子')?20:0)}
+function acc(){return clamp(.63+(G.int-50)/250+(hasT('数学天才')?.05:0)+(own('term')?.08:0),.5,.85)}
+function stressMul(){return (hasT('钢铁心态')?.6:hasT('玻璃心')?1.4:1)*(own('chair')?.7:1)}
+function addStress(v){G.stress=clamp(G.stress+(v>0?v*stressMul():v),0,100)}
+function pay(v){G.cash+=v;G.flow+=v}
+function income(){return 1e4}function cost(){return Math.round(7e3*G.mul*G.rent+(own('asst')?2e4:0)+(own('fund')?5e4:0))}
+function title(){const n=nw();return TITLES.find(t=>n>=t[0])[1]}
+function marketOpen(){return G.t>=570&&G.t<900}
+function rollTrend(next){if(next){const t=TRANS[G.regime];let x=R();for(const k in t){x-=t[k];if(x<0){G.nextReg=k;break}}}else G.nextReg=G.regime;
+  AK.forEach(k=>G.trend[k]=(ASSETS[k].mu[G.nextReg]+ASSETS[k].sd*.8*gauss())/100);G.sig={};G.news=pick(NEWS[R()<.6?G.nextReg:pick(Object.keys(REG))]);
+  if(own('asst')){research(true);research(true)}}
+function research(silent){const left=AK.filter(k=>!G.sig[k]);if(!left.length)return null;const k=pick(left),p=acc(),truth=Math.sign(G.trend[k])||1;
+  G.sig[k]={dir:R()<p?truth:-truth,conf:clamp(p+(R()-.5)*.06,.5,.95)};return k}
+// ============ 时间 & 行情 ============
+function addTime(m){if(!G||G.over)return;G.t+=m;let guard=0;while(G.nextTick<=G.t&&guard++<400&&!G.over){tick(G.nextTick);G.nextTick+=6}}
+function tick(t){
+  if(t===570){sfx('bell');toast('🔔 开盘了！'+REG[G.regime]+'行情')}
+  if(t>=570&&t<900){AK.forEach(k=>{const A=ASSETS[k];G.prices[k]*=1+G.trend[k]/55+A.sd*.6/100/7.4*gauss();G.hist[k].push(G.prices[k]);if(G.hist[k].length>40)G.hist[k].shift()});
+    if(G.day>2&&R()<.0008)swan();
+    checkLiq();const ex=G.pos.reduce((s,p)=>s+p.margin*p.lev,0)/Math.max(nw(),1);if(ex>1)addStress(Math.min(ex,8)*.04);updDesk()}
+  if(t===900&&!G.closed){G.closed=true;sfx('bell');G.regime0=G.regime;rollTrend(true);toast('🔔 收盘。可以研究明天的行情，或者去生活')}
+  if(G.ring>0){G.ring--;if(G.ring%2===0)sfx('ring');if(!G.ring){G.ringEv=null;G.family=clamp(G.family-3,0,100);toast('📵 错过了一个电话')}}
+  else if(t>=540&&t<1320&&G.calls<2&&R()<.008){const e=pickEvent();if(e){G.ring=15;G.ringEv=e.id;G.calls++;sfx('ring');toast('📞 电话响了！去桌边接电话')}}
+  if(t>=1440&&!G.over){toast('😵 熬到半夜，倒头就睡');G.health=clamp(G.health-5,0,100);sleep(true)}
+}
+function swan(){const m={idx:-.09,tech:-.15,btc:-.22,oil:-.15,gold:.05};AK.forEach(k=>G.prices[k]*=1+m[k]);sfx('boom');flash();toast('⚠️ 黑天鹅！全球市场瞬间暴跌');addStress(10);life('遭遇黑天鹅')}
+function checkLiq(){for(let i=G.pos.length-1;i>=0;i--){const p=G.pos[i],v=posVal(p);
+  if(own('stop')&&p.lev>1&&v<=p.margin*.2&&v>0){closePos(p.id,true);toast('🛡️ 止损系统自动平掉了'+ASSETS[p.k].n);continue}
+  if(v<=p.margin*.02){G.pos.splice(i,1);sfx('boom');flash();toast(`💥 ${ASSETS[p.k].n} 爆仓！亏掉 ${money(p.margin)}`);addStress(12);life(`${ASSETS[p.k].n}爆仓，亏掉${money(p.margin)}`);if(M&&M.type==='desk')renderModal()}}}
+function openPos(k,dir,lev,amt){if(!marketOpen()){toast('休市中，9:30 开盘');return false}amt=Math.min(amt,G.cash);if(amt<100||lev>levCap())return false;
+  const nt=amt*lev,fee=nt*(.0005+clamp(nt/3e10,0,.04));G.cash-=amt;G.pos.push({k,dir,lev,margin:amt-fee,entry:G.prices[k],id:Date.now()+R()});G.view=k;sfx('buy');save();return true}
+function closePos(id,auto){const i=G.pos.findIndex(p=>p.id===id);if(i<0)return;if(!marketOpen()&&!auto){toast('休市中，明天开盘再平仓');return}
+  const p=G.pos[i],v=Math.max(0,posVal(p)),nt=p.margin*p.lev*(G.prices[p.k]/p.entry),fee=Math.min(v,nt*(.0005+clamp(nt/3e10,0,.04)));G.cash+=v-fee;G.pos.splice(i,1);sfx(v-fee>p.margin?'coin':'sell');save()}
+// ============ 生活动作 ============
+function useEnergy(e){if(G.energy<e){toast('😩 精力不够了，喝杯咖啡或去睡觉');sfx('bad');return false}G.energy-=e;return true}
+const ST={
+ desk(){M={type:'desk',tab:'trade'};sfx('tap');renderModal()},
+ board(){if(Object.keys(G.sig).length>=5)return toast('五个品种都研究过了');if(!useEnergy(20))return;addTime(30);addStress(1);const k=research();sfx('research');
+   toast(`🔍 研究了${ASSETS[k].n}：${G.closed?'明天':'今天'}${G.sig[k].dir>0?'看涨📈':'看跌📉'}（把握${Math.round(G.sig[k].conf*100)}%）`)},
+ tread(){if(!useEnergy(25))return;addTime(60);G.health=clamp(G.health+6,0,100);addStress(-8);sfx('gym');toast('🏃 跑了一小时，健康+6 压力-8')},
+ coffee(){if(G.coffee>=3)return toast('今天已经喝了三杯，再喝心脏受不了');G.coffee++;const up=own('coffee');G.energy=Math.min(maxEnergy(),G.energy+(up?40:25));if(!up)G.health=clamp(G.health-2,0,100);addTime(10);sfx('coin');toast(up?'☕ 一杯好咖啡，精力+40':'☕ 速溶咖啡，精力+25 健康-2')},
+ sofa(){if(!useEnergy(15))return;addTime(60);const g=hasT('社交达人')?20:10;G.family=clamp(G.family+g,0,100);addStress(-6);sfx('calm');toast(`🛋️ 陪家人聊了会儿天，家庭+${g}`)},
+ bed(){const warn=marketOpen()&&G.pos.length;M={type:'confirm',title:'睡觉，结束今天？',desc:(warn?'⚠️ 还没收盘，你还有持仓，睡着后没人盯盘。':'')+(G.t<900?'现在睡会直接跳到收盘后。':'好好睡一觉，明天精力恢复。'),yes:'sleep()'};renderModal()},
+ phone(){if(!G.ring)return toast('没有来电');const e=EV.find(x=>x.id===G.ringEv);G.ring=0;G.ringEv=null;showEvent(e)}
+};
+// ============ 事件 ============
+const EV=[
+ {id:'dad',w:g=>g.day>6?1:0,once:1,t:'父亲住院',d:'老家来电话，父亲突发心梗住进ICU，要尽快手术。',ch:[
+  {t:'全力救治',cost:15e4,f(g){pay(-15e4);g.family+=15;life('花15万救治父亲');return '手术很成功。家庭+15'}},
+  {t:'普通方案',cost:4e4,f(g){pay(-4e4);g.family+=3;addStress(8);return '你在医院和盘面之间来回奔波。'}},
+  {t:'让兄弟姐妹先出',f(g){g.family-=18;return '电话那头沉默了很久。家庭-18'}}]},
+ {id:'loan',w:()=>1,t:'朋友借钱',d:'大学室友创业失败，想借3万周转。',ch:[
+  {t:'借给他',cost:3e4,f(g){pay(-3e4);if(R()<.4+g.luck/300){g.flags.loanBack=g.day+ri(3,8);}return '他说一定会还。'}},{t:'婉拒',f(){return '你找了个理由推掉了。'}}]},
+ {id:'insider',w:g=>g.day>5?.7:0,once:1,t:'内幕消息',d:'做高管的老同学酒后透露：他们公司明天有重大利好，科技股要大涨。',ch:[
+  {t:'记下来，重仓干',s:'科技股高把握信号，合规-40',f(g){g.comply-=40;if(R()<.6)g.flags.insider=1;g.trend.tech=Math.abs(g.trend.tech)+.08;g.sig.tech={dir:1,conf:.92};return '科技股信号：看涨（92%）。这钱烫手。'}},
+  {t:'当没听见',f(g){g.comply=Math.min(100,g.comply+5);return '有些钱不能赚。'}}]},
+ {id:'csrc',w:g=>g.flags.insider||g.flags.fraud?2.5:0,t:'证监会来电',d:'稽查局通知：你的账户被列入异常交易调查。',ch:[
+  {t:'请律师，如实配合',f(g){pay(-Math.min(Math.max(g.cash,0),clamp(nw()*.08,3e4,5e5)));delete g.flags.insider;delete g.flags.fraud;addStress(20);g.comply=60;if(R()<.1){g.over='jail';return '证据确凿，你被判处有期徒刑。'}const fine=Math.max(0,g.cash)*.3;pay(-fine);life(`被查，罚没${money(fine)}`);return `没收违法所得并罚款${money(fine)}。`}},
+  {t:'销毁聊天记录',s:'赌一把',f(g){delete g.flags.insider;delete g.flags.fraud;if(R()<.4){g.over='jail';return '技术恢复了所有记录，罪加一等。'}addStress(15);g.comply=40;return '调查不了了之，但你每晚都睡不好。'}}]},
+ {id:'kol',w:g=>g.lvl>=3?.6:0,once:1,t:'网红带单',d:'百万粉丝的财经网红找你合作喊单割韭菜，分你一半。',ch:[
+  {t:'干了',s:'快钱30万，合规-50',f(g){pay(3e5);g.comply-=50;if(R()<.6)g.flags.fraud=1;return '钱到账了，群里骂声一片。'}},{t:'拒绝',f(g){g.xp+=2;return '后来听说那个网红被抓了。经验+2'}}]},
+ {id:'checkup',w:g=>g.health<60?1.2:.3,t:'体检异常',d:'体检报告上有几个箭头，医生建议复查。',ch:[
+  {t:'认真复查',cost:2e4,f(g){pay(-2e4);g.health+=12;return '发现得早，问题不大。健康+12'}},{t:'以后再说',f(g){g.health-=6;return '你把报告塞进了抽屉。健康-6'}}]},
+ {id:'mom',w:g=>g.family<50?1.5:.5,t:'妈妈来电',d:'“这么久不回家，眼里只有那几块屏幕？”',ch:[
+  {t:'聊上一小时',s:'花60分钟',f(g){addTime(60);g.family+=12;addStress(-4);return '妈妈唠叨了很多，你心里踏实了些。家庭+12'}},{t:'在忙，回头说',f(g){g.family-=8;return '电话挂得有点快。家庭-8'}}]},
+ {id:'reunion',w:()=>.5,t:'同学聚会',d:'今晚同学聚会，大家都想听听你全职交易的故事。',ch:[
+  {t:'去',cost:5e3,f(g){pay(-5e3);addTime(120);addStress(-8);g.family+=4;return '久违地笑了一晚上。压力-8'}},{t:'不去',f(){return '你继续盯着屏幕。'}}]},
+ {id:'rent',w:g=>g.day>10?.4:0,once:1,t:'房东涨租',d:'房东说下个月起租金上调20%。',ch:[{t:'接受',f(g){g.rent*=1.2;return '每天的开销变高了。'}},{t:'讨价还价',f(g){if(R()<.5){g.rent*=1.08;return '最后只涨了8%。'}g.rent*=1.25;return '谈崩了，反而涨了25%。'}}]},
+ {id:'exch',w:g=>g.pos.some(p=>p.k==='btc')?1:0,t:'交易所暴雷',d:'你买比特币的交易所宣布暂停提币。',ch:[{t:'……',f(g){let l=0;g.pos.forEach(p=>{if(p.k==='btc'){l+=p.margin*.5;p.margin*=.5}});return `只追回一半，损失${money(l)}。`}}]},
+ {id:'tax',w:g=>nw()>3e6?.5:0,t:'税务稽查',d:'税务局通知你有未申报的交易收益。',ch:[{t:'补税',f(g){const v=Math.max(0,g.cash)*.05;pay(-v);return `补缴${money(v)}，事情了结。`}},{t:'托关系',s:'合规-25',f(g){pay(-Math.min(Math.max(g.cash,0),1e5));g.comply-=25;if(R()<.4){const v=Math.max(0,g.cash)*.12;pay(-v);return `找的人先出事了，加倍罚款${money(v)}。`}return '对方说没问题了。'}}]},
+ {id:'windfall',w:g=>hasT('天选之子')?.25:.03,t:'意外之财',d:'老家拆迁，你分到一笔补偿款。',ch:[{t:'收下',f(g){const v=ri(3,15)*1e4;pay(v);return `到账${money(v)}。`}}]},
+ {id:'loanback',w:g=>g.flags.loanBack&&g.day>=g.flags.loanBack?8:0,t:'室友还钱了',d:'当初借钱的室友打来电话。',ch:[{t:'接',f(g){delete g.flags.loanBack;pay(4e4);return '他东山再起，连本带利还了4万。'}}]},
+ {id:'mentor',w:g=>g.lvl>=2?.4:0,once:1,t:'老交易员',d:'一位穿越过三轮牛熊的前辈愿意带你，学费不菲。',ch:[{t:'拜师',cost:8e4,f(g){pay(-8e4);g.int=Math.min(100,g.int+12);life('拜师学艺');return '第一课：活下来。研究准确率提高了。'}},{t:'婉拒',f(){return '你相信自己能悟出来。'}}]},
+];
+const TILT={id:'tilt',t:'上头了',d:'昨天亏得太狠，你一睁眼就想马上翻本。',ch:[
+ {t:'满仓梭哈一把',s:'孤注一掷',f(g){const bet=Math.max(0,g.cash)*.6;if(R()<.4+g.luck/500){g.cash+=bet*.5;return `奇迹般赚回${money(bet*.5)}。`}g.cash-=bet*.7;addStress(10);life('上头翻本，越亏越多');return `又亏了${money(bet*.7)}。`}},
+ {t:'今天不交易，休息',f(g){addStress(-15);return '你关掉屏幕，出门走了走。压力-15'}},
+ {t:'认真复盘',f(g){g.int=Math.min(100,g.int+2);addStress(-5);return '你写下三条再也不犯的错误。'}}]};
+function pickEvent(){const pool=EV.filter(e=>!(e.once&&G.flags['o_'+e.id])).map(e=>[e,e.w(G)]).filter(x=>x[1]>0);let tw=pool.reduce((s,x)=>s+x[1],0),x=R()*tw;for(const[e,w]of pool){x-=w;if(x<0)return e}return null}
+function showEvent(e){if(e.once)G.flags['o_'+e.id]=1;M={type:'event',ev:e};sfx('event');renderModal()}
+function choose(i){const c=M.ev.ch[i];if(c.cost&&c.cost>G.cash)return;const res=c.f(G);['family','health','comply'].forEach(k=>G[k]=clamp(Math.round(G[k]),0,100));
+  M={type:'result',title:M.ev.t,desc:res};sfx(/亏|罚|损失|-\d|徒刑/.test(res)?'bad':'good');save();renderModal()}
+// ============ 睡觉结算 ============
+function sleep(forced){if(G.over)return;M=null;if(G.t<900)addTime(900-G.t+1);if(G.over)return finish();
+  const before=nw();AK.forEach(k=>{G.prices[k]*=1+ASSETS[k].sd*.25/100*gauss()});checkLiq();
+  const tradePL=nw()-G.startNw-G.flow,ret=tradePL/Math.max(G.startNw,1);
+  let inc=income(),fundFee=0;const c=cost();
+  if(own('fund')){const fr=clamp(ret,-.5,1);fundFee=G.aum*.001+(fr>0?G.aum*fr*.2:0);G.aum*=1+fr*.5;if(fr<-.15){G.aum*=.7}inc+=fundFee}
+  G.cash+=inc-c;if(G.cash<0)G.cash*=1.01;
+  if(ret<0)addStress(-ret*60);addStress(-14+(G.family<20?5:0)+(G.cash<0?6:0));
+  let hd=(G.stress>70?3:G.stress>50?1:-.5)+(G.energy<10?1:0)+(G.age>=40?.3:0);if(hasT('身体倍儿棒')&&hd>0)hd*=.5;G.health=clamp(Math.round(G.health-hd),0,100);
+  G.family=clamp(G.family-2,0,100);G.comply=clamp(G.comply+1,0,100);
+  let gain=1+Math.floor(clamp(ret,0,.5)*40),lvUp=0;G.xp+=gain;while(G.xp>=xpNeed()){G.xp-=xpNeed();G.lvl++;lvUp++}
+  const rep={type:'report',day:G.day,rows:AK.map(k=>[ASSETS[k].n,G.prices[k]/G.open[k]-1]),tradePL,ret,inc,c,fundFee,lvUp,reg:G.regime};
+  const n=nw();G.peak=Math.max(G.peak,n);
+  for(const[v,t]of TITLES){if(v>0&&n>=v&&!G.flags['t'+v]){G.flags['t'+v]=1;rep.title=t;life(`身家突破${money(v)}，成为${t}`)}}
+  // 新的一天
+  G.day++;if(G.day%12===1)G.age++;G.t=510;G.nextTick=516;G.closed=false;G.regime=G.nextReg;G.coffee=0;G.calls=0;G.ring=0;G.ringEv=null;
+  G.energy=Math.round(maxEnergy()*(.55+G.health*.0045));G.flow=0;G.startNw=nw();AK.forEach(k=>{G.open[k]=G.prices[k]});
+  if(G.health<=0)G.over='health';else if(n<0)G.over='bankrupt';
+  rep.tilt=ret<=-.2&&!G.over&&R()<(hasT('赌徒血统')?.9:.6);
+  M=rep;sfx(lvUp?'level':tradePL>0?'profit':tradePL<0?'loss':'tap');save();renderModal();buildWorld()}
+function xpNeed(){return 3+G.lvl*3}
+function ackReport(){const tilt=M.tilt;M=null;if(G.over)return finish();if(tilt){showEvent(TILT);return}renderModal();toast(`☀️ 第${G.day}天 · 📰 ${G.news}`)}
+function ackResult(){M=null;if(G.over)return finish();renderModal()}
+function finish(){const n=nw();let e;
+  if(G.over==='jail')e=['🔒','铁窗之后','内幕交易的代价是自由。'];else if(G.over==='health')e=['🏥','健康崩溃','身体先于市场宣告了你的退场。'];
+  else if(G.over==='bankrupt')e=['💸','破产清算','市场从不缺破产的天才。'];
+  else if(n>=1e9)e=G.family>=50?['👑','交易之神','十亿身家，家庭和睦。']:['🗿','孤独的传奇','站上顶峰，身边空无一人。'];
+  else if(n>=1e8)e=['🏆','亿万富豪',G.family>=50?'功成身退，儿孙绕膝。':'有花不完的钱，却少有人陪你吃饭。'];
+  else if(n>=1e7)e=['🌅','财务自由','你提前退休，去看世界了。'];else if(n>=1e6)e=['🪴','小有积蓄','没成传奇，但守住了一份安稳。'];else e=['🚶','平凡一生','在市场里转了一圈，回到起点。'];
+  life('结局：'+e[1]);M={type:'end',e};sfx(G.over==='retire'&&n>=1e6?'level':'loss');try{localStorage.removeItem('trader3d_v1')}catch(x){}renderModal()}
+function retire(){G.over='retire';finish()}
+function save(){try{if(G&&!G.over)localStorage.setItem('trader3d_v1',JSON.stringify(G))}catch(e){}}
+// ============ 声音 ============
+const SND={ctx:null,on:true,bgm:true,step:0};
+try{const c=JSON.parse(localStorage.getItem('trader3d_snd')||'{}');if(c.on===false)SND.on=false;if(c.bgm===false)SND.bgm=false}catch(e){}
+function ac(){if(!SND.ctx){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;try{SND.ctx=new C();SND.bg=SND.ctx.createGain();SND.bg.gain.value=.5;SND.bg.connect(SND.ctx.destination)}catch(e){return null}}if(SND.ctx.state==='suspended')SND.ctx.resume();return SND.ctx}
+function tone(f,d,o={}){const c=ac();if(!c)return;const t=c.currentTime+(o.at||0),os=c.createOscillator(),g=c.createGain();os.type=o.type||'sine';os.frequency.setValueAtTime(f,t);if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+d);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(o.vol||.15,t+(o.atk||.01));g.gain.exponentialRampToValueAtTime(.0001,t+d);os.connect(g);g.connect(o.dest||c.destination);os.start(t);os.stop(t+d+.05)}
+function noise(d,o={}){const c=ac();if(!c)return;const t=c.currentTime,b=c.createBuffer(1,Math.floor(c.sampleRate*d),c.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=R()*2-1;
+  const s=c.createBufferSource();s.buffer=b;const f=c.createBiquadFilter();f.frequency.setValueAtTime(o.f||1200,t);if(o.fto)f.frequency.exponentialRampToValueAtTime(o.fto,t+d);const g=c.createGain();g.gain.setValueAtTime(o.vol||.3,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(c.destination);s.start(t)}
+const SFX={tap(){tone(880,.06,{type:'triangle',vol:.08})},buy(){tone(520,.09,{type:'square',vol:.07});tone(780,.16,{type:'square',vol:.07,at:.07})},sell(){tone(780,.09,{type:'square',vol:.07});tone(520,.16,{type:'square',vol:.07,at:.07})},
+ coin(){tone(1319,.08,{type:'square',vol:.07});tone(1976,.3,{type:'square',vol:.07,at:.07})},profit(){[1319,1568,1976,2637].forEach((f,i)=>tone(f,.25,{type:'square',vol:.05,at:i*.07}))},
+ loss(){tone(440,.35,{type:'sawtooth',vol:.06,to:330});tone(330,.5,{type:'sawtooth',vol:.06,to:220,at:.25})},boom(){noise(1.1,{f:900,fto:60,vol:.6});tone(90,.9,{vol:.4,to:30})},
+ ring(){for(let i=0;i<2;i++){tone(1480,.09,{type:'square',vol:.06,at:i*.2});tone(1245,.09,{type:'square',vol:.06,at:i*.2+.09})}},bell(){tone(1568,.9,{type:'triangle',vol:.14});tone(2093,.9,{type:'triangle',vol:.08,at:.02})},
+ research(){[1200,1500,1800].forEach((f,i)=>tone(f,.05,{type:'square',vol:.04,at:i*.05}))},gym(){tone(140,.12,{vol:.3,to:70});tone(140,.12,{vol:.3,to:70,at:.18})},calm(){[523,659,784].forEach((f,i)=>tone(f,1,{vol:.07,atk:.2,at:i*.12}))},
+ event(){tone(988,.18,{type:'triangle',vol:.1});tone(1319,.35,{type:'triangle',vol:.1,at:.12})},good(){tone(784,.12,{type:'triangle',vol:.1});tone(1175,.25,{type:'triangle',vol:.1,at:.1})},bad(){tone(330,.25,{type:'triangle',vol:.12,to:247})},
+ level(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,{type:'triangle',vol:.1,at:i*.09}))},step(){noise(.05,{f:500,vol:.05})}};
+function sfx(n){if(SND.on&&SFX[n])try{SFX[n]()}catch(e){}}
+const CH=[[262,330,392],[220,262,330],[175,220,262],[196,247,294]];
+setInterval(()=>{if(!SND.ctx||!SND.bgm||!G||G.over)return;const ch=CH[Math.floor(SND.step/4)%4];if(SND.step%4===0)ch.forEach(f=>tone(f,3.2,{type:'triangle',vol:.05,atk:.4,dest:SND.bg}));tone(ch[SND.step%3]*2,.4,{vol:.05,dest:SND.bg});SND.step++},800);
+function sndSave(){try{localStorage.setItem('trader3d_snd',JSON.stringify({on:SND.on,bgm:SND.bgm}))}catch(e){}}
+function toggleSnd(){SND.on=!SND.on;sndSave();$('sndBtn').textContent=SND.on?'🔊':'🔇';sfx('tap')}
+function toggleBgm(){SND.bgm=!SND.bgm;sndSave();ac();$('bgmBtn').style.opacity=SND.bgm?1:.4}
+document.addEventListener('pointerdown',()=>ac(),{passive:true});
+let toastT=0;function toast(t){const el=$('toast');el.textContent=t;el.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>el.style.opacity=0,2600)}
+function flash(){const f=$('flash');f.style.transition='none';f.style.opacity=.45;requestAnimationFrame(()=>{f.style.transition='opacity .6s';f.style.opacity=0})}
+// ============ 3D 引擎（WebGL 方块） ============
+const cv=$('cv'),gl=cv.getContext('webgl',{antialias:true})||cv.getContext('experimental-webgl');
+let prog,bufS,bufD,nS=0,OBS=[],STN=[];
+const cam={x:0,z:2.2,yaw:0,pitch:-.08};
+function hex(h){if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];const n=parseInt(h.slice(1),16);return[(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]}
+function box(a,x,y,z,w,h,d,col){const c=typeof col==='string'?hex(col):col,x0=x-w/2,x1=x+w/2,y0=y,y1=y+h,z0=z-d/2,z1=z+d/2;
+  const q=(p,n)=>{[0,1,2,0,2,3].forEach(i=>a.push(p[i][0],p[i][1],p[i][2],n[0],n[1],n[2],c[0],c[1],c[2]))};
+  q([[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]],[1,0,0]);q([[x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[x0,y0,z1]],[-1,0,0]);
+  q([[x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]],[0,1,0]);q([[x0,y0,z0],[x0,y0,z1],[x1,y0,z1],[x1,y0,z0]],[0,-1,0]);
+  q([[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],[0,0,1]);q([[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0]],[0,0,-1])}
+function solid(x,z,w,d){OBS.push([x-w/2,x+w/2,z-d/2,z+d/2])}
+function person(a,x,y,z,shirt,hair,sit){const sk='#f2c59a';if(sit){box(a,x-.1,y,z+.25,.14,.14,.5,'#34495e');box(a,x+.1,y,z+.25,.14,.14,.5,'#34495e')}else{box(a,x-.1,y,z,.14,.75,.16,'#34495e');box(a,x+.1,y,z,.14,.75,.16,'#34495e');y+=.75}
+  box(a,x,y,z,.42,.55,.24,shirt);box(a,x-.27,y+.1,z,.1,.45,.14,shirt);box(a,x+.27,y+.1,z,.1,.45,.14,shirt);box(a,x,y+.57,z,.28,.28,.26,sk);box(a,x,y+.8,z,.3,.1,.28,hair);box(a,x,y+.62,z+.13,.3,.22,.04,hair)}
+function plant(a,x,z){box(a,x,0,z,.4,.4,.4,'#c96f3b');box(a,x,.4,z,.1,.5,.1,'#6b4b2a');box(a,x,.8,z,.6,.5,.6,'#3fae5a');box(a,x,1.2,z,.4,.35,.4,'#59c96f')}
+function windowAt(a,x){box(a,x,1.05,-4.98,2.7,1.6,.05,'#ffffff');box(a,x,1.12,-4.95,2.5,1.45,.03,'#8fd3ff');
+  [[-.9,.5],[-.5,.9],[-.1,.6],[.35,1.1],[.8,.7]].forEach((b,i)=>box(a,x+b[0],1.12,-4.93,.33,b[1],.02,i%2?'#5f86b3':'#7399c4'));box(a,x,1.12,-4.92,.05,1.45,.03,'#ffffff')}
+function buildWorld(){const a=[];OBS=[];STN=[];const U=G?G.up:{};
+  box(a,0,-.1,0,14,.1,10,'#e6a55c');for(let i=-6;i<=6;i+=2)box(a,i,-.005,0,.03,.01,10,'#d4924a');
+  box(a,0,0,-5.1,14.4,3.2,.2,'#f8eecf');box(a,0,0,5.1,14.4,3.2,.2,'#f8eecf');box(a,-7.1,0,0,.2,3.2,10.4,'#f3e6c0');box(a,7.1,0,0,.2,3.2,10.4,'#f3e6c0');box(a,0,3.2,0,14.4,.1,10.4,'#fffaf0');
+  box(a,0,0,-4.97,14,.12,.04,'#c9b78a');box(a,0,.001,-2.3,4.6,.02,2.6,'#3f7fcf');box(a,0,.002,-2.3,4.1,.02,2.1,'#5a97e0');
+  windowAt(a,-3.9);windowAt(a,3.9);box(a,0,0,4.98,1.1,2.2,.05,'#8d5a3a');box(a,.4,1,4.94,.08,.08,.05,'#ffd54a');
+  for(let i=-1;i<=1;i++){box(a,i*4,3.1,0,1.2,.08,.4,'#ffffff')}
+  // 交易台
+  box(a,0,.72,-4.2,2.8,.08,1.05,'#ffffff');[[-1.3,-4.65],[1.3,-4.65],[-1.3,-3.75],[1.3,-3.75]].forEach(l=>box(a,l[0],0,l[1],.08,.72,.08,'#9aa5b1'));solid(0,-4.2,2.8,1.05);
+  const mons=U.screen?[0,-.95,.95]:[0];mons.forEach(mx=>{box(a,mx,.8,-4.5,.1,.22,.1,'#555');box(a,mx,.98,-4.5,.88,.58,.05,'#222b36');if(mx)box(a,mx,1.01,-4.47,.8,.52,.02,'#12324d')});
+  if(U.screen){box(a,-.95,1.2,-4.455,.6,.03,.01,'#e5352b');box(a,-.95,1.32,-4.455,.4,.03,.01,'#12a05c');box(a,.95,1.15,-4.455,.5,.03,.01,'#ffc93c');box(a,.95,1.3,-4.455,.65,.03,.01,'#4ea3ff')}
+  box(a,0,.8,-3.95,.55,.03,.18,'#3a4450');box(a,.5,.8,-3.95,.1,.03,.14,'#3a4450');
+  const cc=U.chair?'#e5352b':'#7a8794';box(a,0,.42,-3.25,.5,.09,.5,cc);box(a,0,.5,-3.02,.5,U.chair?.8:.55,.08,cc);box(a,0,0,-3.25,.08,.42,.08,'#444');box(a,0,0,-3.25,.5,.05,.5,'#444');
+  STN.push({id:'desk',n:'交易台',ic:'📈',x:0,z:-3.9,y:1.85});
+  [0,1,2,3,4].forEach(i=>box(a,-1+i*.5,2.25,-4.97,.42,.42,.04,'#243'));box(a,0,2.2,-4.99,2.7,.52,.03,'#ffffff');
+  // 电话
+  box(a,2.3,0,-4.5,.55,.72,.55,'#b77b43');box(a,2.3,.72,-4.5,.6,.04,.6,'#8d5a3a');solid(2.3,-4.5,.6,.6);STN.push({id:'phone',n:'电话',ic:'📞',x:2.3,z:-4.4,y:1.25});
+  if(U.term){box(a,-2.2,0,-4.5,.7,1.25,.6,'#f59e0b');box(a,-2.2,.75,-4.19,.5,.38,.02,'#12324d');box(a,-2.2,.45,-4.19,.5,.2,.02,'#333');solid(-2.2,-4.5,.7,.6)}
+  // 研究区
+  box(a,-6.96,.95,-1.6,.06,1.4,2.6,'#ffffff');box(a,-6.92,.9,-1.6,.04,.06,2.7,'#9aa5b1');
+  [['#e5352b',1.9,-2.4,.5],['#12a05c',1.6,-1.8,.7],['#4ea3ff',1.3,-1.3,.45],['#ffc93c',1.75,-.9,.4]].forEach(n=>box(a,-6.92,n[1],n[2],.02,.22,n[3],n[0]));
+  box(a,-6.65,0,1.3,.5,2.1,1.7,'#9a6b3f');solid(-6.65,1.3,.5,1.7);for(let r=0;r<4;r++)for(let b=0;b<6;b++)box(a,-6.42,.15+r*.5,.6+b*.27,.08,.36,.18,['#e5352b','#4ea3ff','#ffc93c','#12a05c','#9b59b6','#ff8a3d'][(r+b)%6]);
+  STN.push({id:'board',n:'研究白板',ic:'🔍',x:-6.5,z:-1.6,y:2.0});
+  // 跑步机
+  box(a,5.2,0,-3.5,.95,.22,2,'#39424e');box(a,5.2,.22,-3.5,.75,.03,1.7,'#1f262e');box(a,4.8,0,-4.4,.08,1.25,.08,'#9aa5b1');box(a,5.6,0,-4.4,.08,1.25,.08,'#9aa5b1');box(a,5.2,1.15,-4.4,.95,.3,.12,'#ff8a3d');solid(5.2,-3.5,.95,2);
+  STN.push({id:'tread',n:'跑步机',ic:'🏃',x:5.2,z:-3.3,y:1.75});
+  // 咖啡
+  box(a,6.55,0,.9,.8,.9,2.1,'#ffffff');box(a,6.55,.9,.9,.86,.06,2.16,'#6b4b2a');solid(6.55,.9,.86,2.16);
+  if(U.coffee){box(a,6.55,.96,.5,.5,.7,.55,'#c0c7d0');box(a,6.3,1.2,.5,.04,.25,.3,'#243')}else box(a,6.55,.96,.5,.35,.45,.35,'#d9382c');
+  [1.1,1.35,1.6].forEach(z=>box(a,6.5,.96,z,.12,.14,.12,'#ffffff'));STN.push({id:'coffee',n:'咖啡',ic:'☕',x:6.4,z:.9,y:1.75});
+  // 沙发 + 家人
+  box(a,-4.9,0,4.2,2.6,.42,1,'#ef7b52');box(a,-4.9,.42,4.6,2.6,.6,.22,'#e0653d');box(a,-6.1,.42,4.2,.22,.3,1,'#e0653d');box(a,-3.7,.42,4.2,.22,.3,1,'#e0653d');solid(-4.9,4.25,2.6,1.1);
+  person(a,-5.4,.42,4.05,'#ffb6c1','#5a3825',true);box(a,-4.9,0,2.9,1.2,.35,.6,'#b77b43');box(a,-4.7,.35,2.9,.2,.12,.2,'#ffffff');solid(-4.9,2.9,1.2,.6);
+  STN.push({id:'sofa',n:'陪家人',ic:'🛋️',x:-4.9,z:3.9,y:1.65});
+  // 床
+  box(a,5,0,3.8,2.1,.35,2.3,'#8d6e63');box(a,5,.35,3.8,2,.18,2.2,'#ffffff');box(a,5,.53,3.4,2,.08,1.4,'#4f86c6');box(a,5,.53,4.6,1.2,.14,.45,'#fff3c4');box(a,5,0,4.95,2.1,1.1,.12,'#6d4c41');solid(5,3.8,2.1,2.3);
+  STN.push({id:'bed',n:'睡觉',ic:'🛏️',x:5,z:3.6,y:1.4});
+  plant(a,-6.4,-4.4);plant(a,6.4,-1.2);plant(a,-6.4,3.2);solid(-6.4,-4.4,.5,.5);solid(6.4,-1.2,.5,.5);
+  if(U.asst){box(a,-3.6,.7,-3.6,1.2,.06,.7,'#ffffff');box(a,-3.6,0,-3.6,1.1,.7,.6,'#dfe6ee');box(a,-3.6,.76,-3.75,.5,.36,.05,'#222b36');solid(-3.6,-3.6,1.2,.7);person(a,-3.6,0,-2.95,'#4ea3ff','#222',false)}
+  if(U.fund){box(a,0,2.72,-4.97,1.6,.3,.04,'#ffc93c');box(a,0,2.78,-4.95,1.3,.06,.02,'#8a6a10')}
+  nS=a.length/9;gl.bindBuffer(gl.ARRAY_BUFFER,bufS);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(a),gl.STATIC_DRAW);mkLabels()}
+function dynMesh(){const a=[];if(!G)return a;const now=performance.now()/1000;
+  // 主屏幕 K 线
+  box(a,0,1.01,-4.47,.8,.52,.02,'#0d1b2a');const h=G.hist[G.view]||[],n=Math.min(h.length,22),s=h.slice(-n),mn=Math.min(...s),mx=Math.max(...s),rg=(mx-mn)||1;
+  for(let i=1;i<n;i++){const y0=(Math.min(s[i],s[i-1])-mn)/rg,y1=(Math.max(s[i],s[i-1])-mn)/rg;box(a,-.36+i*(.72/22),1.04+y0*.42,-4.455,.022,Math.max(.012,(y1-y0)*.42),.01,s[i]>=s[i-1]?'#ff4d4f':'#18c27a')}
+  AK.forEach((k,i)=>{const c=G.prices[k]/G.open[k]-1;box(a,-1+i*.5,2.29,-4.945,.34,.34,.02,c>.002?'#ff4d4f':c<-.002?'#18c27a':'#8a96a3')});
+  const ring=G.ring>0,py=.76+(ring?Math.abs(Math.sin(now*14))*.07:0);box(a,2.3,py,-4.5,.18,.05,.34,ring?'#e5352b':'#1f262e');if(ring)box(a,2.3,py+.05,-4.5,.1,.02,.2,'#ffffff');
+  return a}
+function initGL(){const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o};prog=gl.createProgram();
+  gl.attachShader(prog,sh(gl.VERTEX_SHADER,'attribute vec3 p,n,c;uniform mat4 m;varying vec3 vc;varying float vz;void main(){float l=.87+.13*dot(n,normalize(vec3(.35,.8,.5)));vc=c*l;gl_Position=m*vec4(p,1.);vz=gl_Position.w;}'));
+  gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,'precision mediump float;varying vec3 vc;varying float vz;void main(){float f=clamp((vz-9.)/14.,0.,.2);gl_FragColor=vec4(mix(vc,vec3(1.,.97,.88),f),1.);}'));
+  gl.linkProgram(prog);gl.useProgram(prog);bufS=gl.createBuffer();bufD=gl.createBuffer();gl.enable(gl.DEPTH_TEST);gl.clearColor(.81,.91,1,1)}
+function bindAttr(){const st=36;['p','n','c'].forEach((n,i)=>{const l=gl.getAttribLocation(prog,n);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,3,gl.FLOAT,false,st,i*12)})}
+let MVP=new Float32Array(16),W=1,H=1;
+function mul(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
+function resize(){const d=Math.min(window.devicePixelRatio||1,2);W=window.innerWidth;H=window.innerHeight;cv.width=W*d;cv.height=H*d;gl.viewport(0,0,cv.width,cv.height)}
+function draw(){const asp=W/H,fov=asp<1?1.25:1.05,f1=1/Math.tan(fov/2),nr=.08,fr=40;
+  const P=new Float32Array([f1/asp,0,0,0,0,f1,0,0,0,0,(fr+nr)/(nr-fr),-1,0,0,2*fr*nr/(nr-fr),0]);
+  const cp=Math.cos(cam.pitch),f=[-Math.sin(cam.yaw)*cp,Math.sin(cam.pitch),-Math.cos(cam.yaw)*cp],r=[Math.cos(cam.yaw),0,-Math.sin(cam.yaw)],u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];
+  const e=[cam.x,1.55+Math.sin(bob)*.03,cam.z],d=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const V=new Float32Array([r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-d(r,e),-d(u,e),d(f,e),1]);MVP=mul(P,V);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.uniformMatrix4fv(gl.getUniformLocation(prog,'m'),false,MVP);
+  gl.bindBuffer(gl.ARRAY_BUFFER,bufS);bindAttr();gl.drawArrays(gl.TRIANGLES,0,nS);
+  const dm=dynMesh();if(dm.length){gl.bindBuffer(gl.ARRAY_BUFFER,bufD);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(dm),gl.DYNAMIC_DRAW);bindAttr();gl.drawArrays(gl.TRIANGLES,0,dm.length/9)}}
+function proj(x,y,z){const m=MVP,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<.1)return null;return[((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*W,(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5+.5))*H,w]}
+// ============ 标签 & 交互 ============
+function mkLabels(){$('labels').innerHTML=STN.map(s=>`<div class="lab" id="lab_${s.id}" onclick="tapLab('${s.id}')">${s.ic} ${s.n}</div>`).join('')}
+let near=null;
+function updLabels(){near=null;let best=3;const fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw);
+  STN.forEach(s=>{const el=$('lab_'+s.id);if(!el)return;const p=proj(s.x,s.y,s.z),dx=s.x-cam.x,dz=s.z-cam.z,dist=Math.hypot(dx,dz);
+    const ring=s.id==='phone'&&G.ring>0;el.className='lab'+(ring?' ring':'');if(s.id==='phone')el.textContent=ring?'📞 来电！':'📞 电话';
+    if(!p||(dist>8&&!ring)||M){el.style.display='none'}else{el.style.display='block';el.style.left=p[0]+'px';el.style.top=p[1]+'px';el.style.opacity=dist<3?1:.65;el.style.zIndex=Math.round(100-dist*5)}
+    const dot=(dx*fx+dz*fz)/(dist||1);if(dist<best&&dot>.2){best=dist;near=s}});
+  const hb=$('hand');if(near&&!M){hb.style.display='block';hb.innerHTML=`🖐<small>${near.n}</small>`}else hb.style.display='none'}
+function interact(){if(near&&!M&&G&&!G.over){ST[near.id]();renderHud()}}
+function tapLab(id){const s=STN.find(x=>x.id===id);if(Math.hypot(s.x-cam.x,s.z-cam.z)<3.4){ST[id]();renderHud()}else toast('走近一点再操作')}
+// ============ 操作 ============
+const joy={id:null,ox:0,oy:0,x:0,y:0},look={id:null,x:0,y:0},keys={};let bob=0;
+cv.addEventListener('pointerdown',e=>{if(M)return;if(e.pointerType!=='mouse'&&e.clientX<W*.45&&e.clientY>H*.45&&joy.id===null){joy.id=e.pointerId;joy.ox=e.clientX;joy.oy=e.clientY;joy.x=joy.y=0;const j=$('joy');j.style.left=(e.clientX-60)+'px';j.style.bottom=(H-e.clientY-60)+'px'}
+  else if(look.id===null){look.id=e.pointerId;look.x=e.clientX;look.y=e.clientY}try{cv.setPointerCapture(e.pointerId)}catch(x){}});
+cv.addEventListener('pointermove',e=>{if(e.pointerId===joy.id){let dx=(e.clientX-joy.ox)/45,dy=(e.clientY-joy.oy)/45;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}joy.x=dx;joy.y=dy;$('knob').style.transform=`translate(${dx*32}px,${dy*32}px)`}
+  else if(e.pointerId===look.id){cam.yaw-=(e.clientX-look.x)*.006;cam.pitch=clamp(cam.pitch-(e.clientY-look.y)*.005,-.9,.7);look.x=e.clientX;look.y=e.clientY}});
+const pend=e=>{if(e.pointerId===joy.id){joy.id=null;joy.x=joy.y=0;$('knob').style.transform='';const j=$('joy');j.style.left='26px';j.style.bottom='34px'}if(e.pointerId===look.id)look.id=null};
+cv.addEventListener('pointerup',pend);cv.addEventListener('pointercancel',pend);
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(e.key==='e'||e.key===' ')interact()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+function blocked(x,z){if(x<-6.65||x>6.65||z<-4.65||z>4.65)return true;const r=.32;for(const o of OBS)if(x>o[0]-r&&x<o[1]+r&&z>o[2]-r&&z<o[3]+r)return true;return false}
+function move(dt){let mx=joy.x+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),my=joy.y+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+  if(keys.q)cam.yaw+=dt*2;if(!mx&&!my)return;const l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l}const sp=3.4*dt,fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw),rx=Math.cos(cam.yaw),rz=-Math.sin(cam.yaw);
+  const nx=cam.x+(fx*-my+rx*mx)*sp,nz=cam.z+(fz*-my+rz*mx)*sp;if(!blocked(nx,cam.z))cam.x=nx;if(!blocked(cam.x,nz))cam.z=nz;const pb=bob;bob+=dt*9;if(Math.floor(pb/Math.PI)!==Math.floor(bob/Math.PI))sfx('step')}
+// ============ HUD & 面板 ============
+function hm(t){t=Math.floor(t);const h=Math.floor(t/60)%24,m=t%60,ap=h>=12?'PM':'AM',h12=h%12||12;return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ap}`}
+function renderHud(){if(!G)return;const n=nw(),op=marketOpen();
+  $('hud').innerHTML=`<div class="chip red">DAY ${G.day}<small>${hm(G.t)}</small></div><div class="chip ${op?'green':''}">${op?'开盘中':'休市'}<small>${REG[G.regime]}</small></div><div class="chip gold">⚡ ${Math.round(G.energy)}</div><div class="chip green">💵 ${money(n)}</div><div class="chip blue">⭐${G.lvl} <span style="font-weight:400">${G.xp}/${xpNeed()}</span></div>`;
+  const b=(l,v,c)=>`<div class="mb">${l}<i><b style="width:${v}%;background:${c}"></b></i></div>`;
+  $('bars').innerHTML=b('❤️',G.health,G.health<30?'#e5352b':'#2ecc71')+b('😰',G.stress,G.stress>70?'#e5352b':'#ffb020')+b('🏠',G.family,G.family<25?'#e5352b':'#4ea3ff');
+  const pl=posPL();$('pnl').innerHTML=G.pos.length?`<span class="${cls(pl)}">持仓 ${pl>=0?'+':''}${money(pl)}</span>`:''}
+function updDesk(){if(!M||M.type!=='desk')return;AK.forEach(k=>{const a=$('pr_'+k),b=$('ch_'+k);if(a){a.textContent=fmtP(G.prices[k]);const c=G.prices[k]/G.open[k]-1;b.textContent=pct(c);b.className=cls(c)}});
+  G.pos.forEach(p=>{const el=$('pp_'+String(p.id).replace('.','_'));if(el){const pl=posVal(p)-p.margin;el.textContent=`${pl>=0?'+':''}${money(pl)} (${pct(pl/p.margin)})`;el.className=cls(pl)}});const c=$('dcash');if(c)c.textContent=money(G.cash)}
+const fmtP=p=>p>=1000?p.toFixed(0):p.toFixed(2);
+function renderModal(){const el=$('modal');if(!M){el.style.display='none';el.innerHTML='';return}el.style.display='flex';let h='';
+  if(M.type==='start'){const c=draft;h=`<h3>📈 天才交易员 3D</h3><p class="dim">在自己的交易室里走动、盯盘、生活。盈亏只是人生的一部分。</p>
+   <div class="row"><b style="font-size:20px">${c.name}</b><span class="tag">${c.bg}</span><span class="sp"></span><span class="dim">${c.gender} · ${c.age}岁 · ${c.city}</span></div>
+   <div class="attr"><div><b>${c.int}</b>智力</div><div><b>${c.body}</b>体质</div><div><b>${c.luck}</b>运气</div></div><p>启动资金 <b class="up">${money(c.cash)}</b></p>
+   ${c.traits.map(t=>`<div><span class="tag">${t}</span><span class="dim">${TRAITS[t]}</span></div>`).join('')}
+   <p class="dim" style="font-size:12px">左下摇杆走路，滑动屏幕转头，走到物品旁点右下 🖐。9:30 开盘、15:00 收盘，行情实时跳动。<span class="up">红涨</span><span class="down">绿跌</span>。</p>
+   <div class="row" style="margin-top:8px"><button class="btn" style="flex:1" onclick="draft=genChar();sfx('research');renderModal()">🎲 重新投胎</button><button class="btn pri" style="flex:2" onclick="start()">开始</button></div>`}
+  else if(M.type==='desk'){h=`<div class="row"><h3 style="margin:0">交易台</h3><span class="sp"></span><span class="dim">现金 <b id="dcash">${money(G.cash)}</b></span><button class="btn sm" onclick="closeM()">✕ 离开</button></div>
+   <div class="tabs" style="margin-top:8px"><button class="btn sm ${M.tab==='trade'?'on':''}" onclick="M.tab='trade';M.pick=null;renderModal()">📈 交易</button><button class="btn sm ${M.tab==='up'?'on':''}" onclick="M.tab='up';renderModal()">🛒 升级</button></div>`;
+   if(M.tab==='trade'){h+=`<div class="dim" style="font-size:12px">📰 ${G.news} · ${marketOpen()?'<b class="up">开盘中</b>':'<b>休市</b>（9:30–15:00 交易）'}</div>`;
+    if(M.pick){const t=M.pick,amt=Math.max(0,G.cash)*t.frac,caps=[1,2,3,5,7,10,12].filter(x=>x<=levCap());h+=`<h3 style="margin-top:8px"><span class="${t.dir>0?'up':'down'}">${t.dir>0?'做多':'做空'}</span> ${ASSETS[t.k].n}</h3>
+      <div>投入</div><div class="opts">${[.1,.25,.5,1].map(f=>`<button class="btn sm ${t.frac===f?'on':''}" onclick="M.pick.frac=${f};renderModal()">${f*100}%</button>`).join('')}</div>
+      <div>杠杆（上限 ${levCap()}×）</div><div class="opts">${caps.map(l=>`<button class="btn sm ${t.lev===l?'on':''}" onclick="M.pick.lev=${l};renderModal()">${l}×</button>`).join('')}</div>
+      <p>本金 ${money(amt)} · 仓位 ${money(amt*t.lev)}${t.lev>1?`<br><b style="color:#e08a00">反向波动 ${(100/t.lev).toFixed(0)}% 就爆仓</b>`:''}</p>
+      <div class="row"><button class="btn" style="flex:1" onclick="M.pick=null;renderModal()">返回</button><button class="btn pri" style="flex:2" ${amt<100?'disabled':''} onclick="if(openPos(M.pick.k,M.pick.dir,M.pick.lev,${amt})){M.pick=null}renderModal();renderHud()">下单</button></div>`}
+    else{h+=AK.map(k=>{const c=G.prices[k]/G.open[k]-1,s=G.sig[k];return `<div class="as"><div class="nm" onclick="G.view='${k}'">${ASSETS[k].n}${s?`<br><span class="sig ${s.dir>0?'up':'down'}">研判${s.dir>0?'↑':'↓'}${Math.round(s.conf*100)}%</span>`:''}</div><div class="pr"><div id="pr_${k}">${fmtP(G.prices[k])}</div><div id="ch_${k}" class="${cls(c)}" style="font-size:12px">${pct(c)}</div></div><span class="sp"></span><button class="btn sm long" onclick="M.pick={k:'${k}',dir:1,lev:1,frac:.25};renderModal()">做多</button><button class="btn sm short" onclick="M.pick={k:'${k}',dir:-1,lev:1,frac:.25};renderModal()">做空</button></div>`}).join('');
+     if(G.pos.length)h+=`<h3 style="margin-top:10px">持仓</h3>`+G.pos.map(p=>{const pl=posVal(p)-p.margin;return `<div class="as"><div style="flex:1"><b class="${p.dir>0?'up':'down'}">${p.dir>0?'多':'空'}</b> ${ASSETS[p.k].n} ×${p.lev}<div class="dim" style="font-size:11px">本金 ${money(p.margin)}</div></div><b id="pp_${String(p.id).replace('.','_')}" class="${cls(pl)}">${pl>=0?'+':''}${money(pl)} (${pct(pl/p.margin)})</b><button class="btn sm" onclick="closePos(${p.id});renderModal();renderHud()">平仓</button></div>`}).join('')}}
+   else h+=UPG.map(u=>{const o=own(u.id),lock=G.lvl<u.lv;return `<div class="upg ${o?'own':''}"><div style="font-size:26px">${u.ic}</div><div style="flex:1"><b>${u.n}</b><div class="dim" style="font-size:12px">${u.d}</div></div>${o?'<b class="down">已拥有</b>':`<button class="btn sm pri" ${lock||G.cash<u.c?'disabled':''} onclick="buy('${u.id}')">${lock?'⭐'+u.lv+'级解锁':money(u.c)}</button>`}</div>`}).join('')}
+  else if(M.type==='event'){const e=M.ev;h=`<h3>📞 ${e.t}</h3><p>${e.d}</p>`+e.ch.map((c,i)=>{const no=c.cost&&c.cost>G.cash;return `<button class="btn choice" ${no?'disabled':''} onclick="choose(${i})">${c.t}<small>${[c.cost?money(c.cost):'',c.s||'',no?'钱不够':''].filter(Boolean).join(' · ')}</small></button>`}).join('')}
+  else if(M.type==='result')h=`<h3>${M.title}</h3><p>${esc(M.desc)}</p><button class="btn pri choice" style="text-align:center" onclick="ackResult()">好的</button>`
+  else if(M.type==='confirm')h=`<h3>${M.title}</h3><p>${M.desc}</p><div class="row"><button class="btn" style="flex:1" onclick="closeM()">再等等</button><button class="btn pri" style="flex:2" onclick="${M.yes}">确定</button></div>`
+  else if(M.type==='report'){h=`<h3>🌙 第 ${M.day} 天结束 · ${REG[M.reg]}</h3><table class="rep">${M.rows.map(r=>`<tr><td>${r[0]}</td><td class="${cls(r[1])}">${pct(r[1])}</td></tr>`).join('')}
+   <tr><td><b>交易盈亏</b></td><td class="${cls(M.tradePL)}"><b>${M.tradePL>=0?'+':''}${money(M.tradePL)}（${pct(M.ret)}）</b></td></tr><tr><td>收入${M.fundFee?'（含基金费 '+money(M.fundFee)+'）':''}</td><td>+${money(M.inc)}</td></tr><tr><td>房租和生活费</td><td>-${money(M.c)}</td></tr><tr><td><b>总资产</b></td><td><b>${money(nw())}</b></td></tr></table>
+   ${M.lvUp?`<p>⭐ <b>升到 ${G.lvl} 级！</b>去交易台的“升级”看看新设备。</p>`:''}${M.title?`<p>🏅 新称号：<b class="up">${M.title}</b></p>`:''}<button class="btn pri choice" style="text-align:center" onclick="ackReport()">${G.over?'继续':'起床，新的一天'}</button>`}
+  else if(M.type==='status'){h=`<div class="row"><h3 style="margin:0">${G.name}</h3><span class="tag">${title()}</span><span class="sp"></span><button class="btn sm" onclick="closeM()">✕</button></div><p class="dim">${G.age}岁 · ${G.city} · ${G.bg}出身 · ⭐${G.lvl}级</p>${G.traits.map(t=>`<span class="tag">${t}</span>`).join('')}
+   <table class="rep"><tr><td>总资产</td><td>${money(nw())}</td></tr><tr><td>现金</td><td>${money(G.cash)}</td></tr>${G.aum?`<tr><td>基金规模</td><td>${money(G.aum)}</td></tr>`:''}<tr><td>每天收入 / 开销</td><td>${money(income())} / ${money(cost())}</td></tr>
+   <tr><td>健康 / 压力 / 家庭 / 合规</td><td>${G.health} / ${Math.round(G.stress)} / ${G.family} / ${G.comply}</td></tr><tr><td>研究准确率</td><td>${Math.round(acc()*100)}%</td></tr></table>
+   <div class="dim" style="font-size:12px;max-height:120px;overflow:auto;margin-top:8px">${G.life.slice().reverse().map(l=>`<div>${esc(l)}</div>`).join('')}</div>
+   <div class="row" style="margin-top:10px"><button class="btn sm" onclick="M={type:'confirm',title:'金盆洗手？',desc:'现在退休，按当前身家结算人生结局。',yes:'retire()'};renderModal()">🏁 退休结算</button><span class="sp"></span><button class="btn sm" onclick="M={type:'confirm',title:'重开一局？',desc:'当前进度会丢失。',yes:'restart()'};renderModal()">↻ 重开</button></div>`}
+  else if(M.type==='end'){const e=M.e;h=`<div class="big">${e[0]}</div><h3 style="text-align:center;font-size:24px">${e[1]}</h3><p style="text-align:center">${e[2]}</p>
+   <table class="rep"><tr><td>${G.name}</td><td>${G.age}岁 · 第${G.day}天 · ⭐${G.lvl}级</td></tr><tr><td>最终资产</td><td><b>${money(nw())}</b></td></tr><tr><td>巅峰资产</td><td>${money(G.peak)}</td></tr></table>
+   <div class="dim" style="font-size:12px;max-height:140px;overflow:auto;margin-top:8px">${G.life.map(l=>`<div>${esc(l)}</div>`).join('')}</div><button class="btn pri choice" style="text-align:center" onclick="restart()">再活一次 ↻</button>`}
+  el.innerHTML=`<div class="sheet">${h}</div>`}
+function closeM(){M=null;sfx('tap');renderModal()}
+function openStatus(){if(!G||(M&&M.type!=='desk'))return;M={type:'status'};renderModal()}
+function buy(id){const u=UPG.find(x=>x.id===id);if(G.cash<u.c||G.lvl<u.lv||own(id))return;pay(-u.c);G.up[id]=1;if(id==='fund'){G.aum=5e7;life('成立私募基金')}else life('购入'+u.n);sfx('level');toast('✅ 已购买：'+u.n);buildWorld();save();renderModal();renderHud()}
+function start(){newGame(draft);draft=null;M=null;cam.x=0;cam.z=2.2;cam.yaw=0;sfx('level');renderModal();renderHud();toast(`☀️ 第1天 8:30 · 📰 ${G.news}。先去白板研究，9:30 开盘`)}
+function restart(){try{localStorage.removeItem('trader3d_v1')}catch(e){}G=null;draft=genChar();M={type:'start'};buildWorld();renderModal();$('hud').innerHTML=$('bars').innerHTML=$('pnl').innerHTML=''}
+// ============ 主循环 ============
+let last=0,hudT=0;
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+  if(G&&!G.over){if(!M)move(dt);if(!M||M.type==='desk'){addTime(dt*3);hudT+=dt;if(hudT>.5){hudT=0;renderHud()}}}
+  draw();if(G)updLabels();requestAnimationFrame(frame)}
+initGL();resize();addEventListener('resize',resize);
+$('sndBtn').textContent=SND.on?'🔊':'🔇';$('bgmBtn').style.opacity=SND.bgm?1:.4;
+try{const s=localStorage.getItem('trader3d_v1');if(s){const g=JSON.parse(s);if(g&&g.prices&&g.up)G=g}}catch(e){}
+if(G){buildWorld();renderHud()}else{draft=genChar();M={type:'start'};buildWorld();renderModal()}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
