@@ -7,6 +7,7 @@ on:
     paths:
       - "trader/**"
       - "trader3d/**"
+      - "traderidle/**"
       - ".github/workflows/trader.yml"
   workflow_dispatch:
 
@@ -31,7 +32,7 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
           set -o pipefail
-          for i in 1 2 3; do ./gradlew :trader:assembleDebug :trader3d:assembleDebug --no-daemon 2>&1 | tee build.log && break; echo "build try $i failed"; [ $i = 3 ] && exit 1; sleep 20; done
+          for i in 1 2 3; do ./gradlew :trader:assembleDebug :trader3d:assembleDebug :traderidle:assembleDebug --no-daemon 2>&1 | tee build.log && break; echo "build try $i failed"; [ $i = 3 ] && exit 1; sleep 20; done
       - name: Publish build log on failure
         if: failure()
         env:
@@ -50,3 +51,6 @@ jobs:
           gh release create trader "trader.apk#天才交易员.apk" --target "$GITHUB_SHA" --title "天才交易员 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest=false
           gh release delete trader3d --yes --cleanup-tag || true
           gh release create trader3d "trader3d.apk#天才交易员3D.apk" --target "$GITHUB_SHA" --title "天才交易员3D 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest=false
+          cp traderidle/build/outputs/apk/debug/traderidle-debug.apk traderidle.apk
+          gh release delete traderidle --yes --cleanup-tag || true
+          gh release create traderidle "traderidle.apk#交易员挂机人生.apk" --target "$GITHUB_SHA" --title "交易员挂机人生 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest=false

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>天才交易员：挂机人生</title>
+<style>
+:root{--ink:#243142;--bg:#fff6e0;--card:#fffdf6;--up:#e5352b;--down:#12a05c;--gold:#ffc93c;--line:#e6dcc0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+#app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column}
+.up{color:var(--up)}.down{color:var(--down)}.dim{color:#8a93a0}
+.row{display:flex;align-items:center;gap:8px}.sp{flex:1}
+.btn{border:2px solid var(--ink);background:#fff;border-radius:11px;padding:7px 10px;font-size:13px;font-weight:700;color:var(--ink);box-shadow:0 3px 0 var(--ink)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}.btn:disabled{opacity:.4;box-shadow:0 3px 0 #9aa}
+.btn.pri{background:var(--gold)}.btn.sm{padding:4px 8px;font-size:12px}.btn.on{background:var(--ink);color:#fff}
+#top{padding:8px 10px 4px}
+.ava{width:46px;height:46px;border-radius:12px;border:2px solid var(--ink);position:relative;overflow:hidden;flex:none}
+.ava i{position:absolute;display:block}
+.tag{display:inline-block;border:2px solid var(--ink);border-radius:20px;padding:0 7px;font-size:11px;font-weight:700;background:var(--gold)}
+#cash{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.1}
+#stage{background:var(--card);border:2px solid var(--ink);border-radius:14px;margin:4px 10px;position:relative;overflow:hidden;height:150px;flex:none}
+#chart{width:100%;height:100%;display:block}
+#reg{position:absolute;left:8px;top:6px}
+#hedge{position:absolute;right:8px;top:6px;display:none;background:var(--up);color:#fff;animation:pulse .5s infinite}
+@keyframes pulse{50%{transform:scale(1.07)}}
+#tapBtn{position:absolute;right:10px;bottom:10px;width:92px;height:92px;border-radius:50%;border:3px solid var(--ink);background:var(--gold);font-size:17px;font-weight:900;box-shadow:0 5px 0 var(--ink);color:var(--ink)}
+#tapBtn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.fl{position:absolute;font-weight:900;font-size:16px;pointer-events:none;animation:fl .9s forwards;text-shadow:0 1px 0 #fff}
+@keyframes fl{to{transform:translateY(-60px);opacity:0}}
+#life{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:2px 10px}
+.lf{background:var(--card);border:2px solid var(--ink);border-radius:11px;padding:4px 6px;font-size:11px;position:relative;overflow:hidden}
+.lf b{font-size:12px}.lf .tr{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:2px}.lf .tr i{display:block;height:100%}
+.lf .cd{position:absolute;inset:0;background:rgba(36,49,66,.45);transform-origin:left;pointer-events:none}
+#tabs{display:flex;gap:6px;padding:6px 10px 4px}
+#tabs .btn{flex:1;padding:6px 2px}
+#list{flex:1;overflow:auto;padding:0 10px 14px;-webkit-overflow-scrolling:touch}
+.it{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:7px 9px;margin-top:7px;display:flex;align-items:center;gap:8px}
+.it .ic{font-size:26px;width:34px;text-align:center}
+.it.own{background:#e9f8ee;border-color:var(--down)}.it.lock{opacity:.5}
+#mail{position:fixed;left:0;right:0;margin:0 auto;width:max-content;bottom:18px;z-index:5;display:none;background:var(--up);color:#fff;border-color:#fff;box-shadow:0 3px 0 #8a1c15;animation:pulse .8s infinite;padding:9px 18px;font-size:15px}
+#toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:rgba(30,36,46,.94);color:#fff;padding:8px 14px;border-radius:12px;font-size:13px;z-index:20;max-width:88%;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+#mask{position:fixed;inset:0;background:rgba(20,26,36,.55);z-index:10;display:none;align-items:center;justify-content:center;padding:18px}
+.sheet{background:var(--card);border:3px solid var(--ink);border-radius:18px;width:100%;max-width:420px;max-height:86vh;overflow:auto;padding:16px}
+.sheet h3{margin:0 0 6px;font-size:19px}.sheet p{margin:6px 0}
+#card{touch-action:none;position:relative;transition:transform .15s;will-change:transform}
+#card .big{font-size:52px;text-align:center}
+.side{position:absolute;top:10px;font-weight:900;font-size:13px;padding:3px 9px;border-radius:9px;border:2px solid;opacity:0;background:#fff;max-width:46%}
+#sl{left:8px;color:var(--down);transform:rotate(-8deg)}#sr{right:8px;color:var(--up);transform:rotate(8deg)}
+.choice{display:block;width:100%;margin-top:9px;padding:10px;text-align:center}
+table.rep{width:100%;border-collapse:collapse}table.rep td{padding:4px 2px;border-bottom:1px solid var(--line)}table.rep td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.attr{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}.attr div{background:#f3ecd8;border-radius:8px;padding:6px;text-align:center}.attr b{display:block;font-size:17px}
+</style>
+</head>
+<body>
+<div id="app">
+ <div id="top"></div>
+ <div id="stage"><canvas id="chart"></canvas><div id="reg" class="tag"></div><button id="hedge" class="btn sm" onclick="hedge()">🛡️ 一键对冲！</button><button id="tapBtn">下单<br><small style="font-size:11px;font-weight:700" id="tapV"></small></button></div>
+ <div id="life"></div>
+ <div id="tabs"></div>
+ <div id="list"></div>
+</div>
+<button id="mail" class="btn" onclick="openCard()"></button>
+<div id="toast"></div>
+<div id="mask"></div>
+<script>
+'use strict';
+const R=Math.random,ri=(a,b)=>a+Math.floor(R()*(b-a+1)),pick=a=>a[Math.floor(R()*a.length)],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),$=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fmt(v){const s=v<0?'-':'';v=Math.abs(v);if(v<1e4)return s+Math.floor(v);const U=['万','亿','万亿','兆','万兆','京'];let i=-1;while(v>=1e4&&i<U.length-1){v/=1e4;i++}return s+(v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2))+U[i]}
+// ============ 数据 ============
+const SUR='王李张刘陈杨黄赵吴周徐孙马朱胡郭何林罗高郑梁谢宋唐许韩冯邓曹'.split('');
+const MN='浩然 子轩 宇航 俊杰 志强 明哲 一鸣 天佑 博文 嘉豪'.split(' '),FN='梓涵 欣怡 诗琪 雨桐 思颖 佳怡 若曦 可馨 婉清 语嫣'.split(' ');
+const CITIES='上海 北京 深圳 杭州 广州 成都 武汉 重庆 西安'.split(' ');
+const BGS={寒门:[500,3,'#9aa5b1'],工薪:[2000,4,'#4ea3ff'],中产:[1e4,2.4,'#ffffff'],富二代:[1e5,.6,'#6c3fc4']};
+const TRAITS={数学天才:'全部收入 +15%',钢铁心态:'健康下降慢 40%',赌徒血统:'下单暴击 ×2，亏损也更大',天选之子:'事件里更走运',工作狂:'收入 +20%，家庭下降更快',社交达人:'陪家人效果翻倍',身体倍儿棒:'健康下降慢一半',合规标兵:'合规恢复快一倍'};
+const GEN=[['📒','模拟盘学徒',1000,20],['🤖','量化脚本',8e3,200],['🧑‍💻','实习交易员',9e4,1600],['🧑‍💼','资深交易员',1e6,9400],['👥','量化团队',11e6,52e3],['🏦','私募基金',12e7,28e4],['🌐','对冲基金',16e8,156e4],['🛰️','全球宏观基金',25e9,88e5]];
+const MILE=[25,50,100,150,200,300];
+const UPG=[['kb','⌨️','机械键盘','下单收益 ×2',5e3],['term','📡','专业行情终端','全部收入 +25%',1e5],['cof1','☕','咖啡机','离线收益上限 2→4 小时',5e4],['kb2','🖥️','多屏工作站','下单收益再 ×1.5',2e5],
+ ['res','🔍','研究部','牛市持续时间 +50%',3e6],['butler','🧹','生活管家','健康、家庭低于 40 时自动打理',1e7],['risk','🛡️','风控系统','股灾时自动对冲',2e7],['kb3','⚡','算法下单','下单收益再 ×1.5',5e7],
+ ['cof2','🌙','夜班团队','离线上限 8 小时，离线效率 50%→80%',5e8],['law','⚖️','法务团队','合规恢复更快，罚款减半',5e8],['ai','🧠','AI 交易模型','全部收入 ×2',1e10]];
+const STAGES=[[1e12,'交易传奇'],[1e10,'对冲基金大佬'],[1e8,'私募基金经理'],[1e6,'职业交易员'],[0,'散户']];
+const REG={bull:['牛市',1.6,[30,50]],range:['震荡',1,[40,70]],bear:['熊市',.6,[25,40]],crash:['股灾',-.8,[12,18]]};
+const TRANS={bull:{bull:0,range:.6,bear:.32,crash:.08},range:{bull:.45,range:0,bear:.43,crash:.12},bear:{bull:.35,range:.5,bear:0,crash:.15},crash:{bull:.3,range:.5,bear:.2,crash:0}};
+const ACH=[['c1','第一桶金','累计赚到 1万',g=>g.life>=1e4],['c2','百万富翁','累计赚到 100万',g=>g.life>=1e6],['c3','亿万身家','累计赚到 1亿',g=>g.life>=1e8],['c4','富可敌国','累计赚到 100亿',g=>g.life>=1e10],
+ ['t1','手速入门','下单 100 次',g=>g.taps>=100],['t2','键盘侠','下单 1000 次',g=>g.taps>=1000],['g1','带团队','任一项目达到 25 级',g=>g.gen.some(x=>x>=25)],['g2','开基金','拥有私募基金',g=>g.gen[5]>0],['g3','全球布局','拥有全球宏观基金',g=>g.gen[7]>0],
+ ['h1','临危不乱','成功对冲 5 次股灾',g=>g.hedges>=5],['f1','成家','结婚',g=>g.partner==='married'],['f2','为人父母','有了孩子',g=>g.kids>0],['f3','安居','买了房',g=>g.house],['e1','见多识广','处理 50 个人生事件',g=>g.cards>=50],['r1','薪火相传','退休并传承一次',g=>g.gens>=1],['r2','三代传奇','传承三次',g=>g.gens>=3]];
+// ============ 状态 ============
+let G=null,draft=null,tab='team',buyN=1,cur=null,pend=[];
+function genChar(){const gender=R()<.5?'男':'女';const bl=Object.keys(BGS);let tw=bl.reduce((s,k)=>s+BGS[k][1],0),x=R()*tw,bg=bl[0];for(const k of bl){x-=BGS[k][1];if(x<0){bg=k;break}}
+  const tk=Object.keys(TRAITS),tr=[];while(tr.length<2){const t=pick(tk);if(!tr.includes(t))tr.push(t)}
+  return{name:pick(SUR)+pick(gender==='男'?MN:FN),gender,city:pick(CITIES),bg,traits:tr,skin:pick(['#f6d2b0','#f2c59a','#e0ac7e','#c98f62']),hair:pick(['#1d1a17','#2b2118','#4a3222','#6b4423']),int:ri(40,90),luck:ri(30,85),body:ri(40,90)}}
+function newLife(c,keep){G={c,cash:BGS[c.bg][0],life:0,age:22,gen:GEN.map(()=>0),up:{},health:70+Math.round(c.body*.3),family:70,comply:85,regime:'range',regT:45,hedged:false,buffs:[],
+  taps:keep?keep.taps:0,hedges:keep?keep.hedges:0,cards:keep?keep.cards:0,ach:keep?keep.ach:{},legacy:keep?keep.legacy:0,gens:keep?keep.gens:0,best:keep?keep.best:0,
+  partner:'',pname:'',kids:0,house:false,flags:{},log:[],nextCard:25,cd:{},last:Date.now(),pause:0};
+  life(`${c.name}在${c.city}开了第一个账户，本金 ${fmt(G.cash)}`);save()}
+const hasT=t=>G.c.traits.includes(t),own=id=>!!G.up[id];
+function life(t){G.log.unshift(`${Math.floor(G.age)}岁：${t}`);if(G.log.length>60)G.log.pop()}
+function stage(){return STAGES.find(s=>G.life>=s[0])[1]}
+function genMul(l){let m=1;for(const k of MILE)if(l>=k)m*=2;return m}
+function genCost(i,n){const b=GEN[i][2],l=G.gen[i];let s=0;for(let k=0;k<n;k++)s+=b*Math.pow(1.19,l+k);return s}
+function maxBuy(i){let n=0,c=0;const b=GEN[i][2],l=G.gen[i];while(n<500){const x=b*Math.pow(1.19,l+n);if(c+x>G.cash)break;c+=x;n++}return n}
+function globalMul(){let m=(1+.05*G.legacy)*(1+.02*Object.keys(G.ach).length);if(own('term'))m*=1.25;if(own('ai'))m*=2;if(hasT('数学天才'))m*=1.15;if(hasT('工作狂'))m*=1.2;
+  if(G.partner==='married')m*=1.05;if(G.health<30)m*=.7;if(G.family<30)m*=.85;const now=Date.now();G.buffs=G.buffs.filter(b=>b.until>now);G.buffs.forEach(b=>m*=b.mul);return m}
+function baseIps(){let s=0;GEN.forEach((g,i)=>s+=g[3]*G.gen[i]*genMul(G.gen[i]));return s*globalMul()}
+function regMul(){if(G.regime==='crash')return G.hedged||own('risk')?.3:-.8;return REG[G.regime][1]}
+function ips(){return G.pause>0?0:baseIps()*regMul()}
+function S(){return Math.max(baseIps()*18,1500)} // 事件金额按当前收入缩放
+function tapVal(){let m=1;if(own('kb'))m*=2;if(own('kb2'))m*=1.5;if(own('kb3'))m*=1.5;return Math.max(150*m*(1+.05*G.legacy),baseIps()*.04*m)}
+function earn(v){G.cash+=v;if(v>0)G.life+=v;if(G.cash<0)G.cash=0}
+function buff(name,mul,sec){G.buffs.push({name,mul,until:Date.now()+sec*1000})}
+// ============ 主循环 ============
+function tick(dt){if(!G)return;
+  G.age+=dt/60;if(G.pause>0)G.pause-=dt;
+  earn(ips()*dt);
+  G.regT-=dt;if(G.regT<=0)nextReg();
+  let hd=.012*(hasT('钢铁心态')?.6:1)*(hasT('身体倍儿棒')?.5:1)*(G.age>45?1.4:1),fd=.014*(hasT('工作狂')?1.5:1)*(G.partner?1.2:1)*(G.kids?1.15:1);
+  G.health-=hd*dt;G.family-=fd*dt;G.comply=Math.min(100,G.comply+.006*dt*(hasT('合规标兵')?2:1)*(own('law')?2:1));
+  if(own('butler')){if(G.health<40)G.health+=20;if(G.family<40)G.family+=20}
+  if(G.health<=0)crisis('health');else if(G.family<=0)crisis('family');else if(G.comply<=0)crisis('comply');
+  G.nextCard-=dt;if(G.nextCard<=0){G.nextCard=ri(35,70);if(pend.length<3){const c=pickCard();if(c){pend.push(c);sfx('event')}}}
+  for(const a of ACH)if(!G.ach[a[0]]&&a[3](G)){G.ach[a[0]]=1;toast(`🏅 成就：${a[1]}（收入 +2%）`);sfx('level')}
+  if(G.age>=60&&!cur&&$('mask').style.display!=='flex')retireAsk(true)}
+function nextReg(){const t=TRANS[G.regime];let x=R(),n='range';for(const k in t){x-=t[k];if(x<0){n=k;break}}if(G.life<5e4&&n==='crash')n='bear';G.regime=n;G.hedged=false;const d=REG[n][2];G.regT=ri(d[0],d[1])*(n==='bull'&&own('res')?1.5:1);
+  if(n==='crash'){sfx('alarm');toast(own('risk')?'⚠️ 股灾！风控系统已自动对冲':'⚠️ 股灾来了！快点「一键对冲」，否则持续亏钱')}else if(n==='bull'){sfx('good');toast('📈 牛市来了，收入 ×1.6')}}
+function hedge(){if(G.regime!=='crash'||G.hedged)return;G.hedged=true;G.hedges++;sfx('coin');toast('🛡️ 对冲成功，股灾期间不再亏钱')}
+function crisis(k){if(k==='health'){const l=G.cash*.2;G.cash-=l;G.pause=45;G.health=50;life('累垮住院，损失'+fmt(l));modal(`<div style="font-size:50px;text-align:center">🏥</div><h3>累垮住院</h3><p>身体先于市场罢工了。医药费花掉 <b class="down">${fmt(l)}</b>，团队停摆 45 秒。</p><p class="dim">记得点「健身」。</p>`)}
+  else if(k==='family'){const l=G.partner==='married'?G.cash*.5:G.cash*.1;G.cash-=l;G.family=45;if(G.partner){life(`和${G.pname}${G.partner==='married'?'离婚':'分手'}，失去${fmt(l)}`);modal(`<div style="font-size:50px;text-align:center">💔</div><h3>${G.partner==='married'?'离婚':'分手'}</h3><p>${esc(G.pname)}离开了你。${G.partner==='married'?'财产平分，':''}失去 <b class="down">${fmt(l)}</b>。</p>`);G.partner=''}
+    else{life('和家里闹翻了');modal(`<div style="font-size:50px;text-align:center">🏚️</div><h3>和家里闹翻</h3><p>太久没回家，亲戚间的事只能用钱摆平，花掉 <b class="down">${fmt(l)}</b>。</p>`)}}
+  else{const l=G.cash*(own('law')?.25:.5);G.cash-=l;G.comply=60;G.pause=30;life('被证监会处罚，罚没'+fmt(l));modal(`<div style="font-size:50px;text-align:center">⚖️</div><h3>证监会处罚</h3><p>合规彻底失守，罚没 <b class="down">${fmt(l)}</b>，停业整顿 30 秒。</p>`)}
+  sfx('boom');renderAll()}
+// ============ 下单 ============
+function tapTrade(e){if(!G)return;G.taps++;const v=tapVal(),p=.6+(G.c.int-50)/400;let d,crit=false;
+  if(R()<p){crit=R()<.1;d=v*(crit?(hasT('赌徒血统')?10:5):1+R())}else d=-v*(hasT('赌徒血统')?.9:.5);
+  earn(d);sfx(d>0?(crit?'coin':'tap'):'bad');
+  const st=$('stage'),r=st.getBoundingClientRect(),f=document.createElement('div');f.className='fl '+(d>0?'up':'down');f.textContent=(d>0?'+':'')+fmt(d)+(crit?' 暴击!':'');
+  f.style.left=((e.clientX||r.right-60)-r.left-30+ri(-18,18))+'px';f.style.top=((e.clientY||r.bottom-90)-r.top-30)+'px';st.appendChild(f);setTimeout(()=>f.remove(),900);renderTop()}
+$('tapBtn').addEventListener('pointerdown',e=>{e.preventDefault();ac();tapTrade(e)});
+// ============ 事件卡 ============
+const C=m=>{const v=S()*m*(m>0&&hasT('天选之子')?1.3:1);earn(v);return v};
+const lucky=p=>R()<p+(G.c.luck-50)/400+(hasT('天选之子')?.12:0);
+const CARDS=[
+ {ic:'🏥',w:g=>g.age>26&&!g.flags.dad?1:0,t:'老家来电话：父亲突发心梗住进 ICU，要尽快手术。',L:['普通方案',g=>{g.flags.dad=1;C(-2);g.family-=8;return '你在医院和盘面间来回奔波。家庭-8'}],R:['全力救治',g=>{g.flags.dad=1;C(-8);g.family+=20;return '手术很成功。家庭+20'}]},
+ {ic:'🤝',w:()=>.7,t:'大学室友创业失败，开口借钱周转。',L:['婉拒',g=>{g.family-=3;return '你找了个理由推掉了。'}],R:['借给他',g=>{C(-3);if(lucky(.45)){g.flags.loan=1;return '他握着你的手说一定还。'}return '他说一定还……后来再没联系。'}]},
+ {ic:'💰',w:g=>g.flags.loan?4:0,t:'当初借钱的室友东山再起，打来电话。',L:['只收本金',g=>{delete g.flags.loan;C(3);g.family+=5;return '你们喝了一顿酒。家庭+5'}],R:['连本带利',g=>{delete g.flags.loan;C(6);return '他连本带利还了你。'}]},
+ {ic:'🤫',w:g=>g.life>5e4?.7:0,t:'做高管的老同学酒后透露：他们公司下周有重大利好。',L:['当没听见',g=>{g.comply+=6;return '有些钱不能赚。合规+6'}],R:['重仓干',g=>{g.comply-=35;buff('内幕消息',3,60);return '收入 ×3 持续 60 秒。合规-35，这钱烫手。'}]},
+ {ic:'📱',w:g=>g.life>1e6?.6:0,t:'百万粉丝的财经网红找你合作喊单，割韭菜分你一半。',L:['拒绝',g=>{g.comply+=5;return '后来听说那个网红被抓了。合规+5'}],R:['干了',g=>{C(12);g.comply-=45;return '钱到账了，群里骂声一片。合规-45'}]},
+ {ic:'🕵️',w:g=>g.comply<45?2.5:0,t:'证监会稽查局来电：你的账户被列入异常交易调查。',L:['销毁记录',g=>{if(lucky(.4)){g.comply+=10;return '调查不了了之，你每晚都睡不好。'}C(-20);g.comply=Math.max(5,g.comply-20);return '技术恢复了所有记录，重罚。'}],R:['请律师配合',g=>{C(-6);g.comply+=30;return '补缴罚款后事情了结。合规+30'}]},
+ {ic:'😵',w:g=>g.health<50?2:.2,t:'凌晨三点你还盯着美股盘面，已经连续两周每晚只睡四小时。',L:['硬扛',g=>{g.health-=12;buff('熬夜盯盘',1.3,45);return '收入 +30% 45 秒，健康-12'}],R:['去看医生',g=>{C(-.5);g.health+=15;return '医生让你少盯盘。健康+15'}]},
+ {ic:'🩺',w:g=>g.age>30?.6:0,t:'体检报告上有几个箭头，医生建议进一步检查。',L:['以后再说',g=>{g.health-=10;return '你把报告塞进了抽屉。健康-10'}],R:['认真复查',g=>{C(-1.5);g.health+=18;return '发现得早，问题不大。健康+18'}]},
+ {ic:'💘',w:g=>!g.partner&&g.age<45?1.2:0,t:g=>{g._pn=pick(g.c.gender==='男'?FN:MN);return `朋友聚会上遇到了${g._pn}，聊得很投机。`},L:['专注交易',()=>'你没有回消息。'],R:['主动追求',g=>{C(-1);g.partner='dating';g.pname=g._pn;g.flags.dateAge=g.age;g.family+=12;life(`和${g._pn}在一起了`);return `你们开始约会了。家庭+12`}]},
+ {ic:'😤',w:g=>g.partner&&g.family<50?2:0,t:g=>`“你眼里只有 K 线！”${g.pname}摔门而出。`,L:['吵一架',g=>{g.family-=15;return '冷战开始了。家庭-15'}],R:['放下手机陪伴',g=>{g.family+=18;buff('陪伴',.7,30);return '你们去看了场电影。家庭+18，收入 -30% 30 秒'}]},
+ {ic:'💍',w:g=>g.partner==='dating'&&g.family>50&&g.age-g.flags.dateAge>1.5?2:0,t:g=>`和${g.pname}在一起有段时间了，双方父母开始催婚。`,L:['再等等',g=>{g.family-=10;return '对方有些失望。家庭-10'}],R:['结婚',g=>{C(-5);g.partner='married';g.family+=22;life(`和${g.pname}结婚`);return '婚礼上你难得放下了手机。家庭+22，收入永久 +5%'}]},
+ {ic:'👶',w:g=>g.partner==='married'&&g.age<43&&g.kids<2?1.2:0,t:'伴侣认真地和你谈起了要孩子的事。',L:['再等等',g=>{g.family-=6;return '这个话题暂时搁下了。'}],R:['要一个',g=>{g.kids++;g.family+=18;life(`第${g.kids}个孩子出生了`);return '你第一次觉得有比盈亏更重要的东西。家庭+18'}]},
+ {ic:'🏠',w:g=>!g.house&&g.life>3e5?.8:0,t:g=>`看中了一套${g.c.city}的房子，首付不便宜。`,L:['继续租房',g=>{g.family-=4;return '你觉得资金效率更重要。'}],R:['买！',g=>{C(-15);g.house=true;g.family+=15;life(`在${g.c.city}买了房`);return '拿到钥匙那天，家人都很开心。家庭+15'}]},
+ {ic:'🎓',w:g=>g.kids>0&&!g.flags.school?.7:0,t:'孩子到了上学的年纪，国际学校学费不菲。',L:['就近公立',g=>{g.flags.school=1;g.family+=3;return '公立学校也挺好。'}],R:['国际学校',g=>{g.flags.school=1;C(-6);g.family+=10;return '孩子在新学校很开心。家庭+10'}]},
+ {ic:'👵',w:g=>g.age>38&&!g.flags.parents?.6:0,t:'父母年纪大了，独自在老家生活越来越不方便。',L:['请护工',g=>{g.flags.parents=1;C(-4);g.family+=4;return '钱解决了大部分问题。'}],R:['接来同住',g=>{g.flags.parents=1;g.family+=15;g.health-=4;return '屋里热闹了起来。家庭+15'}]},
+ {ic:'🎰',w:()=>.5,t:'路过彩票店，今天奖池滚存到了 5 亿。',L:['不买',()=>'你笑了笑走开了。'],R:['买一注',g=>{if(lucky(.06)){const v=C(25);life('中了彩票');return `中奖了！到账 ${fmt(v)}`}C(-.05);return '没中。概率就是这么残酷。'}]},
+ {ic:'🍻',w:()=>.6,t:'今晚同学聚会，大家都想听你讲交易的故事。',L:['不去',g=>{g.family-=3;return '你盯了一晚上盘。'}],R:['去',g=>{C(-.3);g.family+=6;g.health-=3;return '久违地笑了一晚上。家庭+6'}]},
+ {ic:'🧓',w:g=>!g.flags.mentor&&g.life>2e4?.6:0,t:'一位穿越过三轮牛熊的老交易员愿意带你，学费不菲。',L:['婉拒',()=>'你相信自己能悟出来。'],R:['拜师',g=>{g.flags.mentor=1;C(-4);g.c.int=Math.min(100,g.c.int+15);buff('名师指点',1.5,120);life('拜师学艺');return '第一课：活下来。收入 ×1.5 持续 2 分钟，下单胜率永久提高'}]},
+ {ic:'🧾',w:g=>g.life>1e7?.6:0,t:'税务局通知：你有未申报的交易收益。',L:['托关系',g=>{g.comply-=22;if(lucky(.5)){C(-1);return '对方说没问题了。合规-22'}C(-10);return '找的人先出事了，加倍罚款。合规-22'}],R:['补税',g=>{C(-4);g.comply+=8;return '补缴税款，事情了结。合规+8'}]},
+ {ic:'📰',w:g=>g.life>1e7?.5:0,t:'财经媒体想给你做专访，标题叫《民间股神》。',L:['低调',g=>{g.comply+=3;return '闷声发大财。'}],R:['接受',g=>{buff('名气',1.4,90);g.comply-=6;return '文章刷屏了。收入 ×1.4 持续 90 秒，合规-6'}]},
+ {ic:'🎁',w:g=>hasT('天选之子')?.7:.2,t:'老家拆迁，你分到一笔补偿款。',L:['存起来',g=>{const v=C(5);return `到账 ${fmt(v)}`}],R:['分给家人一半',g=>{const v=C(2.5);g.family+=12;return `到账 ${fmt(v)}，家庭+12`}]},
+ {ic:'🦢',w:g=>g.life>1e5?.5:0,t:'突发！全球性事件爆发，市场瞬间暴跌。',L:['恐慌砍仓',g=>{C(-6);return '你在最低点卖出了。'}],R:['扛住不动',g=>{if(lucky(.5)){buff('抄底',1.8,60);return '你扛住了，还顺手抄了底。收入 ×1.8 持续 60 秒'}C(-10);g.health-=6;return '越跌越深，仓位被击穿。健康-6'}]},
+ {ic:'🪙',w:g=>g.life>5e4?.4:0,t:'你存放比特币的交易所宣布暂停提币，创始人失联。',L:['认栽',g=>{C(-5);return '只追回一小部分。'}],R:['联合维权',g=>{g.health-=5;if(lucky(.45)){C(-1);return '追回了大部分。健康-5'}C(-6);return '白忙一场。健康-5'}]},
+ {ic:'🔥',w:g=>g.regime==='bear'||g.regime==='crash'?1.2:0,t:'最近亏得太狠，你只想马上翻本。',L:['停下来休息',g=>{g.health+=8;return '你关掉软件，去公园走了走。健康+8'}],R:['满仓梭哈',g=>{if(lucky(.4)){const v=C(12);return `奇迹般赚回 ${fmt(v)}`}C(-12);g.health-=5;return '又亏了一大笔。'}]},
+ {ic:'🍷',w:g=>g.health<60?.7:.2,t:'压力太大，朋友劝你喝两杯放松一下。',L:['算了',()=>'你泡了杯枸杞。'],R:['喝',g=>{g.health-=8;buff('微醺',1.25,40);return '酒后操作格外大胆。收入 +25% 40 秒，健康-8'}]},
+ {ic:'📞',w:g=>g.life>2e5?.5:0,t:'猎头来电：头部机构想高薪挖你，但要签竞业协议。',L:['留下单干',g=>{buff('斗志',1.3,60);return '你更想做自己的老板。收入 +30% 60 秒'}],R:['拿签字费',g=>{const v=C(8);buff('竞业',.6,60);return `签字费 ${fmt(v)}，但 60 秒内收入 -40%`}]},
+ {ic:'🧘',w:()=>.5,t:'朋友拉你去参加周末的禅修营，全程不能看手机。',L:['没空',()=>'行情不等人。'],R:['去',g=>{g.health+=15;g.family+=5;buff('离线',.5,30);return '健康+15 家庭+5，30 秒内收入减半'}]},
+ {ic:'👨‍👩‍👧',w:g=>g.kids>0?.8:0,t:'孩子的家长会和重要的调仓日撞在了同一天。',L:['让伴侣去',g=>{g.family-=10;buff('专注',1.3,45);return '收入 +30% 45 秒，家庭-10'}],R:['去家长会',g=>{g.family+=14;return '孩子在台下冲你挥手。家庭+14'}]},
+ {ic:'🏦',w:g=>g.gen[5]>0?.6:0,t:'基金回撤有点大，大客户打电话要赎回。',L:['让他赎',g=>{C(-6);return '规模缩水了一截。'}],R:['亲自路演挽留',g=>{g.health-=6;if(lucky(.6)){buff('客户追加',1.5,60);return '客户不但没赎回，还追加了。收入 ×1.5 60 秒'}C(-3);return '说了三小时还是没留住。健康-6'}]},
+ {ic:'📚',w:()=>.5,t:'有个顶级交易课程在招生，要占用不少时间和学费。',L:['不报',()=>'你继续自己摸索。'],R:['报名',g=>{C(-2);g.c.int=Math.min(100,g.c.int+5);buff('学以致用',1.25,90);return '收入 +25% 持续 90 秒，下单胜率提高'}]},
+ {ic:'🚗',w:g=>g.life>1e6?.4:0,t:'车行打电话：你看中的那台跑车到货了。',L:['算了',()=>'钱要留在账户里。'],R:['提车',g=>{C(-5);g.family+=4;g.health+=4;return '风驰电掣的感觉真好。'}]},
+ {ic:'🧑‍⚖️',w:g=>g.gen[3]>0?.5:0,t:'手下一个交易员偷偷违规加杠杆赚了钱，没人发现。',L:['按规矩处理',g=>{g.comply+=12;C(-1);return '你开除了他并上报。合规+12'}],R:['睁只眼闭只眼',g=>{g.comply-=18;buff('灰色收益',1.5,60);return '收入 ×1.5 60 秒，合规-18'}]},
+];
+function pickCard(){const pool=CARDS.map(c=>[c,c.w(G)]).filter(x=>x[1]>0);let tw=pool.reduce((s,x)=>s+x[1],0),x=R()*tw;for(const[c,w]of pool){x-=w;if(x<0)return{c,t:typeof c.t==='function'?c.t(G):c.t}}return null}
+function openCard(){if(!pend.length||cur)return;cur=pend.shift();sfx('tap');
+  modal(`<div id="card"><div class="side" id="sl">← ${cur.c.L[0]}</div><div class="side" id="sr">${cur.c.R[0]} →</div><div class="big">${cur.c.ic}</div><p style="font-size:16px;text-align:center;min-height:70px">${esc(cur.t)}</p><p class="dim" style="text-align:center;font-size:12px">左右滑动卡片，或点下面的按钮</p></div>
+   <div class="row" style="margin-top:8px"><button class="btn" style="flex:1" onclick="answer(0)">← ${cur.c.L[0]}</button><button class="btn pri" style="flex:1" onclick="answer(1)">${cur.c.R[0]} →</button></div>`,true);
+  const cd=$('card');let sx=null,dx=0;cd.onpointerdown=e=>{sx=e.clientX;cd.style.transition='none';try{cd.setPointerCapture(e.pointerId)}catch(x){}};
+  cd.onpointermove=e=>{if(sx===null)return;dx=e.clientX-sx;cd.style.transform=`translateX(${dx}px) rotate(${dx/18}deg)`;$('sl').style.opacity=clamp(-dx/70,0,1);$('sr').style.opacity=clamp(dx/70,0,1)};
+  cd.onpointerup=cd.onpointercancel=()=>{if(sx===null)return;sx=null;cd.style.transition='';if(Math.abs(dx)>80)answer(dx>0?1:0);else{cd.style.transform='';$('sl').style.opacity=$('sr').style.opacity=0}dx=0}}
+function answer(i){if(!cur)return;const o=i?cur.c.R:cur.c.L,before=G.cash,res=o[1](G);['health','family','comply'].forEach(k=>G[k]=clamp(G[k],0,100));G.cards++;const d=G.cash-before;cur=null;
+  sfx(d<0||/-\d/.test(res)?'bad':'good');modal(`<h3>${o[0]}</h3><p style="font-size:15px">${esc(res)}</p>${Math.abs(d)>1?`<p>现金 <b class="${d>0?'up':'down'}">${d>0?'+':''}${fmt(d)}</b></p>`:''}`);renderAll();save()}
+// ============ 生活动作 ============
+const ACTS={gym:['🏃 健身','health',25,g=>{g.health+=18}],fam:['🏠 陪家人','family',25,g=>{g.family+=hasT('社交达人')?36:18}],law:['📑 合规培训','comply',40,g=>{g.comply+=15;C(-.5)}]};
+function act(k){const a=ACTS[k],now=Date.now();if((G.cd[k]||0)>now)return;a[3](G);['health','family','comply'].forEach(s=>G[s]=clamp(G[s],0,100));G.cd[k]=now+a[2]*1000;sfx(k==='law'?'tap':'good');renderLife()}
+// ============ 购买 ============
+function buy(i){const n=buyN==='max'?maxBuy(i):buyN;if(!n)return;const c=genCost(i,n);if(c>G.cash)return;G.cash-=c;const b=genMul(G.gen[i]);G.gen[i]+=n;if(genMul(G.gen[i])>b){toast(`🎉 ${GEN[i][1]} 达到 ${G.gen[i]} 级里程碑，产出 ×2`);sfx('level')}else sfx('buy');renderAll()}
+function buyUp(id){const u=UPG.find(x=>x[0]===id);if(own(id)||G.cash<u[4])return;G.cash-=u[4];G.up[id]=1;sfx('level');toast('✅ '+u[2]);renderAll()}
+// ============ 退休传承 ============
+function legacyGain(){return Math.floor(Math.cbrt(G.life/1e6))}
+function retireAsk(forced){const lg=legacyGain();modal(`<div style="font-size:50px;text-align:center">${forced?'🎂':'🏁'}</div><h3>${forced?'60 岁了，该退休了':'金盆洗手？'}</h3><p>${esc(G.c.name)}这一生累计赚到 <b class="up">${fmt(G.life)}</b>，最高头衔「${stage()}」。</p>
+  <p>退休后由下一代接班：重新随机一个角色、从头开始，但继承 <b class="up">${lg}</b> 点家族传承（每点全部收入 +5%，现有 ${G.legacy} 点）。成就保留。</p>
+  ${lg<1?'<p class="dim">累计收入到 100万 才有第一点传承。</p>':''}<div class="row"><button class="btn" style="flex:1" ${forced?'disabled':''} onclick="closeM()">再干几年</button><button class="btn pri" style="flex:2" onclick="doRetire()">退休，传给下一代</button></div>`,true)}
+function doRetire(){const keep={taps:G.taps,hedges:G.hedges,cards:G.cards,ach:G.ach,legacy:G.legacy+legacyGain(),gens:G.gens+1,best:Math.max(G.best,G.life)};window._keep=keep;draft=genChar();pend=[];cur=null;sfx('level');startScreen(true)}
+// ============ 存档 & 离线 ============
+function save(){if(!G)return;G.last=Date.now();try{localStorage.setItem('traderidle_v1',JSON.stringify(G))}catch(e){}}
+function load(){try{const s=localStorage.getItem('traderidle_v1');if(!s)return false;const g=JSON.parse(s);if(!g||!g.gen||!g.c)return false;G=g;G.buffs=[];G.cd={};
+  const el=Math.max(0,(Date.now()-(G.last||Date.now()))/1000);if(el>60){const cap=(own('cof2')?8:own('cof1')?4:2)*3600,t=Math.min(el,cap),v=baseIps()*t*(own('cof2')?.8:.5);earn(v);
+    if(v>0)setTimeout(()=>{modal(`<div style="font-size:50px;text-align:center">🌙</div><h3>欢迎回来</h3><p>你离开了 ${el>3600?(el/3600).toFixed(1)+' 小时':Math.round(el/60)+' 分钟'}，团队替你赚了</p><p style="font-size:26px;font-weight:900;text-align:center" class="up">+${fmt(v)}</p><p class="dim" style="font-size:12px">离线最多累计 ${cap/3600} 小时，升级咖啡机可以延长。</p>`);sfx('profit')},300)}
+  return true}catch(e){return false}}
+// ============ 声音 ============
+const SND={ctx:null,on:true,bgm:true,step:0};try{const c=JSON.parse(localStorage.getItem('traderidle_snd')||'{}');if(c.on===false)SND.on=false;if(c.bgm===false)SND.bgm=false}catch(e){}
+function ac(){if(!SND.ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{SND.ctx=new A();SND.bg=SND.ctx.createGain();SND.bg.gain.value=MY.audio?0:.5;SND.bg.connect(SND.ctx.destination)}catch(e){return null}}if(SND.ctx.state==='suspended')SND.ctx.resume();if(MY.audio&&SND.bgm&&MY.audio.paused)MY.audio.play().catch(()=>{});return SND.ctx}
+function tone(f,d,o={}){const c=SND.ctx;if(!c)return;const t=c.currentTime+(o.at||0),os=c.createOscillator(),g=c.createGain();os.type=o.type||'sine';os.frequency.setValueAtTime(f,t);if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+d);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(o.vol||.15,t+(o.atk||.01));g.gain.exponentialRampToValueAtTime(.0001,t+d);os.connect(g);g.connect(o.dest||c.destination);os.start(t);os.stop(t+d+.05)}
+function noise(d,o={}){const c=SND.ctx;if(!c)return;const t=c.currentTime,b=c.createBuffer(1,Math.floor(c.sampleRate*d),c.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=R()*2-1;const s=c.createBufferSource();s.buffer=b;const f=c.createBiquadFilter();f.frequency.setValueAtTime(o.f||1200,t);if(o.fto)f.frequency.exponentialRampToValueAtTime(o.fto,t+d);const g=c.createGain();g.gain.setValueAtTime(o.vol||.3,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(c.destination);s.start(t)}
+const SFX={tap(){tone(880+R()*200,.05,{type:'triangle',vol:.07})},buy(){tone(520,.08,{type:'square',vol:.06});tone(780,.14,{type:'square',vol:.06,at:.06})},coin(){tone(1319,.08,{type:'square',vol:.07});tone(1976,.3,{type:'square',vol:.07,at:.07})},
+ profit(){[1319,1568,1976,2637].forEach((f,i)=>tone(f,.25,{type:'square',vol:.05,at:i*.07}))},bad(){tone(330,.2,{type:'triangle',vol:.1,to:247})},good(){tone(784,.12,{type:'triangle',vol:.1});tone(1175,.25,{type:'triangle',vol:.1,at:.1})},
+ event(){tone(988,.18,{type:'triangle',vol:.1});tone(1319,.35,{type:'triangle',vol:.1,at:.12})},alarm(){for(let i=0;i<3;i++){tone(880,.12,{type:'square',vol:.06,at:i*.22});tone(660,.12,{type:'square',vol:.06,at:i*.22+.11})}},
+ boom(){noise(1,{f:900,fto:60,vol:.5});tone(90,.8,{vol:.35,to:30})},level(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,{type:'triangle',vol:.1,at:i*.09}))}};
+function sfx(n){if(SND.on&&SND.ctx&&SFX[n])try{SFX[n]()}catch(e){}}
+const CH=[[262,330,392],[220,262,330],[175,220,262],[196,247,294]];
+setInterval(()=>{if(!SND.ctx||!SND.bgm||!G||MY.audio)return;const ch=CH[Math.floor(SND.step/4)%4];if(SND.step%4===0)ch.forEach(f=>tone(f,3.2,{type:'triangle',vol:.05,atk:.4,dest:SND.bg}));tone(ch[SND.step%3]*2,.4,{vol:.05,dest:SND.bg});SND.step++},800);
+function sndSave(){try{localStorage.setItem('traderidle_snd',JSON.stringify({on:SND.on,bgm:SND.bgm}))}catch(e){}}
+const MY={audio:null,name:'',vol:.6};
+function bgmApply(){if(SND.bg)SND.bg.gain.value=MY.audio?0:.5;if(MY.audio){MY.audio.volume=MY.vol;if(SND.bgm)MY.audio.play().catch(()=>{});else MY.audio.pause()}}
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('traderidle_music',1);r.onupgradeneeded=()=>r.result.createObjectStore('m');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbPut(v){const db=await idb();const st=db.transaction('m','readwrite').objectStore('m');v?st.put(v,'bgm'):st.delete('bgm')}
+async function idbGet(){const db=await idb();return new Promise(r=>{const q=db.transaction('m').objectStore('m').get('bgm');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})}
+function myUse(blob,name){if(MY.audio){MY.audio.pause();try{URL.revokeObjectURL(MY.audio.src)}catch(e){}MY.audio=null}MY.name='';if(!blob)return;const a=new Audio(URL.createObjectURL(blob));a.loop=true;MY.audio=a;MY.name=name||'我的音乐'}
+async function onPickMusic(i){const f=i.files&&i.files[0];if(!f)return;const nm=f.name.replace(/\.[^.]+$/,'');myUse(f,nm);SND.bgm=true;sndSave();ac();bgmApply();try{await idbPut({blob:f,name:nm})}catch(e){}toast('🎵 背景音乐换成：'+nm);i.value='';openSet()}
+async function clearMusic(){myUse(null);try{await idbPut(null)}catch(e){}bgmApply();openSet()}
+(async()=>{try{const r=await idbGet();if(r&&r.blob){myUse(r.blob,r.name);bgmApply()}}catch(e){}})();
+document.addEventListener('pointerdown',()=>ac(),{passive:true});
+function openSet(){modal(`<h3>⚙️ 声音和音乐</h3><button class="btn choice" onclick="SND.on=!SND.on;sndSave();openSet()">${SND.on?'🔊 音效：开':'🔇 音效：关'}</button><button class="btn choice" onclick="SND.bgm=!SND.bgm;sndSave();bgmApply();openSet()">${SND.bgm?'🎵 背景音乐：开':'🎵 背景音乐：关'}</button>
+  <p style="margin-top:12px">当前音乐：<b>${MY.audio?esc(MY.name):'游戏自带'}</b></p><label class="btn choice" style="position:relative;overflow:hidden">📂 选择我的音乐<input type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg" onchange="onPickMusic(this)" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:100px"></label>
+  ${MY.audio?`<div class="row" style="margin-top:9px;flex-wrap:wrap">音量 ${[.2,.4,.6,.8,1].map(v=>`<button class="btn sm ${MY.vol===v?'on':''}" onclick="MY.vol=${v};bgmApply();openSet()">${v*100}%</button>`).join('')}</div><button class="btn choice" onclick="clearMusic()">↩️ 恢复游戏自带音乐</button>`:''}
+  <p class="dim" style="font-size:12px;margin-top:10px">选的音乐只保存在这台手机上。</p>`)}
+// ============ 界面 ============
+let toastT=0;function toast(t){const el=$('toast');el.textContent=t;el.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>el.style.opacity=0,2600)}
+function modal(html,noClose){const m=$('mask');m.style.display='flex';m.innerHTML=`<div class="sheet">${html}${noClose?'':'<button class="btn pri choice" onclick="closeM()">好的</button>'}</div>`}
+function closeM(){$('mask').style.display='none';$('mask').innerHTML='';cur=null}
+function avatar(c,sz){const sh=BGS[c.bg][2];return `<div class="ava" style="background:${sh};${sz?`width:${sz}px;height:${sz}px`:''}"><i style="left:22%;top:16%;width:56%;height:58%;background:${c.skin};border-radius:6px"></i><i style="left:16%;top:6%;width:68%;height:24%;background:${c.hair};border-radius:6px 6px 0 0"></i>${c.gender==='女'?`<i style="left:12%;top:20%;width:14%;height:60%;background:${c.hair}"></i><i style="right:12%;top:20%;width:14%;height:60%;background:${c.hair}"></i>`:''}
+  ${c.int>=72?`<i style="left:26%;top:38%;width:48%;height:12%;background:#243142;border-radius:3px"></i>`:`<i style="left:32%;top:40%;width:9%;height:9%;background:#243142"></i><i style="right:32%;top:40%;width:9%;height:9%;background:#243142"></i>`}<i style="left:40%;top:58%;width:20%;height:5%;background:#b0553f;border-radius:3px"></i>${c.bg==='中产'?`<i style="left:45%;top:76%;width:10%;height:24%;background:#d9382c"></i>`:c.bg==='富二代'?`<i style="left:34%;top:80%;width:32%;height:7%;background:#ffc93c"></i>`:''}</div>`}
+function renderTop(){if(!G)return;const c=G.c,v=ips();
+  $('top').innerHTML=`<div class="row">${avatar(c)}<div style="min-width:0"><div class="row" style="gap:5px"><b style="font-size:15px">${esc(c.name)}</b><span class="tag">${stage()}</span></div><div class="dim" style="font-size:11px">${Math.floor(G.age)}岁 · ${c.city}${G.partner?' · '+(G.partner==='married'?'已婚':'恋爱中'):''}${G.kids?' · 孩子×'+G.kids:''}${G.legacy?' · 传承'+G.legacy:''}</div></div><span class="sp"></span><button class="btn sm" onclick="openSet()">⚙️</button></div>
+  <div class="row" style="margin-top:4px;align-items:flex-end"><div id="cash">¥${fmt(G.cash)}</div><span class="sp"></span><div style="text-align:right;font-weight:800" class="${v>0?'up':v<0?'down':'dim'}">${v>=0?'+':''}${fmt(v)}/秒${G.pause>0?'<div class="dim" style="font-size:11px">停摆中 '+Math.ceil(G.pause)+'秒</div>':G.buffs.length?`<div style="font-size:11px;color:#e08a00">${G.buffs.map(b=>esc(b.name)+'×'+b.mul).join(' ')}</div>`:''}</div></div>`;
+  const r=REG[G.regime],el=$('reg');el.textContent=`${r[0]} ×${regMul()} · ${Math.ceil(G.regT)}秒`;el.style.background=G.regime==='bull'?'#ffd7d3':G.regime==='crash'?'#243142':G.regime==='bear'?'#dcf5e7':'#ffc93c';el.style.color=G.regime==='crash'?'#fff':'';
+  $('hedge').style.display=G.regime==='crash'&&!G.hedged&&!own('risk')?'block':'none';$('tapV').textContent='≈'+fmt(tapVal());
+  const m=$('mail');if(pend.length&&!cur){m.style.display='block';m.textContent=`📩 人生事件 ×${pend.length}`}else m.style.display='none'}
+function renderLife(){const now=Date.now(),col=v=>v<30?'#e5352b':v<55?'#ffb020':'#2ecc71';
+  $('life').innerHTML=[['gym','❤️ 健康','health'],['fam','🏠 家庭','family'],['law','⚖️ 合规','comply']].map(([k,n,s])=>{const cd=Math.max(0,((G.cd[k]||0)-now)/1000),a=ACTS[k];
+   return `<div class="lf" onclick="act('${k}')"><div class="row" style="gap:2px"><span>${n}</span><span class="sp"></span><b>${Math.round(G[s])}</b></div><div class="tr"><i style="width:${G[s]}%;background:${col(G[s])}"></i></div><div style="text-align:center;font-weight:700;margin-top:2px">${cd>0?Math.ceil(cd)+'秒':a[0]}</div>${cd>0?`<div class="cd" style="transform:scaleX(${cd/a[2]})"></div>`:''}</div>`}).join('')}
+function renderTabs(){$('tabs').innerHTML=[['team','👥 团队'],['up','🛒 升级'],['ach','🏅 成就'],['me','📖 人生']].map(t=>`<button class="btn sm ${tab===t[0]?'on':''}" onclick="tab='${t[0]}';sfx('tap');renderTabs();renderList()">${t[1]}</button>`).join('')}
+function renderList(){const L=$('list');let h='';
+  if(tab==='team'){h=`<div class="row" style="margin-top:6px"><span class="dim" style="font-size:12px">一次买</span>${[1,10,'max'].map(n=>`<button class="btn sm ${buyN===n?'on':''}" onclick="buyN=${n==='max'?"'max'":n};renderList()">${n==='max'?'最多':'×'+n}</button>`).join('')}<span class="sp"></span><span class="dim" style="font-size:11px">25/50/100 级产出翻倍</span></div>`+
+   GEN.map((g,i)=>{const l=G.gen[i];if(i>1&&!G.gen[i-1]&&!l)return i>1&&!G.gen[i-2]?'':`<div class="it lock"><div class="ic">❓</div><div>先拥有「${GEN[i-1][1]}」解锁</div></div>`;const n=buyN==='max'?Math.max(1,maxBuy(i)):buyN,c=genCost(i,n);
+    return `<div class="it"><div class="ic">${g[0]}</div><div style="flex:1;min-width:0"><b>${g[1]}</b> <span class="tag">Lv ${l}</span><div class="dim" style="font-size:11px">每级 +${fmt(g[3]*genMul(l)*globalMul())}/秒${l?' · 共 '+fmt(g[3]*l*genMul(l)*globalMul())+'/秒':''}</div></div><button class="btn sm pri" id="gb${i}" data-c="${c}" ${c>G.cash?'disabled':''} onclick="buy(${i})">${n>1?'×'+n+' ':''}¥${fmt(c)}</button></div>`}).join('')}
+  else if(tab==='up')h=UPG.map(u=>`<div class="it ${own(u[0])?'own':''}"><div class="ic">${u[1]}</div><div style="flex:1"><b>${u[2]}</b><div class="dim" style="font-size:11px">${u[3]}</div></div>${own(u[0])?'<b class="down">已拥有</b>':`<button class="btn sm pri" id="ub${u[0]}" data-c="${u[4]}" ${u[4]>G.cash?'disabled':''} onclick="buyUp('${u[0]}')">¥${fmt(u[4])}</button>`}</div>`).join('')
+  else if(tab==='ach')h=`<p class="dim" style="font-size:12px;margin:8px 0 0">每个成就让全部收入 +2%，退休后也保留。已完成 ${Object.keys(G.ach).length}/${ACH.length}</p>`+ACH.map(a=>`<div class="it ${G.ach[a[0]]?'own':''}"><div class="ic">${G.ach[a[0]]?'🏅':'🔒'}</div><div><b>${a[1]}</b><div class="dim" style="font-size:11px">${a[2]}</div></div></div>`).join('')
+  else{const c=G.c;h=`<div class="it" style="display:block"><div class="row">${avatar(c,56)}<div><b style="font-size:17px">${esc(c.name)}</b> <span class="tag">${c.bg}</span><div class="dim" style="font-size:12px">${c.gender} · ${Math.floor(G.age)}岁 · ${c.city} · ${G.gens?'第'+(G.gens+1)+'代':'第一代'}</div></div></div>
+   ${c.traits.map(t=>`<div style="margin-top:4px"><span class="tag">${t}</span> <span class="dim" style="font-size:12px">${TRAITS[t]}</span></div>`).join('')}
+   <table class="rep" style="margin-top:6px"><tr><td>这一生累计赚到</td><td>${fmt(G.life)}</td></tr><tr><td>下单次数 / 胜率</td><td>${G.taps} / ${Math.round((.6+(c.int-50)/400)*100)}%</td></tr><tr><td>家族传承</td><td>${G.legacy} 点（收入 +${G.legacy*5}%）</td></tr><tr><td>现在退休可得</td><td>+${legacyGain()} 点</td></tr><tr><td>感情 / 住房</td><td>${G.partner?(G.partner==='married'?'已婚 · ':'恋爱 · ')+esc(G.pname):'单身'} / ${G.house?'有房':'租房'}</td></tr></table>
+   <div class="row" style="margin-top:8px"><button class="btn sm pri" onclick="retireAsk(false)">🏁 退休传承</button><span class="sp"></span><span class="dim" style="font-size:11px">60 岁自动退休</span></div></div>
+   <div class="it" style="display:block"><b>人生轨迹</b><div class="dim" style="font-size:12px;margin-top:4px">${G.log.map(l=>`<div>${esc(l)}</div>`).join('')}</div></div>`}
+  L.innerHTML=h}
+function refreshBtns(){document.querySelectorAll('#list button[data-c]').forEach(b=>{b.disabled=+b.dataset.c>G.cash})}
+function renderAll(){renderTop();renderLife();renderTabs();renderList()}
+// K 线
+const cvs=$('chart'),cx=cvs.getContext('2d');let px=[],price=100;for(let i=0;i<48;i++){price*=1+(R()-.5)*.02;px.push(price)}
+function stepChart(){const d={bull:.012,range:0,bear:-.008,crash:-.035}[G?G.regime:'range'];price=Math.max(5,price*(1+d+(R()-.5)*.03));if(price>1e4)price/=10;px.push(price);if(px.length>48)px.shift()}
+function drawChart(){const r=cvs.getBoundingClientRect(),d=Math.min(window.devicePixelRatio||1,2);if(cvs.width!==Math.round(r.width*d)){cvs.width=Math.round(r.width*d);cvs.height=Math.round(r.height*d)}const w=cvs.width,h=cvs.height;cx.clearRect(0,0,w,h);
+  const mn=Math.min(...px),mx=Math.max(...px),rg=(mx-mn)||1,bw=w/48,Y=v=>h-12*d-(v-mn)/rg*(h-50*d);cx.strokeStyle='#efe6cc';cx.lineWidth=1;for(let i=1;i<4;i++){cx.beginPath();cx.moveTo(0,h*i/4);cx.lineTo(w,h*i/4);cx.stroke()}
+  for(let i=1;i<px.length;i++){const up=px[i]>=px[i-1];cx.fillStyle=up?'#e5352b':'#12a05c';const y0=Y(Math.max(px[i],px[i-1])),y1=Y(Math.min(px[i],px[i-1]));cx.fillRect(i*bw+bw*.2,y0,bw*.6,Math.max(2*d,y1-y0))}}
+// 开始界面
+function startScreen(next){const c=draft,k=window._keep;modal(`<h3>📈 天才交易员：挂机人生</h3><p class="dim">${next?'上一代退休了，新一代接班。':'团队替你自动赚钱，关掉游戏也在赚。人生事件靠你左右滑卡做决定。'}</p>
+  <div class="row">${avatar(c,60)}<div><b style="font-size:20px">${c.name}</b> <span class="tag">${c.bg}</span><div class="dim">${c.gender} · 22岁 · ${c.city}</div></div></div>
+  <div class="attr"><div><b>${c.int}</b>智力</div><div><b>${c.body}</b>体质</div><div><b>${c.luck}</b>运气</div></div><p>启动资金 <b class="up">¥${fmt(BGS[c.bg][0])}</b>${k&&k.legacy?` · 家族传承 <b class="up">${k.legacy}</b> 点（收入 +${k.legacy*5}%）`:''}</p>
+  ${c.traits.map(t=>`<div style="margin-top:3px"><span class="tag">${t}</span> <span class="dim" style="font-size:12px">${TRAITS[t]}</span></div>`).join('')}
+  <div class="row" style="margin-top:12px"><button class="btn" style="flex:1" onclick="draft=genChar();sfx('tap');startScreen(${!!next})">🎲 重新投胎</button><button class="btn pri" style="flex:2" onclick="begin()">开始</button></div>`,true)}
+function begin(){ac();newLife(draft,window._keep);window._keep=null;draft=null;closeM();sfx('level');renderAll();toast('点右下角「下单」赚第一桶金，然后去「团队」雇人')}
+// 启动
+let lastT=performance.now(),acc1=0,accS=0,accC=0;
+setInterval(()=>{const now=performance.now(),dt=Math.min(1,(now-lastT)/1000);lastT=now;if(!G)return;tick(dt);acc1+=dt;accS+=dt;accC+=dt;if(accC>=.5){accC=0;stepChart();drawChart()}
+  renderTop();if(acc1>=1){acc1=0;renderLife();refreshBtns();if(tab==='team'&&buyN==='max'||tab==='me')renderList()}if(accS>=5){accS=0;save()}},100);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save();else if(G){const el=(Date.now()-G.last)/1000;if(el>60){load();renderAll()}lastT=performance.now()}});
+if(load()){renderAll();drawChart()}else{draft=genChar();drawChart();startScreen(false)}
+</script>
+</body>
+</html>
