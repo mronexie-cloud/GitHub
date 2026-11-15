@@ -59,7 +59,7 @@ table.rep{width:100%;border-collapse:collapse}table.rep td{padding:4px 2px;borde
 <canvas id="cv"></canvas>
 <div id="labels"></div>
 <div id="hud"></div><div id="bars"></div><div id="pnl"></div>
-<div id="side"><button class="rb" onclick="openStatus()">👤</button><button class="rb" id="sndBtn" onclick="toggleSnd()">🔊</button><button class="rb" id="bgmBtn" onclick="toggleBgm()">🎵</button></div>
+<div id="side"><button class="rb" onclick="openStatus()">👤</button><button class="rb" id="sndBtn" onclick="toggleSnd()">🔊</button><button class="rb" id="bgmBtn" onclick="openMusic()">🎵</button></div>
 <div id="joy"><div id="knob"></div></div>
 <button id="hand" onclick="interact()"></button>
 <div id="toast"></div><div id="flash"></div>
@@ -155,6 +155,8 @@ const ACT={
   done(){G.coffee++;const up=own('coffee');G.energy=Math.min(maxEnergy(),G.energy+(up?40:25));if(!up)G.health=clamp(G.health-2,0,100);addTime(10);sfx('coin');toast(up?'☕ 一杯好咖啡，精力+40':'☕ 速溶咖啡，精力+25 健康-2')}},
  sofa:{check:()=>needE(15),done(){G.energy-=15;addTime(60);const g=hasT('社交达人')?20:10;G.family=clamp(G.family+g,0,100);addStress(-6);sfx('calm');toast(`🛋️ 陪家人聊了会儿天，家庭+${g}`)}},
  bed:{arrive(){const warn=marketOpen()&&G.pos.length;M={type:'confirm',title:'睡觉，结束今天？',desc:(warn?'⚠️ 还没收盘，你还有持仓，睡着后没人盯盘。':'')+(G.t<900?'现在睡会直接跳到收盘后。':'好好睡一觉，明天精力恢复。'),yes:'sleepAnim()'};renderModal()}},
+ work:{check(){if((G.work||0)>=2){toast('今天已经接了两单，再干要累垮了');return false}return needE(30)},
+  done(){G.work=(G.work||0)+1;G.energy-=30;addTime(120);const v=Math.round(6e3*(1+G.lvl*.15));pay(v);addStress(5);sfx('coin');toast(`💼 干了两小时活，赚到 ${money(v)}（压力+5）`)}},
  phone:{check(){if(!G.ring){toast('没有来电');return false}return true},arrive(){hold('phone');const e=EV.find(x=>x.id===G.ringEv);G.ring=0;G.ringEv=null;showEvent(e)}}
 };
 function sleepAnim(){M=null;renderModal();P.act={id:'bed',t:0,dur:1.8,done:()=>sleep()}}
@@ -210,7 +212,7 @@ function sleep(forced){if(G.over)return;M=null;if(G.t<900)addTime(900-G.t+1);if(
   const n=nw();G.peak=Math.max(G.peak,n);
   for(const[v,t]of TITLES){if(v>0&&n>=v&&!G.flags['t'+v]){G.flags['t'+v]=1;rep.title=t;life(`身家突破${money(v)}，成为${t}`)}}
   // 新的一天
-  G.day++;if(G.day%12===1)G.age++;G.t=510;G.nextTick=516;G.closed=false;G.regime=G.nextReg;G.coffee=0;G.calls=0;G.ring=0;G.ringEv=null;
+  G.day++;if(G.day%12===1)G.age++;G.t=510;G.nextTick=516;G.closed=false;G.regime=G.nextReg;G.coffee=0;G.work=0;G.calls=0;G.ring=0;G.ringEv=null;
   G.energy=Math.round(maxEnergy()*(.55+G.health*.0045));G.flow=0;G.startNw=nw();AK.forEach(k=>{G.open[k]=G.prices[k]});
   if(G.health<=0)G.over='health';else if(n<0)G.over='bankrupt';
   rep.tilt=ret<=-.2&&!G.over&&R()<(hasT('赌徒血统')?.9:.6);
@@ -247,8 +249,19 @@ const CH=[[262,330,392],[220,262,330],[175,220,262],[196,247,294]];
 setInterval(()=>{if(!SND.ctx||!SND.bgm||!G||G.over)return;const ch=CH[Math.floor(SND.step/4)%4];if(SND.step%4===0)ch.forEach(f=>tone(f,3.2,{type:'triangle',vol:.05,atk:.4,dest:SND.bg}));tone(ch[SND.step%3]*2,.4,{vol:.05,dest:SND.bg});SND.step++},800);
 function sndSave(){try{localStorage.setItem('trader3d_snd',JSON.stringify({on:SND.on,bgm:SND.bgm}))}catch(e){}}
 function toggleSnd(){SND.on=!SND.on;sndSave();$('sndBtn').textContent=SND.on?'🔊':'🔇';sfx('tap')}
-function toggleBgm(){SND.bgm=!SND.bgm;sndSave();ac();$('bgmBtn').style.opacity=SND.bgm?1:.4}
-document.addEventListener('pointerdown',()=>ac(),{passive:true});
+function bgmApply(){$('bgmBtn').style.opacity=SND.bgm?1:.4;if(SND.bg)SND.bg.gain.value=MY.audio?0:.5;if(MY.audio){MY.audio.volume=MY.vol;if(SND.bgm)MY.audio.play().catch(()=>{});else MY.audio.pause()}}
+function toggleBgm(){SND.bgm=!SND.bgm;sndSave();ac();bgmApply();if(M&&M.type==='music')renderModal()}
+// 自选背景音乐：文件只存在这台手机上
+const MY={audio:null,name:'',vol:.6};
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('trader3d_music',1);r.onupgradeneeded=()=>r.result.createObjectStore('m');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbPut(v){const db=await idb();const st=db.transaction('m','readwrite').objectStore('m');v?st.put(v,'bgm'):st.delete('bgm')}
+async function idbGet(){const db=await idb();return new Promise(r=>{const q=db.transaction('m').objectStore('m').get('bgm');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})}
+function myUse(blob,name){if(MY.audio){MY.audio.pause();try{URL.revokeObjectURL(MY.audio.src)}catch(e){}MY.audio=null}MY.name='';if(!blob)return;const a=new Audio(URL.createObjectURL(blob));a.loop=true;MY.audio=a;MY.name=name||'我的音乐'}
+async function onPickMusic(i){const f=i.files&&i.files[0];if(!f)return;const nm=f.name.replace(/\.[^.]+$/,'');myUse(f,nm);SND.bgm=true;sndSave();ac();bgmApply();try{await idbPut({blob:f,name:nm})}catch(e){}toast('🎵 背景音乐换成：'+nm);i.value='';renderModal()}
+async function clearMusic(){myUse(null);try{await idbPut(null)}catch(e){}bgmApply();toast('已恢复游戏自带音乐');renderModal()}
+function openMusic(){if(M&&!['desk','music'].includes(M.type))return;MY.back=M&&M.type==='desk'?M:null;M={type:'music'};renderModal()}
+(async()=>{try{const r=await idbGet();if(r&&r.blob){myUse(r.blob,r.name);bgmApply()}}catch(e){}})();
+document.addEventListener('pointerdown',()=>{ac();if(MY.audio&&SND.bgm&&MY.audio.paused)MY.audio.play().catch(()=>{});if(SND.bg&&MY.audio)SND.bg.gain.value=0},{passive:true});
 let toastT=0;function toast(t){const el=$('toast');el.textContent=t;el.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>el.style.opacity=0,2600)}
 function flash(){const f=$('flash');f.style.transition='none';f.style.opacity=.45;requestAnimationFrame(()=>{f.style.transition='opacity .6s';f.style.opacity=0})}
 // ============ 3D 引擎（WebGL 方块） ============
@@ -258,7 +271,7 @@ const P={x:0,z:2,yaw:0,ph:0,moving:false,walk:null,act:null};
 const camS={e:[0,4.8,7.8],t:[0,.9,1.4]};
 const SPOT={desk:{ap:[0,-2.6],pos:[0,-.24,-3.25],yaw:0,pose:'type'},board:{ap:[-5.9,-1.6],pos:[-5.9,0,-1.6],yaw:Math.PI/2,pose:'point',dur:2},
  tread:{ap:[4.3,-3.2],pos:[5.2,.25,-3.4],yaw:0,pose:'run',dur:2.8},coffee:{ap:[5.75,.9],pos:[5.75,0,.9],yaw:-Math.PI/2,pose:'drink',dur:2.2},
- sofa:{ap:[-4.4,3.35],pos:[-4.4,-.33,4.05],yaw:0,pose:'sit',dur:2.6},bed:{ap:[3.55,3.6],pos:[5,.73,3.0],yaw:0,pose:'sleep'},phone:{ap:[2.3,-3.85],pos:[2.3,0,-3.85],yaw:0,pose:'phone'}};
+ sofa:{ap:[-4.4,3.35],pos:[-4.4,-.33,4.05],yaw:0,pose:'sit',dur:2.6},bed:{ap:[3.55,3.6],pos:[5,.73,3.0],yaw:0,pose:'sleep'},phone:{ap:[2.3,-3.85],pos:[2.3,0,-3.85],yaw:0,pose:'phone'},work:{ap:[0,2.9],pos:[0,-.24,3.65],yaw:Math.PI,pose:'type',dur:2.8}};
 // ---- 小人：外形跟随机生成的角色一致（性别、出身、体质、年龄、特质）
 function lookOf(c){const L=c.look||{skin:'#f2c59a',hair:'#2b2118'},bg={寒门:['#9aa5b1','#4a5560'],工薪:['#4ea3ff','#34495e'],中产:['#ffffff','#2c3e50'],富二代:['#6c3fc4','#1f1f2e']}[c.bg]||['#4ea3ff','#34495e'];
   return{skin:L.skin,hair:c.age>=45?'#a7a7a7':L.hair,long:c.gender==='女',shirt:bg[0],pants:bg[1],tie:c.bg==='中产',chain:c.bg==='富二代',glasses:c.int>=72||c.traits.includes('数学天才'),W:.36+c.body/100*.12+(c.traits.includes('身体倍儿棒')?.04:0)}}
@@ -341,6 +354,11 @@ function buildWorld(){const a=[];OBS=[];STN=[];const U=G?G.up:{};
   // 床
   box(a,5,0,3.8,2.1,.35,2.3,'#8d6e63');box(a,5,.35,3.8,2,.18,2.2,'#ffffff');box(a,5,.53,3.4,2,.08,1.4,'#4f86c6');box(a,5,.53,4.6,1.2,.14,.45,'#fff3c4');box(a,5,0,4.95,2.1,1.1,.12,'#6d4c41');solid(5,3.8,2.1,2.3);
   STN.push({id:'bed',n:'睡觉',ic:'🛏️',x:5,z:3.6,y:1.4});
+  // 打工的小桌
+  box(a,0,.72,4.35,1.6,.08,.7,'#f1d9a7');[[-.72,4.05],[.72,4.05],[-.72,4.62],[.72,4.62]].forEach(l=>box(a,l[0],0,l[1],.07,.72,.07,'#b77b43'));solid(0,4.35,1.6,.7);
+  box(a,0,.8,4.25,.5,.03,.34,'#c0c7d0');box(a,0,.83,4.43,.5,.33,.03,'#3a4450');box(a,.55,.8,4.3,.12,.14,.12,'#ffffff');box(a,-.55,.8,4.35,.3,.03,.4,'#ffffff');
+  box(a,0,.42,3.65,.5,.09,.5,'#4ea3ff');box(a,0,.5,3.4,.5,.55,.08,'#4ea3ff');box(a,0,0,3.65,.08,.42,.08,'#444');box(a,0,0,3.65,.5,.05,.5,'#444');
+  STN.push({id:'work',n:'打工赚钱',ic:'💼',x:0,z:4.2,y:1.55});
   plant(a,-6.4,-4.4);plant(a,6.4,-1.2);plant(a,-6.4,3.2);solid(-6.4,-4.4,.5,.5);solid(6.4,-1.2,.5,.5);
   if(U.asst){box(a,-3.6,.7,-3.6,1.2,.06,.7,'#ffffff');box(a,-3.6,0,-3.6,1.1,.7,.6,'#dfe6ee');box(a,-3.6,.76,-3.75,.5,.36,.05,'#222b36');solid(-3.6,-3.6,1.2,.7);person(a,-3.6,0,-2.95,'#4ea3ff','#222',false)}
   if(U.fund){box(a,0,2.72,-4.97,1.6,.3,.04,'#ffc93c');box(a,0,2.78,-4.95,1.3,.06,.02,'#8a6a10')}
@@ -446,6 +464,11 @@ function renderModal(){const el=$('modal');if(!M){el.style.display='none';el.inn
    <tr><td>健康 / 压力 / 家庭 / 合规</td><td>${G.health} / ${Math.round(G.stress)} / ${G.family} / ${G.comply}</td></tr><tr><td>研究准确率</td><td>${Math.round(acc()*100)}%</td></tr></table>
    <div class="dim" style="font-size:12px;max-height:120px;overflow:auto;margin-top:8px">${G.life.slice().reverse().map(l=>`<div>${esc(l)}</div>`).join('')}</div>
    <div class="row" style="margin-top:10px"><button class="btn sm" onclick="M={type:'confirm',title:'金盆洗手？',desc:'现在退休，按当前身家结算人生结局。',yes:'retire()'};renderModal()">🏁 退休结算</button><span class="sp"></span><button class="btn sm" onclick="M={type:'confirm',title:'重开一局？',desc:'当前进度会丢失。',yes:'restart()'};renderModal()">↻ 重开</button></div>`}
+  else if(M.type==='music'){h=`<div class="row"><h3 style="margin:0">🎵 背景音乐</h3><span class="sp"></span><button class="btn sm" onclick="M=MY.back||null;MY.back=null;renderModal()">✕</button></div>
+   <p>当前：<b>${MY.audio?esc(MY.name):'游戏自带音乐'}</b> · ${SND.bgm?'播放中':'已关闭'}</p>
+   <button class="btn choice" onclick="toggleBgm()">${SND.bgm?'⏸ 关闭背景音乐':'▶️ 打开背景音乐'}</button>
+   <label class="btn choice" style="position:relative;overflow:hidden">📂 选择我的音乐<small>从手机里选一首 mp3 / m4a，循环播放，只保存在这台手机上</small><input type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg" onchange="onPickMusic(this)" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:100px"></label>
+   ${MY.audio?`<div style="margin-top:10px">音量</div><div class="opts">${[.2,.4,.6,.8,1].map(v=>`<button class="btn sm ${MY.vol===v?'on':''}" onclick="MY.vol=${v};bgmApply();renderModal()">${v*100}%</button>`).join('')}</div><button class="btn choice" onclick="clearMusic()">↩️ 恢复游戏自带音乐</button>`:''}`}
   else if(M.type==='end'){const e=M.e;h=`<div class="big">${e[0]}</div><h3 style="text-align:center;font-size:24px">${e[1]}</h3><p style="text-align:center">${e[2]}</p>
    <table class="rep"><tr><td>${G.name}</td><td>${G.age}岁 · 第${G.day}天 · ⭐${G.lvl}级</td></tr><tr><td>最终资产</td><td><b>${money(nw())}</b></td></tr><tr><td>巅峰资产</td><td>${money(G.peak)}</td></tr></table>
    <div class="dim" style="font-size:12px;max-height:140px;overflow:auto;margin-top:8px">${G.life.map(l=>`<div>${esc(l)}</div>`).join('')}</div><button class="btn pri choice" style="text-align:center" onclick="restart()">再活一次 ↻</button>`}
@@ -453,7 +476,7 @@ function renderModal(){const el=$('modal');if(!M){el.style.display='none';el.inn
 function closeM(){M=null;sfx('tap');renderModal()}
 function openStatus(){if(!G||(M&&M.type!=='desk'))return;M={type:'status'};renderModal()}
 function buy(id){const u=UPG.find(x=>x.id===id);if(G.cash<u.c||G.lvl<u.lv||own(id))return;pay(-u.c);G.up[id]=1;if(id==='fund'){G.aum=5e7;life('成立私募基金')}else life('购入'+u.n);sfx('level');toast('✅ 已购买：'+u.n);buildWorld();save();renderModal();renderHud()}
-function start(){newGame(draft);draft=null;M=null;P.x=0;P.z=1.5;P.yaw=Math.PI;P.act=null;P.walk=null;sfx('level');renderModal();renderHud();toast(`☀️ 第1天 8:30 · 📰 ${G.news}。点「研究白板」让小人去研究，9:30 开盘`)}
+function start(){newGame(draft);draft=null;M=null;P.x=0;P.z=1.5;P.yaw=Math.PI;P.act=null;P.walk=null;sfx('level');renderModal();renderHud();P.z=1.2;toast(`☀️ 第1天 8:30 · 📰 ${G.news}。点「研究白板」让小人去研究，9:30 开盘`)}
 function restart(){try{localStorage.removeItem('trader3d_v1')}catch(e){}G=null;draft=genChar();M={type:'start'};buildWorld();renderModal();$('hud').innerHTML=$('bars').innerHTML=$('pnl').innerHTML=''}
 // ============ 主循环 ============
 let last=0,hudT=0;
@@ -461,7 +484,7 @@ function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   if(G&&!G.over){update(dt);if(!M||M.type==='desk'){addTime(dt*3);hudT+=dt;if(hudT>.5){hudT=0;renderHud()}}}
   camUpdate(dt);draw();if(G)updLabels();requestAnimationFrame(frame)}
 initGL();resize();addEventListener('resize',resize);
-$('sndBtn').textContent=SND.on?'🔊':'🔇';$('bgmBtn').style.opacity=SND.bgm?1:.4;
+$('sndBtn').textContent=SND.on?'🔊':'🔇';bgmApply();
 try{const s=localStorage.getItem('trader3d_v1');if(s){const g=JSON.parse(s);if(g&&g.prices&&g.up)G=g}}catch(e){}
 if(G){buildWorld();renderHud()}else{draft=genChar();M={type:'start'};buildWorld();renderModal()}
 requestAnimationFrame(frame);
