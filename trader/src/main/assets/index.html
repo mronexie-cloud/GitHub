@@ -64,6 +64,7 @@ svg{display:block}
 <div class="wrap" id="app"></div>
 <div id="foot"></div>
 <div id="modal"></div>
+<div id="board"></div>
 <script>
 'use strict';
 // ===================== 基础工具 =====================
@@ -431,7 +432,7 @@ function ending(){
   if(n>=0)return['🚶','平凡一生','你和大多数散户一样，在市场里转了一圈，又回到了起点。',''];
   return['🧾','负债退休','退休那天，你还欠着一屁股债。','r'];
 }
-function finish(){G.end=ending();SND.endPlayed=0;life(`游戏结束：${G.end[1]}`);save()}
+function finish(){G.end=ending();SND.endPlayed=0;life(`游戏结束：${G.end[1]}`);save();recordScore()}
 
 
 // ===================== 声音（WebAudio 合成，无需音频文件） =====================
@@ -548,7 +549,8 @@ function renderStart(){
   <div class="attr">${[['智力',a.int],['心态',a.mind],['胆识',a.nerve],['体质',a.body],['魅力',a.charm],['运气',a.luck]].map(x=>`<div><b class="mono">${x[1]}</b><span class="dim">${x[0]}</span></div>`).join('')}</div>
   ${c.traits.map(t=>`<div style="margin-top:6px"><span class="chip ${TRAITS[t].c}">${t}</span><span class="dim" style="font-size:12px">${TRAITS[t].d}</span></div>`).join('')}</div>
   <div class="card dim" style="font-size:13px">玩法：每回合一个季度。用<b class="gold">行动点</b>研究市场、健身、陪家人；在<b class="gold">市场</b>里做多做空、加杠杆；点<b class="gold">结束本季</b>看盈亏和人生事件。健康归零、破产或坐牢都会提前结束。55岁退休结算。<br><span class="up">红涨</span> <span class="down">绿跌</span>。</div>
-  <div class="row"><button class="btn" style="flex:1" onclick="draft=genChar();sfx('research');render()">🎲 重新投胎</button><button class="btn pri" style="flex:2" onclick="newGame(draft);draft=null;sfx('career');render()">开始人生</button></div>`;
+  <div class="row"><button class="btn" style="flex:1" onclick="draft=genChar();sfx('research');render()">🎲 重新投胎</button><button class="btn pri" style="flex:2" onclick="newGame(draft);draft=null;sfx('career');render()">开始人生</button></div>
+  <button class="btn" style="width:100%;margin-top:10px" onclick="openBoard()">🏆 排行榜</button>`;
   $('foot').innerHTML='';$('modal').innerHTML='';
 }
 function render(){
@@ -577,7 +579,7 @@ function render(){
   ${G.career==='employed'?`<button class="btn" style="width:100%;margin-top:8px" onclick="askQuit()">辞职，全职交易</button>`:''}</div>
 
   <div class="card"><h2>日志</h2><div class="log">${G.log.map(l=>`<div>${esc(l)}</div>`).join('')||'<div>还没有记录</div>'}</div>
-  <div class="row" style="margin-top:8px"><button class="btn sm" onclick="showLife()">人生轨迹</button><span class="sp"></span><button class="btn sm" onclick="if(confirmRestart())render()">重开一局</button></div></div>`;
+  <div class="row" style="margin-top:8px"><button class="btn sm" onclick="showLife()">人生轨迹</button><button class="btn sm" onclick="openBoard()">🏆 排行榜</button><span class="sp"></span><button class="btn sm" onclick="if(confirmRestart())render()">重开一局</button></div></div>`;
   $('foot').innerHTML=`<div class="foot"><button class="btn pri" onclick="sfx('turn');endQuarter();render()">结束本季 ▶</button></div>`;
   renderModal();
 }
@@ -636,9 +638,41 @@ function renderEnd(){
   <tr><td>出身</td><td>${G.bg} · ${G.city}</td></tr><tr><td>健康 / 家庭 / 声望</td><td class="mono">${G.st.health} / ${G.st.family} / ${G.st.fame}</td></tr></table>
   <div style="margin-top:10px" class="dim">资产曲线</div>${spark(G.hist,300,80)}</div>
   <div class="card"><h2>人生轨迹</h2><div class="log" style="max-height:260px">${G.life.map(l=>`<div>${esc(l)}</div>`).join('')}</div></div>`;
+  $('app').insertAdjacentHTML('beforeend',`<div class="card"><div class="row"><h2 style="margin:0">🏆 本局排名</h2><span class="sp"></span><button class="btn sm" onclick="openBoard()">查看排行榜</button></div><div class="dim" style="margin-top:6px">在我的记录里排第 <b class="gold">${myRank()}</b> 名${BD.rank?`，在线榜第 <b class="gold">${BD.rank}</b> 名`:''}</div></div>`);
   $('foot').innerHTML=`<div class="foot"><button class="btn pri" onclick="G=null;try{localStorage.removeItem('trader_sim_v1')}catch(e){};render()">再活一次 ↻</button></div>`;
   $('modal').innerHTML='';
 }
+
+// ===================== 排行榜 =====================
+// 我的记录：存在本机。好友榜：存在这个页面的共享数据里，每人只保留自己的最高分，只有被分享到这个页面的人能看到和上榜。
+const BD={db:null,user:null,uid:null,rows:null,names:{},err:'',tab:'online',rank:0,last:null};
+function localBoard(){try{return JSON.parse(localStorage.getItem('trader_board')||'[]')}catch(e){return[]}}
+function myRank(){const b=localBoard();if(!BD.last)return b.length||1;const i=b.findIndex(r=>r.ts===BD.last.ts);return i<0?b.length+1:i+1}
+function recordScore(){if(!G||!G.end||G.scored)return;G.scored=1;save();
+  const rec={ch:G.name,nw:Math.round(nw()),end:G.end[1],ic:G.end[0],age:G.age,job:CAREERS[G.career],bg:G.bg,ts:Date.now()};BD.last=rec;
+  try{const b=localBoard();b.push(rec);b.sort((x,y)=>y.nw-x.nw);localStorage.setItem('trader_board',JSON.stringify(b.slice(0,100)))}catch(e){}
+  submitScore(rec)}
+async function submitScore(rec){if(!BD.db||!BD.uid)return;try{const ref=BD.db.doc('scores/'+BD.uid),sn=await ref.get();if(!sn.exists||rec.nw>((sn.data()||{}).nw??-Infinity))await ref.set(rec);await loadOnline();
+  const i=(BD.rows||[]).findIndex(r=>r.id===BD.uid);BD.rank=i<0?0:i+1;if(G&&G.end&&!G.queue.length)render()}catch(e){}}
+async function loadOnline(){if(!BD.db){BD.err='off';return}BD.err='';BD.rows=null;const timer=setTimeout(()=>{if(!BD.rows){BD.err='timeout';renderBoard()}},10000);
+  try{const q=await BD.db.collection('scores').orderBy('nw','desc').limit(100).get();clearTimeout(timer);BD.rows=q.docs.map(d=>({id:d.id,...d.data()}));
+    try{if(BD.user&&BD.rows.length)BD.names=await BD.user.profiles(BD.rows.map(r=>r.id))||{}}catch(e){}}
+  catch(e){clearTimeout(timer);BD.err='fail';BD.rows=[]}}
+function openBoard(){sfx('tap');if(!BD.db&&!window.claude)BD.tab='mine';renderBoard();if(BD.tab==='online')loadOnline().then(renderBoard)}
+function closeBoard(){$('board').innerHTML=''}
+function boardTab(t){BD.tab=t;renderBoard();if(t==='online')loadOnline().then(renderBoard)}
+function renderBoard(){const medal=i=>['🥇','🥈','🥉'][i]||`<span class="dim">${i+1}</span>`;
+  const row=(r,i,who,me)=>`<div class="pos" style="${me?'background:rgba(245,185,66,.12);border-radius:8px;padding:7px 6px':''}"><div style="width:26px;text-align:center;font-size:16px">${medal(i)}</div><div style="flex:1;min-width:0"><b>${esc(who)}</b> ${r.ic||''} <span class="dim">${esc(r.end||'')}</span><div class="dim" style="font-size:11px">${esc(r.bg||'')}出身 · ${r.age||'?'}岁 · ${esc(r.job||'')}</div></div><b class="mono ${r.nw<0?'down':'gold'}">${money(r.nw)}</b></div>`;
+  let body;
+  if(BD.tab==='mine'){const b=localBoard();body=b.length?b.map((r,i)=>row(r,i,r.ch,BD.last&&r.ts===BD.last.ts)).join(''):'<p class="dim">还没有记录。玩完一局（退休、破产都算）就会上榜。</p>'}
+  else if(!BD.db)body='<p class="dim">在线榜现在连不上。它只在 Claude 里打开这个页面、并且已登录时可用；安装的 APP 里只有“我的记录”。</p>';
+  else if(BD.err==='timeout'||BD.err==='fail')body='<p class="dim">在线榜暂时读不到，稍后再打开试试。</p>';
+  else if(!BD.rows)body='<p class="dim">读取中…</p>';
+  else body=(BD.rows.length?BD.rows.map((r,i)=>{const n=(BD.names[r.id]&&BD.names[r.id].name)||'';return row(r,i,(n?n+' · ':'')+(r.ch||'玩家'),r.id===BD.uid)}).join(''):'<p class="dim">还没有人上榜，玩完一局你就是第一名。</p>')+'<p class="dim" style="font-size:11px;margin-top:10px">显示前 100 名，每人只保留自己的最高身家。把这个页面分享给朋友，他们玩完也会出现在这里。</p>';
+  $('board').innerHTML=`<div class="mask" style="z-index:15" onclick="if(event.target===this)closeBoard()"><div class="modal"><div class="row"><h3 style="margin:0">🏆 排行榜</h3><span class="sp"></span><button class="btn sm" onclick="closeBoard()">✕</button></div>
+   <div class="opts" style="margin-top:10px"><button class="btn sm ${BD.tab==='online'?'on':''}" onclick="boardTab('online')">🌐 在线榜</button><button class="btn sm ${BD.tab==='mine'?'on':''}" onclick="boardTab('mine')">我的记录</button></div>${body}</div></div>`}
+(async()=>{try{for(let i=0;i<20&&!(window.claude&&window.claude.use);i++)await new Promise(r=>setTimeout(r,250));if(!window.claude||!window.claude.use)return;
+  const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);BD.db=db;BD.user=user;if(user)BD.uid=await user.id();if($('board').innerHTML&&BD.tab==='online')loadOnline().then(renderBoard)}catch(e){}})();
 G=load();
 if(G&&(!G.st||!G.prices))G=null;
 render();
