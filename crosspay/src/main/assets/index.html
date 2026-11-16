@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>环球收款</title>
+<meta name="theme-color" content="#0f1b2a">
+<style>
+/* Layout: fixed header, scrolling main area per tab, fixed bottom tab bar, bottom sheets for every flow */
+:root{
+  --bg:#f2f3ef; --surface:#ffffff; --ink:#122033; --muted:#677284; --line:#e2e4de; --soft:#f6f7f3;
+  --hero:#0f1b2a; --hero-ink:#f4f6f2; --accent:#0d8a67; --accent-soft:#e3f3ed; --out:#b4441c; --warn:#a66a00; --warn-soft:#fbf1dc;
+  --r:16px; --font:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --num:"SF Pro Display",-apple-system,"Roboto","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1218; --surface:#161d26; --ink:#e8ecef; --muted:#8e99a6; --line:#26303b; --soft:#1b232d;
+  --hero:#1a2a3d; --accent:#3cc69a; --accent-soft:#163a30; --out:#f08a5d; --warn:#e5b450; --warn-soft:#3a2f17; color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input,select,textarea{font:inherit;color:var(--ink)}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+header{position:fixed;top:0;left:0;right:0;z-index:5;background:var(--bg);
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 18px 10px;display:flex;align-items:center;gap:10px}
+header h1{margin:0;font-size:1.15rem;font-weight:700;letter-spacing:.02em}
+.pill{font-size:.72rem;padding:3px 8px;border-radius:99px;background:var(--warn-soft);color:var(--warn);font-weight:600}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+header .sp{flex:1}
+main{padding:calc(env(safe-area-inset-top,0px) + 56px) 16px calc(env(safe-area-inset-bottom,0px) + 86px);max-width:560px;margin:0 auto}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);
+  display:flex;padding:6px 6px calc(env(safe-area-inset-bottom,0px) + 6px)}
+nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--muted);font-size:.72rem}
+nav.tabs button svg{width:23px;height:23px}
+nav.tabs button.on{color:var(--accent);font-weight:600}
+.hero{background:var(--hero);color:var(--hero-ink);border-radius:20px;padding:20px 20px 18px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-60px;top:-70px;width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(60,198,154,.28),transparent 70%)}
+.hero .lbl{font-size:.82rem;opacity:.72;display:flex;align-items:center;gap:6px}
+.hero .lbl button{font-size:.75rem;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.12)}
+.hero .big{font-size:2.1rem;font-weight:700;margin:6px 0 2px}
+.hero .row{display:flex;gap:18px;margin-top:12px;font-size:.8rem;opacity:.85}
+.hero .row b{display:block;font-size:.95rem;font-weight:600;margin-top:2px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 4px}
+.quick button{background:var(--surface);border-radius:var(--r);padding:12px 0 10px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.8rem;border:1px solid var(--line)}
+.quick .ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.quick .ic svg{width:20px;height:20px}
+h2{font-size:.95rem;margin:22px 4px 10px;display:flex;justify-content:space-between;align-items:baseline}
+h2 button{font-size:.8rem;color:var(--accent);font-weight:500}
+.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--line);overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:13px 14px;width:100%;text-align:left}
+.card>.li+.li,.card>*+.li{border-top:1px solid var(--line)}
+.flag{width:38px;height:38px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:1.2rem;flex:none}
+.li .mid{flex:1;min-width:0}
+.li .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .s{font-size:.78rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .r{text-align:right;flex:none}
+.in{color:var(--accent)} .out{color:var(--out)}
+.tag{font-size:.7rem;padding:2px 7px;border-radius:99px;background:var(--soft);color:var(--muted)}
+.tag.pend{background:var(--warn-soft);color:var(--warn)} .tag.ok{background:var(--accent-soft);color:var(--accent)} .tag.bad{background:#fde7e2;color:#b4441c}
+.seg{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px;margin-bottom:14px}
+.seg button{flex:1;padding:8px 0;border-radius:9px;font-size:.84rem;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-size:.84rem}
+.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;font-size:.88rem}
+.kv+.kv{border-top:1px solid var(--line)}
+.kv span:first-child{color:var(--muted);flex:none}
+.kv span:last-child{text-align:right;word-break:break-all}
+.copy{color:var(--accent);font-size:.78rem;margin-left:8px}
+.btn{display:block;width:100%;padding:14px;border-radius:14px;background:var(--accent);color:#fff;font-weight:600;font-size:1rem;text-align:center}
+.btn:disabled{opacity:.4}
+.btn.ghost{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+.btn.dark{background:var(--ink);color:var(--surface)}
+.btn+.btn{margin-top:10px}
+.note{font-size:.78rem;color:var(--muted);line-height:1.6;margin:12px 4px}
+.banner{display:flex;gap:10px;align-items:flex-start;background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:11px 13px;font-size:.8rem;line-height:1.55;margin-bottom:12px}
+.field{display:block;margin-bottom:12px}
+.field>span{display:block;font-size:.8rem;color:var(--muted);margin:0 2px 6px}
+.field input,.field select,.field textarea{width:100%;padding:12px 13px;border-radius:12px;border:1px solid var(--line);background:var(--soft);outline:none}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.amt{display:flex;align-items:center;gap:10px;background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.amt select{border:0;background:none;font-weight:700;font-size:1rem;outline:none;padding:4px 0}
+.amt input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:1.6rem;font-weight:700;text-align:right;font-family:var(--num)}
+.field .amt select{width:auto;padding:4px 0;border:0;background:none;border-radius:0}
+.field .amt input{width:auto;flex:1;padding:0;border:0;background:none;border-radius:0}
+.amt .out-v{flex:1;text-align:right;font-size:1.6rem;font-weight:700;font-family:var(--num)}
+.sub-row{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin:6px 4px 0}
+.sub-row button{color:var(--accent)}
+.swap{display:grid;place-items:center;margin:-6px 0;position:relative;z-index:1}
+.swap button{width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center}
+.qrbox{display:grid;place-items:center;padding:18px 0 8px}
+.qrbox .q{background:#fff;padding:10px;border-radius:14px;border:1px solid var(--line)}
+.addr{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;word-break:break-all;text-align:center;padding:0 16px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:.88rem}
+.date{font-size:.76rem;color:var(--muted);margin:16px 6px 6px}
+.steps{list-style:none;margin:6px 0 0;padding:0 4px}
+.steps li{position:relative;padding:0 0 18px 28px;font-size:.88rem}
+.steps li:before{content:"";position:absolute;left:5px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.steps li:after{content:"";position:absolute;left:11px;top:20px;bottom:2px;width:2px;background:var(--line)}
+.steps li:last-child:after{display:none}
+.steps li.done:before{background:var(--accent);border-color:var(--accent)}
+.steps li.now:before{border-color:var(--warn);background:var(--warn-soft)}
+.steps li small{display:block;color:var(--muted);font-size:.75rem;margin-top:2px}
+.switch{width:46px;height:28px;border-radius:99px;background:var(--line);position:relative;flex:none;transition:.2s}
+.switch:after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch.on{background:var(--accent)} .switch.on:after{left:21px}
+.bar{height:6px;border-radius:9px;background:var(--line);overflow:hidden;margin:8px 0 4px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .4s}
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(8,14,22,.45);z-index:20;opacity:0;transition:opacity .2s}
+.scrim.show{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:22px 22px 0 0;
+  max-height:92vh;overflow-y:auto;padding:10px 18px calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateY(100%);transition:transform .25s ease;max-width:560px;margin:0 auto}
+.sheet.show{transform:none}
+.sheet .grab{width:38px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
+.sheet h3{margin:4px 0 14px;font-size:1.1rem;display:flex;justify-content:space-between;align-items:center}
+.sheet h3 button{font-size:1.4rem;color:var(--muted);line-height:1;padding:0 4px}
+.result{text-align:center;padding:10px 0 4px}
+.result .ok-ic{width:62px;height:62px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin:4px auto 12px}
+.result .big{font-size:1.7rem;font-weight:700;margin:4px 0}
+.checkout{border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--soft)}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);transform:translateX(-50%) translateY(20px);opacity:0;
+  background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:12px;font-size:.86rem;z-index:40;transition:.25s;pointer-events:none;max-width:86vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp 0.8s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>环球收款</h1><span class="pill">演示版</span><span class="sp"></span><span id="kycPill"></span>
+</header>
+<main id="main"></main>
+<nav class="tabs" id="tabs"></nav>
+<div class="toast" id="toast"></div>
+
+<script src="core.js"></script>
+<script src="qr.js"></script>
+<script>
+'use strict';
+var C = window.Core;
+var KEY = 'crosspay.v1';
+var S; // app state
+var ui = { tab: 'home', recvTab: 'account', recvCur: 'USD', usdtNet: 'TRC20', fxFrom: 'USD', fxTo: 'MYR', fxAmt: '', txFilter: 'all' };
+
+// ---------- storage ----------
+function load() {
+  try { var raw = localStorage.getItem(KEY); if (raw) { S = JSON.parse(raw); if (S && S.v === 1) return; } } catch (e) {}
+  S = C.seedDemo(C.newState(Date.now()), Date.now());
+  S.autoConvert = false; S.autoTo = 'USD';
+  save();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+// ---------- small helpers ----------
+function $(s, r) { return (r || document).querySelector(s); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function money(cur, m) { return '<span class="num">' + esc(C.fmt(cur, m)) + '</span>'; }
+function vib(ms) { try { if (window.Android && Android.vibrate) Android.vibrate(ms); else if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+var toastT;
+function toast(msg) { var t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('show'); }, 2200); }
+function copy(text) {
+  var done = function () { toast('已复制'); vib(15); };
+  try { if (window.Android && Android.copy) { Android.copy(text); return done(); } } catch (e) {}
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+  else { fallbackCopy(text); done(); }
+}
+function fallbackCopy(text) { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
+function share(text) {
+  try { if (window.Android && Android.share) return Android.share(text); } catch (e) {}
+  if (navigator.share) navigator.share({ text: text }).catch(function () {}); else copy(text);
+}
+function when(ts) {
+  var d = new Date(ts), now = new Date();
+  var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  if (d.toDateString() === now.toDateString()) return '今天 ' + hm;
+  var y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return '昨天 ' + hm;
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm;
+}
+function dayKey(ts) { var d = new Date(ts); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
+function curOpts(sel, list) { return (list || C.ORDER).map(function (c) { return '<option value="' + c + '"' + (c === sel ? ' selected' : '') + '>' + C.CURRENCIES[c].flag + ' ' + c + '</option>'; }).join(''); }
+
+var IC = {
+  home: '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',
+  recv: '<path d="M12 4v12M6 10l6 6 6-6M5 20h14"/>',
+  fx: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+  me: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  send: '<path d="M12 20V8M6 14l6-6 6 6M5 4h14"/>',
+  bank: '<path d="M3 10l9-6 9 6M5 10v8M19 10v8M9 10v8M15 10v8M3 21h18"/>',
+  check: '<path d="M5 12l5 5 9-10"/>'
+};
+function svg(name, extra) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' + (extra || '') + '>' + IC[name] + '</svg>'; }
+
+// ---------- tabs ----------
+var TABS = [['home', '首页'], ['recv', '收款'], ['fx', '换汇'], ['list', '流水'], ['me', '我的']];
+function renderTabs() {
+  $('#tabs').innerHTML = TABS.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (ui.tab === t[0] ? 'on' : '') + '">' + svg(t[0]) + t[1] + '</button>'; }).join('');
+}
+function render() {
+  renderTabs();
+  $('#kycPill').innerHTML = S.kyc === 'verified' ? '<span class="pill ok">已实名</span>' : S.kyc === 'pending' ? '<span class="pill">审核中</span>' : '';
+  var f = { home: viewHome, recv: viewRecv, fx: viewFx, list: viewList, me: viewMe }[ui.tab];
+  $('#main').innerHTML = f();
+  if (ui.tab === 'fx') updateFx();
+}
+function go(tab) { ui.tab = tab; render(); window.scrollTo(0, 0); }
+
+// ---------- home ----------
+function txRow(t) {
+  var sign, cls, amt, cur;
+  if (t.type === 'collect') { sign = '+'; cls = 'in'; amt = t.net; cur = t.cur; }
+  else if (t.type === 'convert') { sign = '+'; cls = 'in'; amt = t.receive; cur = t.toCur; }
+  else { sign = '-'; cls = 'out'; amt = t.amount; cur = t.cur; }
+  var st = t.status === 'pending' ? '<span class="tag pend">处理中</span>' : t.status === 'failed' ? '<span class="tag bad">已退回</span>' : '';
+  var second = t.type === 'convert' ? '<div class="s num">-' + esc(C.fmt(t.cur, t.amount)) + '</div>' : (st ? '<div class="s">' + st + '</div>' : '');
+  var ico = t.type === 'collect' ? (t.method === 'crypto' ? '₮' : t.method === 'store' ? '🛍' : t.method === 'link' ? '🔗' : '🏦') : t.type === 'convert' ? '⇄' : '↗';
+  return '<button class="li" data-act="tx" data-id="' + t.id + '"><div class="flag">' + ico + '</div><div class="mid"><div class="t">' + esc(t.title) +
+    '</div><div class="s">' + esc(when(t.ts)) + ' · ' + esc(t.sub) + '</div></div><div class="r"><div class="num ' + (t.status === 'failed' ? '' : cls) + '" style="font-weight:600">' + sign + esc(C.fmt(cur, amt)) + '</div>' + second + '</div></button>';
+}
+function viewHome() {
+  var b = C.balances(S), d = S.display;
+  var hold = C.total(S, d, 'hold');
+  var monthIn = 0, since = Date.now() - 30 * 86400000;
+  S.txns.forEach(function (t) { if (t.type === 'collect' && t.ts >= since) monthIn += C.convertMinor(t.net, t.cur, d); });
+  var nCur = C.ORDER.filter(function (c) { return b[c] > 0; }).length;
+  var recent = S.txns.slice().sort(function (a, x) { return x.ts - a.ts; }).slice(0, 5);
+  var h = '<div class="hero"><div class="lbl">总资产（约合 ' + d + '）<button data-act="cycleDisplay">切换币种</button></div>' +
+    '<div class="big num">' + esc(C.fmt(d, C.total(S, d))) + '</div>' +
+    '<div class="row"><div>近 30 天收款<b class="num">' + esc(C.fmt(d, monthIn)) + '</b></div><div>处理中<b class="num">' + esc(C.fmt(d, hold)) + '</b></div><div>持有币种<b>' + nCur + ' 种</b></div></div></div>';
+  h += '<div class="quick">' +
+    '<button data-tab="recv"><span class="ic">' + svg('recv') + '</span>收款</button>' +
+    '<button data-tab="fx"><span class="ic">' + svg('fx') + '</span>换汇</button>' +
+    '<button data-act="send"><span class="ic">' + svg('send') + '</span>汇款</button>' +
+    '<button data-act="withdraw"><span class="ic">' + svg('bank') + '</span>提现</button></div>';
+  h += '<h2>币种账户</h2><div class="card">' + C.ORDER.map(function (c) {
+    var cc = C.CURRENCIES[c];
+    return '<button class="li" data-act="curDetail" data-cur="' + c + '"><div class="flag">' + cc.flag + '</div><div class="mid"><div class="t">' + c + '</div><div class="s">' + cc.name + '</div></div><div class="r"><div class="num" style="font-weight:600">' +
+      esc(C.fmt(c, b[c])) + '</div><div class="s num">≈ ' + esc(C.fmt(d, C.convertMinor(b[c], c, d))) + '</div></div></button>';
+  }).join('') + '</div>';
+  h += '<h2>最近交易<button data-tab="list">全部</button></h2><div class="card">' + (recent.length ? recent.map(txRow).join('') : '<div class="empty">还没有交易</div>') + '</div>';
+  h += '<p class="note">演示版：所有余额、账户和交易都是模拟数据，不涉及真实资金。正式版会通过持牌机构（如 Airwallex）收付款。</p>';
+  return h;
+}
+
+// ---------- receive ----------
+function viewRecv() {
+  var segs = [['account', '收款账户'], ['link', '收款链接'], ['store', '电商店铺'], ['usdt', 'USDT']];
+  var h = '<div class="seg">' + segs.map(function (s) { return '<button data-act="recvTab" data-v="' + s[0] + '" class="' + (ui.recvTab === s[0] ? 'on' : '') + '">' + s[1] + '</button>'; }).join('') + '</div>';
+  if (ui.recvTab === 'account') {
+    var list = C.ORDER.filter(function (c) { return c !== 'USDT'; });
+    h += '<div class="chips">' + list.map(function (c) { return '<button class="chip ' + (ui.recvCur === c ? 'on' : '') + '" data-act="recvCur" data-v="' + c + '">' + C.CURRENCIES[c].flag + ' ' + c + '</button>'; }).join('') + '</div>';
+    var rows = C.fakeAccount(ui.recvCur, ui.recvCur.charCodeAt(0) * 7 + ui.recvCur.charCodeAt(2));
+    h += '<div class="banner">⚠️ 以下是演示账户信息，不能真的收款。正式版的账户由持牌机构开立。</div>';
+    h += '<div class="card">' + rows.map(function (r) { return '<div class="kv"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '<button class="copy" data-act="copy" data-v="' + esc(r[1]) + '">复制</button></span></div>'; }).join('') + '</div>';
+    h += '<p class="note">把这些信息发给海外客户或平台，对方用本地转账付款，入账费率 ' + (C.COLLECT_FEES.account.rate * 100).toFixed(1) + '%。</p>';
+    h += '<button class="btn ghost" data-act="shareAcct">分享账户信息</button><button class="btn" data-act="simAccount">模拟一笔入账</button>';
+  } else if (ui.recvTab === 'link') {
+    h += '<button class="btn" data-act="newInvoice">＋ 新建收款链接 / 账单</button>';
+    h += '<h2>我的收款链接</h2><div class="card">' + (S.invoices.length ? S.invoices.slice().reverse().map(function (v) {
+      return '<button class="li" data-act="invoice" data-id="' + v.id + '"><div class="flag">🔗</div><div class="mid"><div class="t">' + esc(v.client) + '</div><div class="s">' + esc(v.id) + ' · ' + esc(v.desc || '无备注') + '</div></div><div class="r"><div class="num" style="font-weight:600">' + esc(C.fmt(v.cur, v.amount)) + '</div><div class="s">' +
+        (v.status === 'paid' ? '<span class="tag ok">已付款</span>' : '<span class="tag pend">待付款</span>') + '</div></div></button>';
+    }).join('') : '<div class="empty">还没有收款链接</div>') + '</div>';
+    h += '<p class="note">客户打开链接后用银行卡付款，费率 ' + (C.COLLECT_FEES.link.rate * 100).toFixed(1) + '%。适合自由职业者给海外客户开账单。</p>';
+  } else if (ui.recvTab === 'store') {
+    h += '<div class="card">' + C.STORES.map(function (st) {
+      var on = !!S.stores[st.id];
+      return '<div class="li"><div class="flag">🛍</div><div class="mid"><div class="t">' + esc(st.name) + '</div><div class="s">回款币种 ' + st.cur + (on ? ' · 已绑定' : '') + '</div></div>' +
+        (on ? '<button class="chip" data-act="payout" data-id="' + st.id + '">模拟回款</button>' : '') +
+        '<button class="switch ' + (on ? 'on' : '') + '" data-act="toggleStore" data-id="' + st.id + '" aria-label="绑定"></button></div>';
+    }).join('') + '</div>';
+    h += '<p class="note">绑定店铺后，平台的结算款会直接打进对应币种账户，费率 ' + (C.COLLECT_FEES.store.rate * 100).toFixed(1) + '%。演示版的"绑定"不会连接真实店铺。</p>';
+  } else {
+    h += '<div class="chips">' + Object.keys(C.NETWORKS).map(function (n) { return '<button class="chip ' + (ui.usdtNet === n ? 'on' : '') + '" data-act="usdtNet" data-v="' + n + '">' + C.NETWORKS[n].label + '</button>'; }).join('') + '</div>';
+    var addr = C.demoAddress(ui.usdtNet, ui.usdtNet.length * 13 + 5);
+    h += '<div class="card"><div class="qrbox"><div class="q">' + QR.svg(addr, 180, '#122033') + '</div></div><div class="addr">' + esc(addr) + '</div>' +
+      '<div style="padding:12px 14px 14px;display:flex;gap:8px"><button class="btn ghost" style="padding:10px" data-act="copy" data-v="' + esc(addr) + '">复制地址</button></div></div>';
+    h += '<div class="banner">⚠️ 这是演示地址，不是真实的链上地址，千万不要往里转真实的币。</div>';
+    h += '<div class="card"><div class="li"><div class="mid"><div class="t">到账自动换成法币</div><div class="s">避免币价波动，到账后立即换成 ' + S.autoTo + '</div></div><button class="switch ' + (S.autoConvert ? 'on' : '') + '" data-act="autoConvert"></button></div>' +
+      (S.autoConvert ? '<div class="li"><div class="mid"><div class="t">换成</div></div><select data-act="autoTo" style="border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--soft)">' + curOpts(S.autoTo, ['USD', 'MYR', 'CNY', 'SGD', 'EUR']) + '</select></div>' : '') + '</div>';
+    h += '<div id="depArea" style="margin-top:12px"></div><button class="btn" style="margin-top:12px" data-act="simCrypto">模拟链上到账</button>';
+    h += '<p class="note">只支持 USDT。收款费率 ' + (C.COLLECT_FEES.crypto.rate * 100).toFixed(1) + '%，' + C.NETWORKS[ui.usdtNet].label + ' 需要 ' + C.NETWORKS[ui.usdtNet].confirmations + ' 个区块确认。</p>';
+  }
+  return h;
+}
+
+// ---------- FX ----------
+function viewFx() {
+  var b = C.balances(S);
+  return '<div class="amt"><select id="fxFrom" data-act="fxFrom">' + curOpts(ui.fxFrom) + '</select><input id="fxAmt" inputmode="decimal" placeholder="0.00" value="' + esc(ui.fxAmt) + '"></div>' +
+    '<div class="sub-row"><span>可用 ' + esc(C.fmt(ui.fxFrom, b[ui.fxFrom])) + '</span><button data-act="fxAll">全部换出</button></div>' +
+    '<div class="swap"><button data-act="fxSwap" aria-label="对调">' + svg('fx', 'width="18" height="18" style="transform:rotate(90deg)"') + '</button></div>' +
+    '<div class="amt"><select id="fxTo" data-act="fxTo">' + curOpts(ui.fxTo) + '</select><div class="out-v" id="fxOut">0.00</div></div>' +
+    '<div class="card" style="margin-top:14px"><div class="kv"><span>实时汇率</span><span class="num" id="fxRate">—</span></div><div class="kv"><span>换汇手续费 ' + (C.FX_FEE * 100).toFixed(1) + '%</span><span class="num" id="fxFee">—</span></div><div class="kv"><span>到账</span><span>即时</span></div></div>' +
+    '<p class="note" id="fxErr" style="color:var(--out)"></p>' +
+    '<button class="btn" id="fxGo" data-act="fxReview">预览换汇</button>' +
+    '<h2>参考汇率（1 USD）</h2><div class="card">' + ['MYR', 'CNY', 'SGD', 'THB', 'EUR', 'GBP'].map(function (c) {
+      return '<div class="kv"><span>' + C.CURRENCIES[c].flag + ' ' + c + '</span><span class="num" data-rate="' + c + '">' + C.liveRate('USD', c).toFixed(4) + '</span></div>';
+    }).join('') + '</div><p class="note">演示汇率，每秒小幅跳动，不是真实市场报价。</p>';
+}
+function fxAmount() { return C.toMinor(ui.fxAmt); }
+function updateFx() {
+  if (ui.tab !== 'fx' || !$('#fxOut')) return;
+  var r = C.liveRate(ui.fxFrom, ui.fxTo), a = fxAmount(), err = '';
+  $('#fxRate').textContent = '1 ' + ui.fxFrom + ' = ' + r.toFixed(4) + ' ' + ui.fxTo;
+  if (ui.fxFrom === ui.fxTo) err = '请选择两种不同的币种';
+  if (a > 0 && ui.fxFrom !== ui.fxTo) {
+    var q = C.quoteConvert(ui.fxFrom, ui.fxTo, a, r);
+    $('#fxOut').textContent = C.fmtNum(q.receive);
+    $('#fxFee').textContent = C.fmt(ui.fxFrom, q.fee);
+    if (a > C.balance(S, 'wallet', ui.fxFrom)) err = '余额不足';
+  } else { $('#fxOut').textContent = '0.00'; $('#fxFee').textContent = '—'; }
+  if (ui.fxAmt && !(a > 0)) err = '金额格式不对（最多两位小数）';
+  $('#fxErr').textContent = err;
+  $('#fxGo').disabled = !!err || !(a > 0);
+  document.querySelectorAll('[data-rate]').forEach(function (el) { el.textContent = C.liveRate('USD', el.dataset.rate).toFixed(4); });
+}
+setInterval(updateFx, 1000);
+
+function fxReview() {
+  var a = fxAmount(), from = ui.fxFrom, to = ui.fxTo, locked = C.liveRate(from, to), left = 30;
+  var q = C.quoteConvert(from, to, a, locked);
+  var sh = openSheet('确认换汇', '<div class="card"><div class="kv"><span>卖出</span><span>' + money(from, a) + '</span></div><div class="kv"><span>手续费</span><span>' + money(from, q.fee) + '</span></div>' +
+    '<div class="kv"><span>锁定汇率</span><span class="num">' + locked.toFixed(4) + '</span></div><div class="kv"><span>买入</span><span class="in" style="font-weight:700">' + money(to, q.receive) + '</span></div></div>' +
+    '<p class="note" id="lockNote">汇率已锁定，<b id="lockLeft">30</b> 秒内有效</p><button class="btn" id="fxConfirm">确认换汇</button>');
+  var timer = setInterval(function () {
+    left--; var el = $('#lockLeft', sh);
+    if (el) el.textContent = left;
+    if (left <= 0) { clearInterval(timer); $('#lockNote', sh).textContent = '汇率锁定已过期，请重新预览'; $('#fxConfirm', sh).disabled = true; }
+  }, 1000);
+  sh.onclose = function () { clearInterval(timer); };
+  $('#fxConfirm', sh).onclick = function () {
+    try {
+      var t = C.convert(S, { from: from, to: to, amount: a, rate: locked });
+      save(); clearInterval(timer); ui.fxAmt = ''; vib(40);
+      replaceSheet(sh, '换汇成功', resultHtml('换汇成功', money(to, t.receive), '已存入 ' + to + ' 账户') + '<button class="btn" data-close>完成</button>');
+      render();
+    } catch (e) { toast(e.message); }
+  };
+}
+
+// ---------- transactions ----------
+function viewList() {
+  var f = ui.txFilter;
+  var list = S.txns.filter(function (t) {
+    return f === 'all' || (f === 'in' && t.type === 'collect') || (f === 'out' && t.type === 'send') || (f === 'fx' && t.type === 'convert');
+  }).sort(function (a, b) { return b.ts - a.ts; });
+  var h = '<div class="chips">' + [['all', '全部'], ['in', '收款'], ['out', '汇款/提现'], ['fx', '换汇']].map(function (x) { return '<button class="chip ' + (f === x[0] ? 'on' : '') + '" data-act="txFilter" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  if (!list.length) return h + '<div class="card"><div class="empty">没有符合条件的交易</div></div>';
+  var last = '';
+  list.forEach(function (t) {
+    var k = dayKey(t.ts);
+    if (k !== last) { if (last) h += '</div>'; h += '<div class="date">' + k + '</div><div class="card">'; last = k; }
+    h += txRow(t);
+  });
+  return h + '</div>';
+}
+var STEP_NAMES = ['已提交', '合规审核', '汇出处理中', '已到账'];
+function stepsHtml(t) {
+  var step = t.status === 'done' ? 4 : t.step || 1;
+  if (t.status === 'failed') return '<ul class="steps"><li class="done">已提交</li><li class="now">已退回<small>' + esc(t.reason || '') + '，资金已退回余额</small></li></ul>';
+  return '<ul class="steps">' + STEP_NAMES.map(function (n, i) {
+    var cls = i + 1 < step || step === 4 ? 'done' : i + 1 === step ? 'now' : '';
+    var small = i === 0 ? when(t.ts) : i === 3 ? (step === 4 ? when(t.doneTs || t.ts) : '预计 ' + esc(t.eta)) : '';
+    return '<li class="' + cls + '">' + n + (small ? '<small>' + small + '</small>' : '') + '</li>';
+  }).join('') + '</ul>';
+}
+function txDetail(id) {
+  var t = C.findTxn(S, id); if (!t) return;
+  var rows = [['交易号', t.id], ['时间', when(t.ts)], ['类型', { collect: '收款', convert: '换汇', send: '汇款 / 提现' }[t.type]]];
+  if (t.type === 'collect') rows.push(['收到', C.fmt(t.cur, t.amount)], ['手续费', C.fmt(t.cur, t.fee)], ['入账', C.fmt(t.cur, t.net)], ['方式', t.sub]);
+  if (t.type === 'convert') rows.push(['卖出', C.fmt(t.cur, t.amount)], ['手续费', C.fmt(t.cur, t.fee)], ['汇率', t.rate.toFixed(4)], ['买入', C.fmt(t.toCur, t.receive)]);
+  if (t.type === 'send') rows.push(['收款人', t.recipient.name + ' · ' + t.recipient.bank], ['汇出', C.fmt(t.cur, t.amount)], ['手续费', C.fmt(t.cur, t.fee)], ['对方收到', C.fmt(t.toCur, t.receive)], ['渠道', t.sub]);
+  if (t.note) rows.push(['备注', t.note]);
+  var h = '<div class="card">' + rows.map(function (r) { return '<div class="kv"><span>' + esc(r[0]) + '</span><span class="num">' + esc(r[1]) + '</span></div>'; }).join('') + '</div>';
+  if (t.type === 'send') h += '<h2>进度</h2>' + stepsHtml(t);
+  h += '<h2>记账分录</h2><div class="card">' + t.entries.map(function (e) {
+    var name = { wallet: '我的余额', hold: '在途冻结', world: '外部（对方/通道）', fees: '平台手续费' }[e.acct];
+    return '<div class="kv"><span>' + name + '</span><span class="num ' + (e.amt >= 0 ? 'in' : 'out') + '">' + (e.amt >= 0 ? '+' : '') + esc(C.fmt(e.cur, e.amt)) + '</span></div>';
+  }).join('') + '</div><p class="note">复式记账：每一笔的借贷相加等于零，保证钱不会凭空多出或消失。</p>';
+  openSheet('交易详情', h);
+}
+
+// ---------- me ----------
+function viewMe() {
+  var k = { none: '<span class="tag pend">未认证</span>', pending: '<span class="tag pend">审核中</span>', verified: '<span class="tag ok">已认证</span>' }[S.kyc];
+  var h = '<div class="card"><div class="li"><div class="flag">👤</div><div class="mid"><div class="t">演示用户</div><div class="s">个人 + 商家账户 · 马来西亚</div></div></div>' +
+    '<button class="li" data-act="kyc"><div class="mid"><div class="t">实名认证（KYC）</div><div class="s">汇款和提现前需要完成</div></div>' + k + '</button></div>';
+  h += '<h2>设置</h2><div class="card"><button class="li" data-act="cycleDisplay"><div class="mid"><div class="t">总资产显示币种</div></div><span class="tag">' + S.display + '</span></button>' +
+    '<button class="li" data-act="recipients"><div class="mid"><div class="t">收款人管理</div><div class="s">' + S.recipients.length + ' 个收款人</div></div><span class="tag">管理</span></button>' +
+    '<button class="li" data-act="fees"><div class="mid"><div class="t">收费标准</div></div><span class="tag">查看</span></button></div>';
+  h += '<h2>资金通道（第 2 期接入）</h2><div class="card">' + [
+    ['Airwallex', '全球收款账户 · 换汇 · 付款（马来西亚持牌）'], ['Stripe', '收款链接 · 银行卡支付'], ['BTCPay Server', 'USDT 收款（TRC20 / ERC20 / Polygon）'], ['Blnk', '复式记账账本（现在用本机模拟）']
+  ].map(function (x) { return '<div class="li"><div class="mid"><div class="t">' + x[0] + '</div><div class="s">' + x[1] + '</div></div><span class="tag">未连接</span></div>'; }).join('') + '</div>';
+  h += '<h2>其他</h2><div class="card"><button class="li" data-act="about"><div class="mid"><div class="t">关于与风险提示</div></div></button><button class="li" data-act="reset"><div class="mid"><div class="t out">重置演示数据</div></div></button></div>';
+  h += '<p class="note" style="text-align:center">环球收款 1.0 · 演示版</p>';
+  return h;
+}
+
+// ---------- sheets ----------
+var sheets = [];
+function openSheet(title, html) {
+  var scrim = document.createElement('div'); scrim.className = 'scrim';
+  var sh = document.createElement('div'); sh.className = 'sheet';
+  sh.innerHTML = '<div class="grab"></div><h3><span class="ttl">' + esc(title) + '</span><button data-close aria-label="关闭">×</button></h3><div class="body">' + html + '</div>';
+  document.body.appendChild(scrim); document.body.appendChild(sh);
+  sh._scrim = scrim;
+  scrim.onclick = function () { closeSheet(sh); };
+  sh.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) closeSheet(sh); });
+  requestAnimationFrame(function () { scrim.classList.add('show'); sh.classList.add('show'); });
+  sheets.push(sh);
+  return sh;
+}
+function replaceSheet(sh, title, html) { $('.ttl', sh).textContent = title; $('.body', sh).innerHTML = html; sh.scrollTop = 0; }
+function closeSheet(sh) {
+  sh = sh || sheets[sheets.length - 1]; if (!sh) return;
+  sheets = sheets.filter(function (x) { return x !== sh; });
+  if (sh.onclose) sh.onclose();
+  sh.classList.remove('show'); sh._scrim.classList.remove('show');
+  setTimeout(function () { sh.remove(); sh._scrim.remove(); }, 260);
+}
+function resultHtml(title, big, sub) {
+  return '<div class="result"><div class="ok-ic">' + svg('check', 'width="32" height="32"') + '</div><div style="font-weight:600">' + esc(title) + '</div><div class="big">' + big + '</div><div class="note" style="margin:4px 0 18px">' + esc(sub) + '</div></div>';
+}
+window.onAndroidBack = function () {
+  if (sheets.length) { closeSheet(); return true; }
+  if (ui.tab !== 'home') { go('home'); return true; }
+  return false;
+};
+
+// ---------- flows: collect ----------
+function simAccount() {
+  var cur = ui.recvCur;
+  var sh = openSheet('模拟一笔 ' + cur + ' 入账', '<label class="field"><span>付款方</span><input id="payer" value="Acme Trading Co."></label>' +
+    '<label class="field"><span>金额（' + cur + '）</span><input id="amt" inputmode="decimal" value="1200.00"></label>' +
+    '<p class="note">入账费率 ' + (C.COLLECT_FEES.account.rate * 100).toFixed(1) + '%</p><button class="btn" id="go">模拟入账</button>');
+  $('#go', sh).onclick = function () {
+    var a = C.toMinor($('#amt', sh).value), payer = $('#payer', sh).value.trim() || '海外付款方';
+    if (!(a > 0)) return toast('请输入正确的金额');
+    var t = C.collect(S, { method: 'account', cur: cur, amount: a, title: payer + ' 付款', sub: cur + ' 收款账户入账' });
+    save(); vib(40); render();
+    replaceSheet(sh, '已入账', resultHtml('收到 ' + payer + ' 的付款', '+' + money(cur, t.net), '手续费 ' + C.fmt(cur, t.fee)) + '<button class="btn" data-close>完成</button>');
+  };
+}
+function newInvoice() {
+  var sh = openSheet('新建收款链接', '<label class="field"><span>客户名称</span><input id="cl" placeholder="例如 Bright Studio GmbH"></label>' +
+    '<div class="field"><span>金额</span><div class="amt"><select id="cur">' + curOpts('USD', ['USD', 'EUR', 'GBP', 'SGD', 'MYR', 'CNY', 'THB']) + '</select><input id="amt" inputmode="decimal" placeholder="0.00"></div></div>' +
+    '<label class="field"><span>说明（选填）</span><input id="desc" placeholder="例如 网站设计 · 11 月"></label><button class="btn" id="go">生成链接</button>');
+  $('#go', sh).onclick = function () {
+    var a = C.toMinor($('#amt', sh).value), cl = $('#cl', sh).value.trim();
+    if (!cl) return toast('请填写客户名称');
+    if (!(a > 0)) return toast('请输入正确的金额');
+    var inv = { id: 'INV-' + (1001 + S.invoices.length), client: cl, cur: $('#cur', sh).value, amount: a, desc: $('#desc', sh).value.trim(), status: 'open', ts: Date.now() };
+    S.invoices.push(inv); save(); render(); closeSheet(sh); invoiceSheet(inv.id);
+  };
+}
+function invLink(v) { return 'https://pay.demo.invalid/i/' + v.id; }
+function invoiceSheet(id) {
+  var v = S.invoices.filter(function (x) { return x.id === id; })[0]; if (!v) return;
+  var link = invLink(v);
+  var h = '<div class="card"><div class="kv"><span>客户</span><span>' + esc(v.client) + '</span></div><div class="kv"><span>金额</span><span style="font-weight:700">' + money(v.cur, v.amount) + '</span></div>' +
+    (v.desc ? '<div class="kv"><span>说明</span><span>' + esc(v.desc) + '</span></div>' : '') +
+    '<div class="kv"><span>状态</span><span>' + (v.status === 'paid' ? '<span class="tag ok">已付款</span>' : '<span class="tag pend">待付款</span>') + '</span></div></div>';
+  if (v.status !== 'paid') {
+    h += '<div class="qrbox"><div class="q">' + QR.svg(link, 170, '#122033') + '</div></div><div class="addr">' + esc(link) + '</div>' +
+      '<p class="note" style="text-align:center">演示链接，发出去别人也打不开</p>' +
+      '<button class="btn ghost" data-act="copy" data-v="' + esc(link) + '">复制链接</button><button class="btn ghost" id="sh">分享给客户</button><button class="btn" id="pay">模拟客户付款</button>';
+  } else h += '<p class="note">' + esc(when(v.paidTs)) + ' 付款，已入账 ' + esc(C.fmt(v.cur, v.net)) + '</p>';
+  var sh = openSheet('收款链接 ' + v.id, h);
+  if (v.status !== 'paid') {
+    $('#sh', sh).onclick = function () { share('您好，' + v.client + '，请通过此链接付款 ' + C.fmt(v.cur, v.amount) + (v.desc ? '（' + v.desc + '）' : '') + '：' + link); };
+    $('#pay', sh).onclick = function () { closeSheet(sh); checkout(v); };
+  }
+}
+function checkout(v) {
+  var sh = openSheet('客户付款页（演示）', '<div class="checkout"><div class="note" style="margin:0 0 4px">付款给 演示用户</div><div style="font-size:1.6rem;font-weight:700" class="num">' + esc(C.fmt(v.cur, v.amount)) + '</div><div class="note" style="margin:2px 0 14px">' + esc(v.desc || v.id) + '</div>' +
+    '<label class="field"><span>卡号（演示卡）</span><input value="4242 4242 4242 4242" readonly></label><div style="display:flex;gap:10px"><label class="field" style="flex:1"><span>有效期</span><input value="12 / 30" readonly></label><label class="field" style="flex:1"><span>CVC</span><input value="123" readonly></label></div>' +
+    '<label class="field"><span>持卡人</span><input value="' + esc(v.client) + '" readonly></label></div><p class="note">这是客户看到的付款页模拟，不会扣任何卡。</p><button class="btn dark" id="pay">支付 ' + esc(C.fmt(v.cur, v.amount)) + '</button>');
+  $('#pay', sh).onclick = function () {
+    this.disabled = true; this.innerHTML = '<span class="spin"></span>';
+    setTimeout(function () {
+      var t = C.collect(S, { method: 'link', cur: v.cur, amount: v.amount, title: v.client + ' · ' + (v.desc || v.id), sub: '收款链接（银行卡）' });
+      v.status = 'paid'; v.paidTs = t.ts; v.net = t.net; save(); vib(60); render();
+      replaceSheet(sh, '收款成功', resultHtml(v.client + ' 已付款', '+' + money(v.cur, t.net), '手续费 ' + C.fmt(v.cur, t.fee) + '，已存入 ' + v.cur + ' 账户') + '<button class="btn" data-close>完成</button>');
+    }, 1300);
+  };
+}
+function storePayout(id) {
+  var st = C.STORES.filter(function (x) { return x.id === id; })[0];
+  var a = Math.round((st.range[0] + Math.random() * (st.range[1] - st.range[0])) * 100);
+  var t = C.collect(S, { method: 'store', cur: st.cur, amount: a, title: st.name + '回款' });
+  save(); vib(40); render(); toast(st.name + ' 回款 +' + C.fmt(st.cur, t.net));
+}
+var depositing = false;
+function simCrypto() {
+  if (depositing) return;
+  depositing = true;
+  var net = ui.usdtNet, need = C.NETWORKS[net].confirmations, n = 0;
+  var a = (Math.floor(Math.random() * 40) + 5) * 2500; // 50–1,100 USDT
+  var area = $('#depArea');
+  var draw = function () {
+    var el = $('#depArea'); if (!el) return;
+    el.innerHTML = '<div class="card" style="padding:14px"><div style="display:flex;justify-content:space-between;font-weight:600"><span>检测到入账 ' + esc(C.fmt('USDT', a)) + '</span><span class="tag pend">确认中</span></div>' +
+      '<div class="bar"><i style="width:' + Math.round(n / need * 100) + '%"></i></div><div class="s note" style="margin:0">' + n + ' / ' + need + ' 区块确认 · ' + C.NETWORKS[net].label + '</div></div>';
+  };
+  if (area) draw();
+  var timer = setInterval(function () {
+    n = Math.min(need, n + Math.ceil(need / 8)); draw();
+    if (n >= need) {
+      clearInterval(timer); depositing = false;
+      var t = C.collect(S, { method: 'crypto', cur: 'USDT', amount: a, title: 'USDT 到账 · ' + net, meta: { network: net } });
+      var msg = 'USDT 到账 +' + C.fmt('USDT', t.net);
+      if (S.autoConvert) {
+        try { var c = C.convert(S, { from: 'USDT', to: S.autoTo, amount: t.net }); msg += '，已自动换成 ' + C.fmt(S.autoTo, c.receive); } catch (e) {}
+      }
+      save(); vib(60); render(); toast(msg);
+    }
+  }, 700);
+}
+
+// ---------- flows: send / withdraw ----------
+function needKyc() {
+  if (S.kyc === 'verified') return false;
+  var sh = openSheet('需要实名认证', '<p class="note" style="font-size:.9rem;margin:0 0 16px">按反洗钱规定，汇款和提现前要先完成实名认证。演示版只需要走一遍流程，不会上传任何资料。</p><button class="btn" id="k">去认证</button>');
+  $('#k', sh).onclick = function () { closeSheet(sh); kycFlow(); };
+  return true;
+}
+function sendFlow(withdraw) {
+  if (needKyc()) return;
+  var recs = S.recipients.filter(function (r) { return withdraw ? r.self : !r.self; });
+  var h = '<div class="card">' + recs.map(function (r) {
+    return '<button class="li" data-pick="' + r.id + '"><div class="flag">' + C.CURRENCIES[C.CHANNELS[r.channel].cur].flag + '</div><div class="mid"><div class="t">' + esc(r.name) + '</div><div class="s">' + esc(r.bank) + ' · ' + esc(C.CHANNELS[r.channel].label) + '</div></div><span class="tag">' + C.CHANNELS[r.channel].cur + '</span></button>';
+  }).join('') + '</div>';
+  if (!withdraw) h += '<button class="btn ghost" style="margin-top:12px" id="add">＋ 新增收款人</button>';
+  var sh = openSheet(withdraw ? '提现到' : '汇款给谁', h);
+  sh.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { var r = S.recipients.filter(function (x) { return x.id === b.dataset.pick; })[0]; closeSheet(sh); amountSheet(r); }; });
+  if (!withdraw) $('#add', sh).onclick = function () { closeSheet(sh); addRecipient(function (r) { amountSheet(r); }); };
+}
+function addRecipient(after) {
+  var opts = Object.keys(C.CHANNELS).filter(function (k) { return k !== 'own_myr'; }).map(function (k) { return '<option value="' + k + '">' + C.CHANNELS[k].label + '（' + C.CHANNELS[k].cur + '）</option>'; }).join('');
+  var sh = openSheet('新增收款人', '<label class="field"><span>收款人姓名</span><input id="nm" placeholder="与银行账户一致"></label><label class="field"><span>收款方式</span><select id="ch">' + opts + '</select></label>' +
+    '<label class="field"><span>账号 / 手机号</span><input id="ac" placeholder="银行卡号、支付宝账号或手机号"></label><button class="btn" id="go">保存</button>');
+  $('#go', sh).onclick = function () {
+    var nm = $('#nm', sh).value.trim(), ac = $('#ac', sh).value.trim();
+    if (!nm || ac.length < 4) return toast('请填写姓名和账号');
+    var r = { id: 'r' + Date.now(), name: nm, channel: $('#ch', sh).value, bank: C.CHANNELS[$('#ch', sh).value].label.split(' ')[0] + ' ****' + ac.slice(-4) };
+    S.recipients.push(r); save(); closeSheet(sh); if (after) after(r); else render();
+  };
+}
+function amountSheet(rec) {
+  var ch = C.CHANNELS[rec.channel], b = C.balances(S);
+  var src = b[ch.cur] > 0 ? ch.cur : C.ORDER.filter(function (c) { return b[c] > 0; })[0] || 'USD';
+  var sh = openSheet((rec.self ? '提现到 ' : '汇款给 ') + rec.name, '<div class="note" style="margin:0 0 10px">' + esc(rec.bank) + ' · ' + esc(ch.label) + '</div>' +
+    '<div class="field"><span>从哪个账户付</span><div class="amt"><select id="cur">' + curOpts(src) + '</select><input id="amt" inputmode="decimal" placeholder="0.00"></div><div class="sub-row"><span id="av"></span><button id="all">全部</button></div></div>' +
+    '<div class="card"><div class="kv"><span>手续费</span><span class="num" id="fee">—</span></div><div class="kv"><span>汇率</span><span class="num" id="rate">—</span></div><div class="kv"><span>对方收到</span><span class="num in" id="rcv" style="font-weight:700">—</span></div><div class="kv"><span>预计到账</span><span>' + esc(ch.eta) + '</span></div></div>' +
+    '<label class="field" style="margin-top:12px"><span>备注（选填）</span><input id="note" placeholder="例如 货款 / 生活费"></label><p class="note out" id="err"></p><button class="btn" id="go" disabled>确认' + (rec.self ? '提现' : '汇款') + '</button>');
+  var upd = function () {
+    var cur = $('#cur', sh).value, a = C.toMinor($('#amt', sh).value), err = '';
+    $('#av', sh).textContent = '可用 ' + C.fmt(cur, C.balance(S, 'wallet', cur));
+    var r = C.liveRate(cur, ch.cur);
+    $('#rate', sh).textContent = cur === ch.cur ? '无需换汇' : '1 ' + cur + ' = ' + r.toFixed(4) + ' ' + ch.cur;
+    if (a > 0) {
+      var q = C.quoteSend(cur, rec.channel, a, r);
+      $('#fee', sh).textContent = C.fmt(cur, q.fee) + (q.fxFee ? '（含换汇 ' + C.fmt(cur, q.fxFee) + '）' : '');
+      $('#rcv', sh).textContent = C.fmt(ch.cur, q.receive);
+      if (!q.ok) err = '金额太小，不够支付手续费';
+      if (a > C.balance(S, 'wallet', cur)) err = '余额不足';
+    } else { $('#fee', sh).textContent = '—'; $('#rcv', sh).textContent = '—'; if ($('#amt', sh).value) err = '金额格式不对'; }
+    $('#err', sh).textContent = err; $('#go', sh).disabled = !!err || !(a > 0);
+  };
+  $('#cur', sh).onchange = upd; $('#amt', sh).oninput = upd;
+  $('#all', sh).onclick = function () { $('#amt', sh).value = C.fmtNum(C.balance(S, 'wallet', $('#cur', sh).value)).replace(/,/g, ''); upd(); };
+  upd();
+  $('#go', sh).onclick = function () {
+    try {
+      var cur = $('#cur', sh).value;
+      var t = C.sendStart(S, { cur: cur, amount: C.toMinor($('#amt', sh).value), recipient: rec, rate: C.liveRate(cur, ch.cur), note: $('#note', sh).value.trim() });
+      save(); vib(40); render(); closeSheet(sh); trackSheet(t.id);
+    } catch (e) { toast(e.message); }
+  };
+}
+function trackSheet(id) {
+  var t = C.findTxn(S, id);
+  var draw = function () {
+    t = C.findTxn(S, id);
+    return '<div class="result" style="padding-bottom:0"><div class="note" style="margin:0">' + esc(t.title) + '</div><div class="big out">-' + money(t.cur, t.amount) + '</div><div class="note" style="margin:0 0 14px">对方收到 ' + esc(C.fmt(t.toCur, t.receive)) + '</div></div>' + stepsHtml(t) + '<button class="btn" data-close>' + (t.status === 'pending' ? '后台继续处理' : '完成') + '</button>';
+  };
+  var sh = openSheet(t.title, draw());
+  var timer = setInterval(function () {
+    var cur = C.findTxn(S, id);
+    if (!sh.isConnected) return clearInterval(timer);
+    replaceSheet(sh, cur.title, draw());
+    if (cur.status !== 'pending') clearInterval(timer);
+  }, 600);
+  sh.onclose = function () { clearInterval(timer); };
+}
+// Pending transfers move one step every few seconds (demo speed), also after the app is reopened.
+var STEP_MS = 2500;
+function advanceTransfers() {
+  var changed = false, now = Date.now();
+  S.txns.forEach(function (t) {
+    if (t.type !== 'send' || t.status !== 'pending') return;
+    var step = Math.min(4, 1 + Math.floor((now - t.ts) / STEP_MS));
+    if (step !== t.step) {
+      changed = true;
+      if (step >= 4) { C.sendComplete(S, t.id, t.ts + 3 * STEP_MS); vib(60); toast('已到账：' + t.title.replace(/^(汇款给|提现到) /, '') + ' 收到 ' + C.fmt(t.toCur, t.receive)); }
+      else t.step = step;
+    }
+  });
+  if (changed) { save(); if (ui.tab === 'home' || ui.tab === 'list') render(); }
+}
+setInterval(advanceTransfers, 500);
+
+// ---------- KYC ----------
+function kycFlow() {
+  if (S.kyc === 'verified') return openSheet('实名认证', resultHtml('已完成实名认证', '已认证', '个人单笔汇款上限 RM 50,000（演示）') + '<button class="btn" data-close>好的</button>');
+  if (S.kyc === 'pending') return openSheet('实名认证', '<div class="result"><span class="spin"></span><p class="note">资料审核中，演示版几秒后自动通过</p></div>');
+  var sh = openSheet('实名认证 1/3 · 基本资料', '<label class="field"><span>姓名（与证件一致）</span><input id="nm" placeholder="例如 ZHANG WEI"></label>' +
+    '<label class="field"><span>证件类型</span><select id="doc"><option>马来西亚 MyKad</option><option>护照</option><option>中国居民身份证</option></select></label><label class="field"><span>国籍 / 居住地</span><select><option>马来西亚</option><option>中国</option><option>新加坡</option><option>泰国</option></select></label><button class="btn" id="n1">下一步</button>');
+  $('#n1', sh).onclick = function () {
+    if (!$('#nm', sh).value.trim()) return toast('请填写姓名');
+    replaceSheet(sh, '实名认证 2/3 · 拍摄证件', '<div class="card" style="padding:28px;text-align:center;border-style:dashed"><div style="font-size:2.2rem">🪪</div><p class="note">演示版不会打开相机，点下面按钮模拟拍照</p></div><button class="btn" style="margin-top:14px" id="n2">模拟拍摄证件正反面</button>');
+    $('#n2', sh).onclick = function () {
+      replaceSheet(sh, '实名认证 3/3 · 人脸核验', '<div class="card" style="padding:28px;text-align:center;border-style:dashed"><div style="font-size:2.2rem">🙂</div><p class="note">演示版不会采集人脸</p></div><button class="btn" style="margin-top:14px" id="n3">模拟人脸核验</button>');
+      $('#n3', sh).onclick = function () {
+        S.kyc = 'pending'; save(); render();
+        replaceSheet(sh, '已提交', '<div class="result"><span class="spin"></span><p class="note">资料审核中，演示版 3 秒后自动通过</p></div>');
+        setTimeout(function () { S.kyc = 'verified'; save(); render(); vib(60); if (sh.isConnected) replaceSheet(sh, '认证通过', resultHtml('实名认证已通过', '已认证', '现在可以汇款和提现了') + '<button class="btn" data-close>好的</button>'); else toast('实名认证已通过'); }, 3000);
+      };
+    };
+  };
+}
+
+// ---------- misc sheets ----------
+function feesSheet() {
+  var f = C.COLLECT_FEES, p = function (x) { return (x * 100).toFixed(1) + '%'; };
+  openSheet('收费标准（演示）', '<div class="card">' +
+    '<div class="kv"><span>收款账户入账</span><span>' + p(f.account.rate) + '</span></div><div class="kv"><span>收款链接（银行卡）</span><span>' + p(f.link.rate) + '</span></div>' +
+    '<div class="kv"><span>电商平台回款</span><span>' + p(f.store.rate) + '</span></div><div class="kv"><span>USDT 链上收款</span><span>' + p(f.crypto.rate) + '</span></div>' +
+    '<div class="kv"><span>换汇</span><span>' + p(C.FX_FEE) + '</span></div></div><h2>汇款 / 提现固定费</h2><div class="card">' +
+    Object.keys(C.CHANNELS).map(function (k) { var c = C.CHANNELS[k]; return '<div class="kv"><span>' + c.label + '</span><span>' + (c.fixedUsdCents ? 'US$ ' + (c.fixedUsdCents / 100).toFixed(2) : '免费') + ' · ' + c.eta + '</span></div>'; }).join('') +
+    '</div><p class="note">跨币种汇款另收 ' + p(C.FX_FEE) + ' 换汇费。正式版的费率以接入的持牌机构报价为准。</p>');
+}
+function recipientsSheet() {
+  var sh = openSheet('收款人管理', '<div class="card">' + S.recipients.map(function (r) {
+    return '<div class="li"><div class="flag">' + C.CURRENCIES[C.CHANNELS[r.channel].cur].flag + '</div><div class="mid"><div class="t">' + esc(r.name) + '</div><div class="s">' + esc(r.bank) + '</div></div>' + (r.self ? '<span class="tag">本人</span>' : '<button class="chip" data-del="' + r.id + '">删除</button>') + '</div>';
+  }).join('') + '</div><button class="btn ghost" style="margin-top:12px" id="add">＋ 新增收款人</button>');
+  sh.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { S.recipients = S.recipients.filter(function (r) { return r.id !== b.dataset.del; }); save(); closeSheet(sh); render(); recipientsSheet(); }; });
+  $('#add', sh).onclick = function () { closeSheet(sh); addRecipient(null); };
+}
+function aboutSheet() {
+  openSheet('关于与风险提示', '<p class="note" style="font-size:.88rem;margin:0 0 10px">环球收款演示版用来展示跨境收款 APP 的完整流程：多币种收款账户、收款链接、电商回款、USDT 收款、换汇、汇款和提现。</p>' +
+    '<p class="note" style="font-size:.88rem">• 所有账户、地址、汇率和交易都是模拟的，不能用于真实收付款。<br>• 在马来西亚经营汇款或换汇业务需要国家银行（BNM）颁发的金钱服务业执照，正式版会接入持牌机构，由它们持有和划转资金。<br>• 余额和交易只保存在本机，卸载或重置后会清空。</p><button class="btn" data-close>知道了</button>');
+}
+function curDetail(cur) {
+  var b = C.balance(S, 'wallet', cur), list = S.txns.filter(function (t) { return t.cur === cur || t.toCur === cur; }).sort(function (a, x) { return x.ts - a.ts; }).slice(0, 8);
+  var sh = openSheet(C.CURRENCIES[cur].flag + ' ' + cur + ' 账户', '<div class="result" style="padding-top:0"><div class="note" style="margin:0">可用余额</div><div class="big">' + money(cur, b) + '</div></div>' +
+    '<div class="quick" style="grid-template-columns:repeat(3,1fr);margin-top:0"><button id="r"><span class="ic">' + svg('recv') + '</span>收款</button><button id="f"><span class="ic">' + svg('fx') + '</span>换汇</button><button id="s"><span class="ic">' + svg('send') + '</span>汇款</button></div>' +
+    '<h2>相关交易</h2><div class="card">' + (list.length ? list.map(txRow).join('') : '<div class="empty">暂无交易</div>') + '</div>');
+  $('#r', sh).onclick = function () { closeSheet(sh); ui.recvTab = cur === 'USDT' ? 'usdt' : 'account'; if (cur !== 'USDT') ui.recvCur = cur; go('recv'); };
+  $('#f', sh).onclick = function () { closeSheet(sh); ui.fxFrom = cur; if (ui.fxTo === cur) ui.fxTo = cur === 'MYR' ? 'USD' : 'MYR'; go('fx'); };
+  $('#s', sh).onclick = function () { closeSheet(sh); sendFlow(false); };
+}
+
+// ---------- events ----------
+document.addEventListener('click', function (e) {
+  var tb = e.target.closest('[data-tab]');
+  if (tb) { closeAllSheetsIfInside(tb); return go(tb.dataset.tab); }
+  var el = e.target.closest('[data-act]'); if (!el) return;
+  var a = el.dataset.act, v = el.dataset.v;
+  switch (a) {
+    case 'cycleDisplay': var ds = ['MYR', 'USD', 'CNY', 'SGD']; S.display = ds[(ds.indexOf(S.display) + 1) % ds.length]; save(); render(); break;
+    case 'send': sendFlow(false); break;
+    case 'withdraw': sendFlow(true); break;
+    case 'tx': txDetail(el.dataset.id); break;
+    case 'curDetail': curDetail(el.dataset.cur); break;
+    case 'recvTab': ui.recvTab = v; render(); break;
+    case 'recvCur': ui.recvCur = v; render(); break;
+    case 'usdtNet': ui.usdtNet = v; render(); break;
+    case 'copy': copy(v); break;
+    case 'shareAcct': share('【演示】我的 ' + ui.recvCur + ' 收款账户\n' + C.fakeAccount(ui.recvCur, ui.recvCur.charCodeAt(0) * 7 + ui.recvCur.charCodeAt(2)).map(function (r) { return r[0] + '：' + r[1]; }).join('\n')); break;
+    case 'simAccount': simAccount(); break;
+    case 'newInvoice': newInvoice(); break;
+    case 'invoice': invoiceSheet(el.dataset.id); break;
+    case 'toggleStore': S.stores[el.dataset.id] = !S.stores[el.dataset.id]; save(); render(); if (S.stores[el.dataset.id]) toast('已绑定（演示）'); break;
+    case 'payout': storePayout(el.dataset.id); break;
+    case 'autoConvert': S.autoConvert = !S.autoConvert; save(); render(); break;
+    case 'simCrypto': simCrypto(); break;
+    case 'fxAll': ui.fxAmt = C.fmtNum(C.balance(S, 'wallet', ui.fxFrom)).replace(/,/g, ''); $('#fxAmt').value = ui.fxAmt; updateFx(); break;
+    case 'fxSwap': var tmp = ui.fxFrom; ui.fxFrom = ui.fxTo; ui.fxTo = tmp; render(); break;
+    case 'fxReview': fxReview(); break;
+    case 'txFilter': ui.txFilter = v; render(); break;
+    case 'kyc': kycFlow(); break;
+    case 'fees': feesSheet(); break;
+    case 'recipients': recipientsSheet(); break;
+    case 'about': aboutSheet(); break;
+    case 'reset':
+      var sh = openSheet('重置演示数据', '<p class="note" style="font-size:.9rem;margin:0 0 16px">会清空现在的余额、交易和设置，恢复成初始演示数据。</p><button class="btn" id="y" style="background:var(--out)">确认重置</button><button class="btn ghost" data-close>取消</button>');
+      $('#y', sh).onclick = function () { try { localStorage.removeItem(KEY); } catch (x) {} load(); closeSheet(sh); go('home'); toast('已重置'); };
+      break;
+  }
+});
+function closeAllSheetsIfInside(node) { var sh = node.closest('.sheet'); if (sh) closeSheet(sh); }
+document.addEventListener('change', function (e) {
+  var a = e.target.dataset && e.target.dataset.act;
+  if (a === 'fxFrom') { ui.fxFrom = e.target.value; render(); }
+  if (a === 'fxTo') { ui.fxTo = e.target.value; render(); }
+  if (a === 'autoTo') { S.autoTo = e.target.value; save(); render(); }
+});
+document.addEventListener('input', function (e) { if (e.target.id === 'fxAmt') { ui.fxAmt = e.target.value.trim(); updateFx(); } });
+
+load();
+advanceTransfers();
+render();
+</script>
+</body>
+</html>

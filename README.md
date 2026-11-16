@@ -9,6 +9,7 @@
 | 三国身份局 | `sanguo/` | [sanguo.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/sanguo.apk) |
 | 译聊（多人聊天 + 翻译） | `chat/` | [chat.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/chat.apk) |
 | 二人麻将（联网） | `mahjong/` | [mahjong.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/mahjong.apk) |
+| 环球收款（跨境收款演示版） | `crosspay/` | [crosspay.apk](https://github.com/mronexie-cloud/GitHub/releases/download/crosspay/crosspay.apk) |
 
 **苹果手机版：** 用 Safari 打开 https://mronexie-cloud.github.io/GitHub/ ，选游戏后通过"分享 → 添加到主屏幕"安装。苹果版文件在 `ios/` 目录，和安卓版互不影响。
 
@@ -66,3 +67,14 @@
 ## 译聊说明
 
 输入同一个房间名的人进入同一个聊天室，人数不限。每个人选择自己的语言，别人发来的消息会自动翻译成这种语言（Google 翻译，备用 MyMemory），原文同时显示。消息用房间名做 AES-GCM 加密后，同时经过 broker.emqx.io 和 broker.hivemq.com 两台公共服务器中转，任一台故障时仍可聊天。新加入的人能看到最近 50 条消息。`tests/chat-e2e.js` 在 GitHub Actions 里用 4 个不同语言的浏览器做联机测试。
+
+## 环球收款说明（演示版）
+
+跨境收款 App 的第 1 期：完整界面 + 模拟数据，不涉及真实资金。
+
+- 收款：多币种收款账户（USD/EUR/GBP/CNY/MYR/SGD/THB）、收款链接和二维码（含客户付款页模拟）、电商店铺回款（Shopify、Amazon、Shopee、Lazada、TikTok Shop）、USDT 收款（TRC20/ERC20/Polygon，可自动换成法币）
+- 换汇：实时跳动的演示汇率，锁定 30 秒
+- 汇款 / 提现：中国银行卡、支付宝、DuitNow、PayNow、PromptPay，需要先走一遍实名认证，进度一步步更新
+- 流水：每笔交易都能看到复式记账分录（`crosspay/src/main/assets/core.js`，第 2 期换成 Blnk 账本）
+
+所有演示账户号、链接和链上地址都故意做成无效格式，不能真的收付款。`tests/crosspay-core.test.js` 检查账本平衡、手续费、余额不足和二维码。第 2 期计划接入 Airwallex / Stripe 沙盒和 BTCPay Server 测试网。
