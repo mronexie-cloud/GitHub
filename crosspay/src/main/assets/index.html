@@ -76,6 +76,7 @@ h2 button{font-size:.8rem;color:var(--accent);font-weight:500}
 .btn.dark{background:var(--ink);color:var(--surface)}
 .btn+.btn{margin-top:10px}
 .note{font-size:.78rem;color:var(--muted);line-height:1.6;margin:12px 4px}
+.ok-banner{background:var(--accent-soft)!important;color:var(--accent)!important}
 .banner{display:flex;gap:10px;align-items:flex-start;background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:11px 13px;font-size:.8rem;line-height:1.55;margin-bottom:12px}
 .field{display:block;margin-bottom:12px}
 .field>span{display:block;font-size:.8rem;color:var(--muted);margin:0 2px 6px}
@@ -131,7 +132,7 @@ h2 button{font-size:.8rem;color:var(--accent);font-weight:500}
 </head>
 <body>
 <header>
-  <h1>环球收款</h1><span class="pill">演示版</span><span class="sp"></span><span id="kycPill"></span>
+  <h1>环球收款</h1><span class="pill" id="modePill">演示版</span><span class="sp"></span><span id="kycPill"></span>
 </header>
 <main id="main"></main>
 <nav class="tabs" id="tabs"></nav>
@@ -146,14 +147,72 @@ var KEY = 'crosspay.v1';
 var S; // app state
 var ui = { tab: 'home', recvTab: 'account', recvCur: 'USD', usdtNet: 'TRC20', fxFrom: 'USD', fxTo: 'MYR', fxAmt: '', txFilter: 'all' };
 
-// ---------- storage ----------
+// ---------- storage & server connection ----------
+// Demo mode keeps everything on this phone (KEY). Sandbox mode reads and writes through the
+// phase-2 server; its last known state is cached separately (RKEY) so demo data is never touched.
+var SKEY = 'crosspay.server', RKEY = 'crosspay.remote';
+var srv = null;
+function remote() { return !!(srv && srv.url); }
+function prov(name) { return remote() && S.providers ? S.providers[name] : 'demo'; }
 function load() {
+  try { srv = JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { srv = null; }
+  if (remote()) {
+    try { S = JSON.parse(localStorage.getItem(RKEY) || 'null'); } catch (e) { S = null; }
+    if (!S || !S.txns) { S = C.newState(Date.now()); S.providers = {}; S.crypto = []; S.loading = true; }
+    return;
+  }
   try { var raw = localStorage.getItem(KEY); if (raw) { S = JSON.parse(raw); if (S && S.v === 1) return; } } catch (e) {}
   S = C.seedDemo(C.newState(Date.now()), Date.now());
   S.autoConvert = false; S.autoTo = 'USD';
   save();
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function save() { if (remote()) return; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function api(method, path, body, conn) {
+  conn = conn || srv;
+  var ctl = window.AbortController ? new AbortController() : null;
+  var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 30000);
+  return fetch(conn.url.replace(/\/+$/, '') + path, {
+    method: method, headers: { 'Authorization': 'Bearer ' + conn.token, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined, signal: ctl ? ctl.signal : undefined
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (j) {
+      if (!r.ok) throw new Error(j.error || ('服务器返回 ' + r.status));
+      return j;
+    });
+  }, function (e) {
+    throw new Error(e && e.name === 'AbortError' ? '连接服务器超时' : '连不上服务器，请检查地址和网络');
+  }).finally(function () { clearTimeout(timer); });
+}
+function typing() { var a = document.activeElement; return a && a.closest && a.closest('#main') && /INPUT|SELECT|TEXTAREA/.test(a.tagName); }
+function setRemoteState(st) {
+  if (!remote() || !st || !st.txns) return;
+  S = st;
+  try { localStorage.setItem(RKEY, JSON.stringify(S)); } catch (e) {}
+  if (!typing()) render();
+}
+var syncing = false, syncErr = '';
+function refreshRemote(loud, path) {
+  if (!remote() || syncing) return Promise.resolve();
+  syncing = true;
+  return api(path ? 'POST' : 'GET', path || '/api/state').then(function (st) { syncErr = ''; setRemoteState(st); },
+    function (e) { syncErr = e.message; if (loud) toast(e.message); if (ui.tab === 'me' || ui.tab === 'home') render(); })
+    .finally(function () { syncing = false; });
+}
+setInterval(function () { if (remote() && !document.hidden) refreshRemote(); }, 5000);
+// A server call started from a button: spinner while waiting, the error as a toast, fresh state after.
+function busy(btn, p) {
+  var old = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>'; }
+  return p.then(function (r) {
+    if (r && r.state) setRemoteState(r.state); else if (r && r.txns) setRemoteState(r);
+    return r || {};
+  }, function (e) { toast(e.message); return null; })
+    .finally(function () { if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = old; } });
+}
+function openUrl(u) {
+  try { if (window.Android && Android.openUrl) return Android.openUrl(u); } catch (e) {}
+  var a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+}
 
 // ---------- small helpers ----------
 function $(s, r) { return (r || document).querySelector(s); }
@@ -203,6 +262,8 @@ function renderTabs() {
 }
 function render() {
   renderTabs();
+  $('#modePill').textContent = remote() ? '沙盒' : '演示版';
+  $('#modePill').className = remote() ? 'pill ok' : 'pill';
   $('#kycPill').innerHTML = S.kyc === 'verified' ? '<span class="pill ok">已实名</span>' : S.kyc === 'pending' ? '<span class="pill">审核中</span>' : '';
   var f = { home: viewHome, recv: viewRecv, fx: viewFx, list: viewList, me: viewMe }[ui.tab];
   $('#main').innerHTML = f();
@@ -243,7 +304,11 @@ function viewHome() {
       esc(C.fmt(c, b[c])) + '</div><div class="s num">≈ ' + esc(C.fmt(d, C.convertMinor(b[c], c, d))) + '</div></div></button>';
   }).join('') + '</div>';
   h += '<h2>最近交易<button data-tab="list">全部</button></h2><div class="card">' + (recent.length ? recent.map(txRow).join('') : '<div class="empty">还没有交易</div>') + '</div>';
-  h += '<p class="note">演示版：所有余额、账户和交易都是模拟数据，不涉及真实资金。正式版会通过持牌机构（如 Airwallex）收付款。</p>';
+  if (remote()) {
+    if (syncErr) h = '<div class="banner">⚠️ ' + esc(syncErr) + '（显示的是上次同步的数据）</div>' + h;
+    else if (S.loading) h = '<div class="banner"><span class="spin"></span> 正在从服务器读取数据…</div>' + h;
+    h += '<p class="note">沙盒模式：数据来自你的服务器，资金全部是 Airwallex / Stripe 沙盒和 BTCPay 测试网的测试资金，不是真钱。</p>';
+  } else h += '<p class="note">演示版：所有余额、账户和交易都是模拟数据，不涉及真实资金。正式版会通过持牌机构（如 Airwallex）收付款。</p>';
   return h;
 }
 
@@ -254,18 +319,21 @@ function viewRecv() {
   if (ui.recvTab === 'account') {
     var list = C.ORDER.filter(function (c) { return c !== 'USDT'; });
     h += '<div class="chips">' + list.map(function (c) { return '<button class="chip ' + (ui.recvCur === c ? 'on' : '') + '" data-act="recvCur" data-v="' + c + '">' + C.CURRENCIES[c].flag + ' ' + c + '</button>'; }).join('') + '</div>';
-    var rows = C.fakeAccount(ui.recvCur, ui.recvCur.charCodeAt(0) * 7 + ui.recvCur.charCodeAt(2));
-    h += '<div class="banner">⚠️ 以下是演示账户信息，不能真的收款。正式版的账户由持牌机构开立。</div>';
-    h += '<div class="card">' + rows.map(function (r) { return '<div class="kv"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '<button class="copy" data-act="copy" data-v="' + esc(r[1]) + '">复制</button></span></div>'; }).join('') + '</div>';
-    h += '<p class="note">把这些信息发给海外客户或平台，对方用本地转账付款，入账费率 ' + (C.COLLECT_FEES.account.rate * 100).toFixed(1) + '%。</p>';
-    h += '<button class="btn ghost" data-act="shareAcct">分享账户信息</button><button class="btn" data-act="simAccount">模拟一笔入账</button>';
+    var ad = acctDetails(ui.recvCur), rows = ad.rows || [];
+    if (ad.loading) h += '<div class="card"><div class="empty"><span class="spin"></span></div></div>';
+    else if (ad.error) h += '<div class="banner">⚠️ ' + esc(ad.error) + '</div><button class="btn ghost" data-act="acctRetry">重试</button>';
+    else if (ad.missing) h += '<div class="banner">Airwallex 沙盒里还没有 ' + ui.recvCur + ' 全球账户。到 Airwallex 沙盒后台「账户 → 全球账户」开一个，再回来刷新。</div><button class="btn ghost" data-act="acctRetry">刷新</button>';
+    else h += ad.source === 'airwallex' ? '<div class="banner ok-banner">✅ Airwallex 沙盒全球账户。沙盒账户收不到真实转账，用下面的按钮模拟入账。</div>' : '<div class="banner">⚠️ 以下是演示账户信息，不能真的收款。正式版的账户由持牌机构开立。</div>';
+    if (rows.length) h += '<div class="card">' + rows.map(function (r) { return '<div class="kv"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '<button class="copy" data-act="copy" data-v="' + esc(r[1]) + '">复制</button></span></div>'; }).join('') + '</div>';
+    h += '<p class="note">把这些信息发给海外客户或平台，对方用本地转账付款，' + (prov('airwallex') === 'sandbox' ? '手续费按 Airwallex 实际扣费。' : '入账费率 ' + (C.COLLECT_FEES.account.rate * 100).toFixed(1) + '%。') + '</p>';
+    if (!ad.loading && !ad.error && !ad.missing) h += '<button class="btn ghost" data-act="shareAcct">分享账户信息</button><button class="btn" data-act="simAccount">模拟一笔入账</button>';
   } else if (ui.recvTab === 'link') {
     h += '<button class="btn" data-act="newInvoice">＋ 新建收款链接 / 账单</button>';
     h += '<h2>我的收款链接</h2><div class="card">' + (S.invoices.length ? S.invoices.slice().reverse().map(function (v) {
       return '<button class="li" data-act="invoice" data-id="' + v.id + '"><div class="flag">🔗</div><div class="mid"><div class="t">' + esc(v.client) + '</div><div class="s">' + esc(v.id) + ' · ' + esc(v.desc || '无备注') + '</div></div><div class="r"><div class="num" style="font-weight:600">' + esc(C.fmt(v.cur, v.amount)) + '</div><div class="s">' +
         (v.status === 'paid' ? '<span class="tag ok">已付款</span>' : '<span class="tag pend">待付款</span>') + '</div></div></button>';
     }).join('') : '<div class="empty">还没有收款链接</div>') + '</div>';
-    h += '<p class="note">客户打开链接后用银行卡付款，费率 ' + (C.COLLECT_FEES.link.rate * 100).toFixed(1) + '%。适合自由职业者给海外客户开账单。</p>';
+    h += '<p class="note">客户打开链接后用银行卡付款，' + (prov('stripe') === 'sandbox' || prov('airwallex') === 'sandbox' ? '手续费在 Stripe / Airwallex 后台结算，App 里按收到的全额入账。' : '费率 ' + (C.COLLECT_FEES.link.rate * 100).toFixed(1) + '%。') + '适合自由职业者给海外客户开账单。</p>';
   } else if (ui.recvTab === 'store') {
     h += '<div class="card">' + C.STORES.map(function (st) {
       var on = !!S.stores[st.id];
@@ -273,7 +341,16 @@ function viewRecv() {
         (on ? '<button class="chip" data-act="payout" data-id="' + st.id + '">模拟回款</button>' : '') +
         '<button class="switch ' + (on ? 'on' : '') + '" data-act="toggleStore" data-id="' + st.id + '" aria-label="绑定"></button></div>';
     }).join('') + '</div>';
-    h += '<p class="note">绑定店铺后，平台的结算款会直接打进对应币种账户，费率 ' + (C.COLLECT_FEES.store.rate * 100).toFixed(1) + '%。演示版的"绑定"不会连接真实店铺。</p>';
+    h += '<p class="note">绑定店铺后，平台的结算款会直接打进对应币种账户，费率 ' + (C.COLLECT_FEES.store.rate * 100).toFixed(1) + '%。' +
+      (prov('airwallex') === 'sandbox' ? '沙盒模式下"模拟回款"会通过 Airwallex 沙盒向对应币种的全球账户打一笔模拟入账（需要先开好该币种的全球账户）。' : '演示版的"绑定"不会连接真实店铺。') + '</p>';
+  } else if (prov('btcpay') === 'testnet') {
+    h += '<div class="banner ok-banner">✅ 已连接 BTCPay Server 测试网。生成收款单后，用测试网钱包付款，到账会自动入账。</div>';
+    h += '<div class="card"><label class="field" style="padding:14px 14px 0;margin:0"><span>收款金额（USD 计价）</span><input id="cryptoAmt" inputmode="decimal" value="25.00"></label><div style="padding:14px"><button class="btn" data-act="simCrypto">生成测试网收款单</button></div></div>';
+    var cl = (S.crypto || []).slice().reverse().slice(0, 6);
+    if (cl.length) h += '<h2>测试网收款单</h2><div class="card">' + cl.map(function (c) {
+      var tag = c.status === 'settled' ? '<span class="tag ok">已到账</span>' : c.status === 'expired' ? '<span class="tag bad">已过期</span>' : '<span class="tag pend">待付款</span>';
+      return '<button class="li" data-act="cryptoItem" data-id="' + esc(c.id) + '"><div class="flag">₿</div><div class="mid"><div class="t">' + esc(c.id) + '</div><div class="s">' + esc(when(c.ts)) + '</div></div><div class="r"><div class="num">' + esc(C.fmt(c.cur, c.amount)) + '</div><div class="s">' + tag + '</div></div></button>';
+    }).join('') + '</div>';
   } else {
     h += '<div class="chips">' + Object.keys(C.NETWORKS).map(function (n) { return '<button class="chip ' + (ui.usdtNet === n ? 'on' : '') + '" data-act="usdtNet" data-v="' + n + '">' + C.NETWORKS[n].label + '</button>'; }).join('') + '</div>';
     var addr = C.demoAddress(ui.usdtNet, ui.usdtNet.length * 13 + 5);
@@ -295,7 +372,7 @@ function viewFx() {
     '<div class="sub-row"><span>可用 ' + esc(C.fmt(ui.fxFrom, b[ui.fxFrom])) + '</span><button data-act="fxAll">全部换出</button></div>' +
     '<div class="swap"><button data-act="fxSwap" aria-label="对调">' + svg('fx', 'width="18" height="18" style="transform:rotate(90deg)"') + '</button></div>' +
     '<div class="amt"><select id="fxTo" data-act="fxTo">' + curOpts(ui.fxTo) + '</select><div class="out-v" id="fxOut">0.00</div></div>' +
-    '<div class="card" style="margin-top:14px"><div class="kv"><span>实时汇率</span><span class="num" id="fxRate">—</span></div><div class="kv"><span>换汇手续费 ' + (C.FX_FEE * 100).toFixed(1) + '%</span><span class="num" id="fxFee">—</span></div><div class="kv"><span>到账</span><span>即时</span></div></div>' +
+    '<div class="card" style="margin-top:14px"><div class="kv"><span>实时汇率</span><span class="num" id="fxRate">—</span></div><div class="kv"><span>' + (prov('airwallex') === 'sandbox' ? '手续费（预估，预览时以 Airwallex 报价为准）' : '换汇手续费 ' + (C.FX_FEE * 100).toFixed(1) + '%') + '</span><span class="num" id="fxFee">—</span></div><div class="kv"><span>到账</span><span>即时</span></div></div>' +
     '<p class="note" id="fxErr" style="color:var(--out)"></p>' +
     '<button class="btn" id="fxGo" data-act="fxReview">预览换汇</button>' +
     '<h2>参考汇率（1 USD）</h2><div class="card">' + ['MYR', 'CNY', 'SGD', 'THB', 'EUR', 'GBP'].map(function (c) {
@@ -322,6 +399,7 @@ function updateFx() {
 setInterval(updateFx, 1000);
 
 function fxReview() {
+  if (remote()) return fxReviewRemote();
   var a = fxAmount(), from = ui.fxFrom, to = ui.fxTo, locked = C.liveRate(from, to), left = 30;
   var q = C.quoteConvert(from, to, a, locked);
   var sh = openSheet('确认换汇', '<div class="card"><div class="kv"><span>卖出</span><span>' + money(from, a) + '</span></div><div class="kv"><span>手续费</span><span>' + money(from, q.fee) + '</span></div>' +
@@ -341,6 +419,31 @@ function fxReview() {
       render();
     } catch (e) { toast(e.message); }
   };
+}
+
+function fxReviewRemote() {
+  var a = fxAmount(), from = ui.fxFrom, to = ui.fxTo;
+  busy($('#fxGo'), api('POST', '/api/fx/quote', { from: from, to: to, amount: a })).then(function (q) {
+    if (!q || !q.id) return;
+    var src = q.provider === 'airwallex' ? 'Airwallex 沙盒报价' : '服务器模拟报价';
+    var sh = openSheet('确认换汇', '<div class="card"><div class="kv"><span>卖出</span><span>' + money(from, q.amount) + '</span></div><div class="kv"><span>手续费</span><span>' + money(from, q.fee) + '</span></div>' +
+      '<div class="kv"><span>锁定汇率</span><span class="num">' + Number(q.rate).toFixed(4) + '</span></div><div class="kv"><span>买入</span><span class="in" style="font-weight:700">' + money(to, q.receive) + '</span></div><div class="kv"><span>来源</span><span>' + src + '</span></div></div>' +
+      '<p class="note" id="lockNote">汇率已锁定，<b id="lockLeft"></b> 秒内有效</p><button class="btn" id="fxConfirm">确认换汇</button>');
+    var tick = function () {
+      var left = Math.max(0, Math.round((q.expires - Date.now()) / 1000)), el = $('#lockLeft', sh);
+      if (el) el.textContent = left;
+      if (left <= 0) { clearInterval(timer); $('#lockNote', sh).textContent = '汇率锁定已过期，请重新预览'; $('#fxConfirm', sh).disabled = true; }
+    };
+    var timer = setInterval(tick, 1000); tick();
+    sh.onclose = function () { clearInterval(timer); };
+    $('#fxConfirm', sh).onclick = function () {
+      busy(this, api('POST', '/api/fx/convert', { quoteId: q.id })).then(function (r) {
+        if (!r || !r.txn) return;
+        clearInterval(timer); ui.fxAmt = ''; vib(40); render();
+        replaceSheet(sh, '换汇成功', resultHtml('换汇成功', money(to, r.txn.receive), '已存入 ' + to + ' 账户') + '<button class="btn" data-close>完成</button>');
+      });
+    };
+  });
 }
 
 // ---------- transactions ----------
@@ -393,11 +496,21 @@ function viewMe() {
   h += '<h2>设置</h2><div class="card"><button class="li" data-act="cycleDisplay"><div class="mid"><div class="t">总资产显示币种</div></div><span class="tag">' + S.display + '</span></button>' +
     '<button class="li" data-act="recipients"><div class="mid"><div class="t">收款人管理</div><div class="s">' + S.recipients.length + ' 个收款人</div></div><span class="tag">管理</span></button>' +
     '<button class="li" data-act="fees"><div class="mid"><div class="t">收费标准</div></div><span class="tag">查看</span></button></div>';
-  h += '<h2>资金通道（第 2 期接入）</h2><div class="card">' + [
-    ['Airwallex', '全球收款账户 · 换汇 · 付款（马来西亚持牌）'], ['Stripe', '收款链接 · 银行卡支付'], ['BTCPay Server', 'USDT 收款（TRC20 / ERC20 / Polygon）'], ['Blnk', '复式记账账本（现在用本机模拟）']
-  ].map(function (x) { return '<div class="li"><div class="mid"><div class="t">' + x[0] + '</div><div class="s">' + x[1] + '</div></div><span class="tag">未连接</span></div>'; }).join('') + '</div>';
-  h += '<h2>其他</h2><div class="card"><button class="li" data-act="about"><div class="mid"><div class="t">关于与风险提示</div></div></button><button class="li" data-act="reset"><div class="mid"><div class="t out">重置演示数据</div></div></button></div>';
-  h += '<p class="note" style="text-align:center">环球收款 1.0 · 演示版</p>';
+  var tagFor = function (st) {
+    if (!remote()) return '<span class="tag">未连接</span>';
+    return st === 'sandbox' ? '<span class="tag ok">沙盒</span>' : st === 'testnet' ? '<span class="tag ok">测试网</span>' : '<span class="tag pend">服务器模拟</span>';
+  };
+  h += '<h2>资金通道（第 2 期 · 沙盒）</h2><div class="card">';
+  if (remote()) h += '<div class="li"><div class="mid"><div class="t">服务器</div><div class="s">' + esc(srv.url) + '</div></div>' + (syncErr ? '<span class="tag bad">连接失败</span>' : '<span class="tag ok">已连接</span>') + '</div>';
+  h += [
+    ['Airwallex', '全球收款账户 · 换汇 · 汇款（马来西亚持牌）', prov('airwallex')], ['Stripe', '收款链接 · 银行卡支付', prov('stripe')], ['BTCPay Server', '加密货币收款', prov('btcpay')]
+  ].map(function (x) { return '<div class="li"><div class="mid"><div class="t">' + x[0] + '</div><div class="s">' + x[1] + '</div></div>' + tagFor(x[2]) + '</div>'; }).join('');
+  h += remote() ? '<button class="li" data-act="reconcile"><div class="mid"><div class="t">对账</div><div class="s">账本余额 vs Airwallex 沙盒余额</div></div><span class="tag">查看</span></button>' +
+      '<button class="li" data-act="disconnect"><div class="mid"><div class="t out">断开服务器，回到演示版</div></div></button>'
+    : '<button class="li" data-act="connect"><div class="mid"><div class="t">连接服务器</div><div class="s">填入第 2 期服务器地址和访问令牌，进入沙盒模式</div></div><span class="tag">连接</span></button>';
+  h += '</div>';
+  h += '<h2>其他</h2><div class="card"><button class="li" data-act="about"><div class="mid"><div class="t">关于与风险提示</div></div></button>' + (remote() ? '' : '<button class="li" data-act="reset"><div class="mid"><div class="t out">重置演示数据</div></div></button>') + '</div>';
+  h += '<p class="note" style="text-align:center">环球收款 2.0 · ' + (remote() ? '沙盒模式' : '演示版') + '</p>';
   return h;
 }
 
@@ -433,70 +546,143 @@ window.onAndroidBack = function () {
 };
 
 // ---------- flows: collect ----------
+var acctCache = {};
+function acctDetails(cur) {
+  if (!remote()) return { source: 'demo', rows: C.fakeAccount(cur, cur.charCodeAt(0) * 7 + cur.charCodeAt(2)) };
+  if (!acctCache[cur]) {
+    acctCache[cur] = { loading: true };
+    api('GET', '/api/accounts/' + cur).then(function (r) { acctCache[cur] = r; }, function (e) { acctCache[cur] = { error: e.message }; })
+      .then(function () { if (ui.tab === 'recv') render(); });
+  }
+  return acctCache[cur];
+}
 function simAccount() {
   var cur = ui.recvCur;
+  var fee = remote() && prov('airwallex') === 'sandbox' ? '手续费按 Airwallex 沙盒实际扣费' : '入账费率 ' + (C.COLLECT_FEES.account.rate * 100).toFixed(1) + '%';
   var sh = openSheet('模拟一笔 ' + cur + ' 入账', '<label class="field"><span>付款方</span><input id="payer" value="Acme Trading Co."></label>' +
     '<label class="field"><span>金额（' + cur + '）</span><input id="amt" inputmode="decimal" value="1200.00"></label>' +
-    '<p class="note">入账费率 ' + (C.COLLECT_FEES.account.rate * 100).toFixed(1) + '%</p><button class="btn" id="go">模拟入账</button>');
+    '<p class="note">' + fee + '</p><button class="btn" id="go">模拟入账</button>');
+  var done = function (t, payer) {
+    vib(40); render();
+    replaceSheet(sh, '已入账', resultHtml('收到 ' + payer + ' 的付款', '+' + money(cur, t.net), '手续费 ' + C.fmt(cur, t.fee)) + '<button class="btn" data-close>完成</button>');
+  };
   $('#go', sh).onclick = function () {
     var a = C.toMinor($('#amt', sh).value), payer = $('#payer', sh).value.trim() || '海外付款方';
     if (!(a > 0)) return toast('请输入正确的金额');
+    if (remote()) {
+      return busy(this, api('POST', '/api/incoming', { cur: cur, amount: a, payer: payer })).then(function (r) { if (r && r.txn) done(r.txn, payer); });
+    }
     var t = C.collect(S, { method: 'account', cur: cur, amount: a, title: payer + ' 付款', sub: cur + ' 收款账户入账' });
-    save(); vib(40); render();
-    replaceSheet(sh, '已入账', resultHtml('收到 ' + payer + ' 的付款', '+' + money(cur, t.net), '手续费 ' + C.fmt(cur, t.fee)) + '<button class="btn" data-close>完成</button>');
+    save(); done(t, payer);
   };
 }
 function newInvoice() {
+  var where = prov('stripe') === 'sandbox' ? 'Stripe 测试付款页' : prov('airwallex') === 'sandbox' ? 'Airwallex 沙盒付款链接' : '';
   var sh = openSheet('新建收款链接', '<label class="field"><span>客户名称</span><input id="cl" placeholder="例如 Bright Studio GmbH"></label>' +
     '<div class="field"><span>金额</span><div class="amt"><select id="cur">' + curOpts('USD', ['USD', 'EUR', 'GBP', 'SGD', 'MYR', 'CNY', 'THB']) + '</select><input id="amt" inputmode="decimal" placeholder="0.00"></div></div>' +
-    '<label class="field"><span>说明（选填）</span><input id="desc" placeholder="例如 网站设计 · 11 月"></label><button class="btn" id="go">生成链接</button>');
+    '<label class="field"><span>说明（选填）</span><input id="desc" placeholder="例如 网站设计 · 11 月"></label>' + (where ? '<p class="note">会生成真实的 ' + where + '（测试环境，不扣真钱）。</p>' : '') + '<button class="btn" id="go">生成链接</button>');
   $('#go', sh).onclick = function () {
-    var a = C.toMinor($('#amt', sh).value), cl = $('#cl', sh).value.trim();
+    var a = C.toMinor($('#amt', sh).value), cl = $('#cl', sh).value.trim(), body = { client: cl, cur: $('#cur', sh).value, amount: a, desc: $('#desc', sh).value.trim() };
     if (!cl) return toast('请填写客户名称');
     if (!(a > 0)) return toast('请输入正确的金额');
-    var inv = { id: 'INV-' + (1001 + S.invoices.length), client: cl, cur: $('#cur', sh).value, amount: a, desc: $('#desc', sh).value.trim(), status: 'open', ts: Date.now() };
+    if (remote()) {
+      return busy(this, api('POST', '/api/invoices', body)).then(function (r) { if (r && r.invoice) { closeSheet(sh); invoiceSheet(r.invoice.id); } });
+    }
+    var inv = { id: 'INV-' + (1001 + S.invoices.length), client: cl, cur: body.cur, amount: a, desc: body.desc, status: 'open', ts: Date.now() };
     S.invoices.push(inv); save(); render(); closeSheet(sh); invoiceSheet(inv.id);
   };
 }
-function invLink(v) { return 'https://pay.demo.invalid/i/' + v.id; }
+function invLink(v) { return v.url || ('https://pay.demo.invalid/i/' + v.id); }
+function isRealLink(v) { return v.provider === 'stripe' || v.provider === 'airwallex'; }
 function invoiceSheet(id) {
   var v = S.invoices.filter(function (x) { return x.id === id; })[0]; if (!v) return;
-  var link = invLink(v);
+  var link = invLink(v), real = isRealLink(v);
   var h = '<div class="card"><div class="kv"><span>客户</span><span>' + esc(v.client) + '</span></div><div class="kv"><span>金额</span><span style="font-weight:700">' + money(v.cur, v.amount) + '</span></div>' +
     (v.desc ? '<div class="kv"><span>说明</span><span>' + esc(v.desc) + '</span></div>' : '') +
+    (real ? '<div class="kv"><span>通道</span><span>' + (v.provider === 'stripe' ? 'Stripe 测试环境' : 'Airwallex 沙盒') + '</span></div>' : '') +
     '<div class="kv"><span>状态</span><span>' + (v.status === 'paid' ? '<span class="tag ok">已付款</span>' : '<span class="tag pend">待付款</span>') + '</span></div></div>';
   if (v.status !== 'paid') {
-    h += '<div class="qrbox"><div class="q">' + QR.svg(link, 170, '#122033') + '</div></div><div class="addr">' + esc(link) + '</div>' +
-      '<p class="note" style="text-align:center">演示链接，发出去别人也打不开</p>' +
-      '<button class="btn ghost" data-act="copy" data-v="' + esc(link) + '">复制链接</button><button class="btn ghost" id="sh">分享给客户</button><button class="btn" id="pay">模拟客户付款</button>';
-  } else h += '<p class="note">' + esc(when(v.paidTs)) + ' 付款，已入账 ' + esc(C.fmt(v.cur, v.net)) + '</p>';
+    h += '<div class="qrbox"><div class="q">' + QR.svg(link, 170, '#122033') + '</div></div><div class="addr">' + esc(link) + '</div>';
+    if (real) {
+      h += '<p class="note" style="text-align:center">' + (v.provider === 'stripe' ? '测试付款页：卡号填 4242 4242 4242 4242，有效期任意未来日期，CVC 任意 3 位。' : 'Airwallex 沙盒付款页：用 Airwallex 文档里的测试卡付款。') + '</p>' +
+        '<button class="btn ghost" data-act="copy" data-v="' + esc(link) + '">复制链接</button><button class="btn ghost" id="sh">分享给客户</button><button class="btn dark" id="open">打开付款页</button><button class="btn" id="ref">刷新付款状态</button>';
+    } else {
+      h += '<p class="note" style="text-align:center">演示链接，发出去别人也打不开</p>' +
+        '<button class="btn ghost" data-act="copy" data-v="' + esc(link) + '">复制链接</button><button class="btn ghost" id="sh">分享给客户</button><button class="btn" id="pay">模拟客户付款</button>';
+    }
+  } else h += '<p class="note">' + esc(when(v.paidTs)) + ' 付款，已入账 ' + esc(C.fmt(v.cur, v.net)) + '</p><button class="btn" data-close>完成</button>';
   var sh = openSheet('收款链接 ' + v.id, h);
   if (v.status !== 'paid') {
     $('#sh', sh).onclick = function () { share('您好，' + v.client + '，请通过此链接付款 ' + C.fmt(v.cur, v.amount) + (v.desc ? '（' + v.desc + '）' : '') + '：' + link); };
-    $('#pay', sh).onclick = function () { closeSheet(sh); checkout(v); };
+    if (real) {
+      $('#open', sh).onclick = function () { openUrl(link); };
+      $('#ref', sh).onclick = function () {
+        busy(this, api('POST', '/api/invoices/' + encodeURIComponent(v.id) + '/refresh')).then(function (r) {
+          if (!r || !r.invoice) return;
+          if (r.invoice.status === 'paid') { vib(60); closeSheet(sh); invoiceSheet(v.id); toast('收款成功'); } else toast('客户还没付款');
+        });
+      };
+    } else $('#pay', sh).onclick = function () { closeSheet(sh); checkout(v); };
   }
 }
 function checkout(v) {
   var sh = openSheet('客户付款页（演示）', '<div class="checkout"><div class="note" style="margin:0 0 4px">付款给 演示用户</div><div style="font-size:1.6rem;font-weight:700" class="num">' + esc(C.fmt(v.cur, v.amount)) + '</div><div class="note" style="margin:2px 0 14px">' + esc(v.desc || v.id) + '</div>' +
     '<label class="field"><span>卡号（演示卡）</span><input value="4242 4242 4242 4242" readonly></label><div style="display:flex;gap:10px"><label class="field" style="flex:1"><span>有效期</span><input value="12 / 30" readonly></label><label class="field" style="flex:1"><span>CVC</span><input value="123" readonly></label></div>' +
     '<label class="field"><span>持卡人</span><input value="' + esc(v.client) + '" readonly></label></div><p class="note">这是客户看到的付款页模拟，不会扣任何卡。</p><button class="btn dark" id="pay">支付 ' + esc(C.fmt(v.cur, v.amount)) + '</button>');
+  var paid = function () {
+    var inv = S.invoices.filter(function (x) { return x.id === v.id; })[0] || v;
+    vib(60); render();
+    replaceSheet(sh, '收款成功', resultHtml(v.client + ' 已付款', '+' + money(v.cur, inv.net), '已存入 ' + v.cur + ' 账户') + '<button class="btn" data-close>完成</button>');
+  };
   $('#pay', sh).onclick = function () {
-    this.disabled = true; this.innerHTML = '<span class="spin"></span>';
+    var btn = this;
+    if (remote()) return busy(btn, api('POST', '/api/invoices/' + encodeURIComponent(v.id) + '/simulate-pay')).then(function (r) { if (r && r.state) paid(); });
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
     setTimeout(function () {
       var t = C.collect(S, { method: 'link', cur: v.cur, amount: v.amount, title: v.client + ' · ' + (v.desc || v.id), sub: '收款链接（银行卡）' });
-      v.status = 'paid'; v.paidTs = t.ts; v.net = t.net; save(); vib(60); render();
-      replaceSheet(sh, '收款成功', resultHtml(v.client + ' 已付款', '+' + money(v.cur, t.net), '手续费 ' + C.fmt(v.cur, t.fee) + '，已存入 ' + v.cur + ' 账户') + '<button class="btn" data-close>完成</button>');
+      v.status = 'paid'; v.paidTs = t.ts; v.net = t.net; save(); paid();
     }, 1300);
   };
 }
-function storePayout(id) {
+function storePayout(id, btn) {
   var st = C.STORES.filter(function (x) { return x.id === id; })[0];
   var a = Math.round((st.range[0] + Math.random() * (st.range[1] - st.range[0])) * 100);
+  if (remote()) {
+    return busy(btn, api('POST', '/api/incoming', { cur: st.cur, amount: a, payer: st.name, kind: 'store' })).then(function (r) {
+      if (r && r.txn) { vib(40); toast(st.name + ' 回款 +' + C.fmt(st.cur, r.txn.net)); }
+    });
+  }
   var t = C.collect(S, { method: 'store', cur: st.cur, amount: a, title: st.name + '回款' });
   save(); vib(40); render(); toast(st.name + ' 回款 +' + C.fmt(st.cur, t.net));
 }
+function cryptoSheet(id) {
+  var c = (S.crypto || []).filter(function (x) { return x.id === id; })[0]; if (!c) return;
+  var open = c.status !== 'settled' && c.status !== 'expired';
+  var sh = openSheet('测试网收款单 ' + c.id, '<div class="card"><div class="kv"><span>金额</span><span>' + money(c.cur, c.amount) + '</span></div><div class="kv"><span>状态</span><span>' +
+    ({ settled: '已到账', expired: '已过期', processing: '确认中', 'new': '待付款' }[c.status] || c.status) + '</span></div></div>' +
+    (open && c.url ? '<div class="qrbox"><div class="q">' + QR.svg(c.url, 170, '#122033') + '</div></div><div class="addr">' + esc(c.url) + '</div><p class="note" style="text-align:center">打开 BTCPay 付款页，用测试网钱包付款（测试币没有价值）。</p>' +
+      '<button class="btn dark" id="open">打开付款页</button><button class="btn" id="ref">刷新到账状态</button>' : '<button class="btn" data-close>好的</button>'));
+  if (open && c.url) {
+    $('#open', sh).onclick = function () { openUrl(c.url); };
+    $('#ref', sh).onclick = function () {
+      busy(this, api('POST', '/api/crypto/' + encodeURIComponent(c.id) + '/refresh')).then(function (r) {
+        if (!r || !r.item) return;
+        if (r.item.status === 'settled') { vib(60); closeSheet(sh); toast('加密货币收款已到账'); } else toast('还没到账');
+      });
+    };
+  }
+}
 var depositing = false;
-function simCrypto() {
+function simCrypto(btn) {
+  if (remote()) {
+    var amt = prov('btcpay') === 'testnet' ? C.toMinor(($('#cryptoAmt') || {}).value) : (Math.floor(Math.random() * 40) + 5) * 2500;
+    if (!(amt > 0)) return toast('请输入正确的金额');
+    return busy(btn, api('POST', '/api/crypto', { amount: amt, network: ui.usdtNet })).then(function (r) {
+      if (!r || !r.item) return;
+      if (r.item.provider === 'btcpay') cryptoSheet(r.item.id);
+      else { vib(60); toast('USDT 到账 +' + C.fmt('USDT', C.quoteCollect('crypto', amt).net)); }
+    });
+  }
   if (depositing) return;
   depositing = true;
   var net = ui.usdtNet, need = C.NETWORKS[net].confirmations, n = 0;
@@ -525,44 +711,73 @@ function simCrypto() {
 // ---------- flows: send / withdraw ----------
 function needKyc() {
   if (S.kyc === 'verified') return false;
-  var sh = openSheet('需要实名认证', '<p class="note" style="font-size:.9rem;margin:0 0 16px">按反洗钱规定，汇款和提现前要先完成实名认证。演示版只需要走一遍流程，不会上传任何资料。</p><button class="btn" id="k">去认证</button>');
+  var sh = openSheet('需要实名认证', '<p class="note" style="font-size:.9rem;margin:0 0 16px">按反洗钱规定，汇款和提现前要先完成实名认证。' + (remote() ? '第 2 期的实名认证仍是模拟流程' : '演示版只需要走一遍流程') + '，不会上传任何资料。</p><button class="btn" id="k">去认证</button>');
   $('#k', sh).onclick = function () { closeSheet(sh); kycFlow(); };
   return true;
 }
+function awxPayouts() { return prov('airwallex') === 'sandbox'; }
 function sendFlow(withdraw) {
   if (needKyc()) return;
   var recs = S.recipients.filter(function (r) { return withdraw ? r.self : !r.self; });
   var h = '<div class="card">' + recs.map(function (r) {
-    return '<button class="li" data-pick="' + r.id + '"><div class="flag">' + C.CURRENCIES[C.CHANNELS[r.channel].cur].flag + '</div><div class="mid"><div class="t">' + esc(r.name) + '</div><div class="s">' + esc(r.bank) + ' · ' + esc(C.CHANNELS[r.channel].label) + '</div></div><span class="tag">' + C.CHANNELS[r.channel].cur + '</span></button>';
+    var warn = awxPayouts() && !r.beneficiaryId ? ' · <span class="out">未绑定 Airwallex</span>' : '';
+    return '<button class="li" data-pick="' + r.id + '"><div class="flag">' + C.CURRENCIES[C.CHANNELS[r.channel].cur].flag + '</div><div class="mid"><div class="t">' + esc(r.name) + '</div><div class="s">' + esc(r.bank) + ' · ' + esc(C.CHANNELS[r.channel].label) + warn + '</div></div><span class="tag">' + C.CHANNELS[r.channel].cur + '</span></button>';
   }).join('') + '</div>';
   if (!withdraw) h += '<button class="btn ghost" style="margin-top:12px" id="add">＋ 新增收款人</button>';
   var sh = openSheet(withdraw ? '提现到' : '汇款给谁', h);
-  sh.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { var r = S.recipients.filter(function (x) { return x.id === b.dataset.pick; })[0]; closeSheet(sh); amountSheet(r); }; });
+  sh.querySelectorAll('[data-pick]').forEach(function (b) {
+    b.onclick = function () {
+      var r = S.recipients.filter(function (x) { return x.id === b.dataset.pick; })[0];
+      closeSheet(sh);
+      if (awxPayouts() && !r.beneficiaryId) return bindSheet(r, function (r2) { amountSheet(r2); });
+      amountSheet(r);
+    };
+  });
   if (!withdraw) $('#add', sh).onclick = function () { closeSheet(sh); addRecipient(function (r) { amountSheet(r); }); };
+}
+var BEN_HELP = '在 Airwallex 沙盒后台「付款 → 收款人」新增这个收款人，把它的收款人 ID（beneficiary ID）贴到这里。汇款会通过 Airwallex 沙盒发出。';
+function bindSheet(rec, after) {
+  var sh = openSheet('绑定 Airwallex 收款人', '<p class="note" style="margin:0 0 12px">' + esc(rec.name) + ' · ' + esc(rec.bank) + '</p><label class="field"><span>Airwallex 收款人 ID</span><input id="ben" value="' + esc(rec.beneficiaryId || '') + '" placeholder="例如 7f687fe6-…"></label><p class="note">' + BEN_HELP + '</p><button class="btn" id="go">保存</button>');
+  $('#go', sh).onclick = function () {
+    var id = $('#ben', sh).value.trim();
+    if (id.length < 6) return toast('请填写收款人 ID');
+    busy(this, api('PATCH', '/api/recipients/' + encodeURIComponent(rec.id), { beneficiaryId: id })).then(function (r) {
+      if (r && r.recipient) { closeSheet(sh); toast('已绑定'); if (after) after(r.recipient); }
+    });
+  };
 }
 function addRecipient(after) {
   var opts = Object.keys(C.CHANNELS).filter(function (k) { return k !== 'own_myr'; }).map(function (k) { return '<option value="' + k + '">' + C.CHANNELS[k].label + '（' + C.CHANNELS[k].cur + '）</option>'; }).join('');
   var sh = openSheet('新增收款人', '<label class="field"><span>收款人姓名</span><input id="nm" placeholder="与银行账户一致"></label><label class="field"><span>收款方式</span><select id="ch">' + opts + '</select></label>' +
-    '<label class="field"><span>账号 / 手机号</span><input id="ac" placeholder="银行卡号、支付宝账号或手机号"></label><button class="btn" id="go">保存</button>');
+    '<label class="field"><span>账号 / 手机号</span><input id="ac" placeholder="银行卡号、支付宝账号或手机号"></label>' +
+    (awxPayouts() ? '<label class="field"><span>Airwallex 收款人 ID</span><input id="ben" placeholder="沙盒后台新增收款人后得到"></label><p class="note">' + BEN_HELP + '</p>' : '') +
+    '<button class="btn" id="go">保存</button>');
   $('#go', sh).onclick = function () {
-    var nm = $('#nm', sh).value.trim(), ac = $('#ac', sh).value.trim();
+    var nm = $('#nm', sh).value.trim(), ac = $('#ac', sh).value.trim(), ch = $('#ch', sh).value;
     if (!nm || ac.length < 4) return toast('请填写姓名和账号');
-    var r = { id: 'r' + Date.now(), name: nm, channel: $('#ch', sh).value, bank: C.CHANNELS[$('#ch', sh).value].label.split(' ')[0] + ' ****' + ac.slice(-4) };
+    if (remote()) {
+      var ben = $('#ben', sh) ? $('#ben', sh).value.trim() : '';
+      return busy(this, api('POST', '/api/recipients', { name: nm, channel: ch, account: ac, beneficiaryId: ben })).then(function (r) {
+        if (r && r.recipient) { closeSheet(sh); if (after) after(r.recipient); }
+      });
+    }
+    var r = { id: 'r' + Date.now(), name: nm, channel: ch, bank: C.CHANNELS[ch].label.split(' ')[0] + ' ****' + ac.slice(-4) };
     S.recipients.push(r); save(); closeSheet(sh); if (after) after(r); else render();
   };
 }
 function amountSheet(rec) {
   var ch = C.CHANNELS[rec.channel], b = C.balances(S);
   var src = b[ch.cur] > 0 ? ch.cur : C.ORDER.filter(function (c) { return b[c] > 0; })[0] || 'USD';
+  var est = awxPayouts() ? '（预估，以 Airwallex 为准）' : '';
   var sh = openSheet((rec.self ? '提现到 ' : '汇款给 ') + rec.name, '<div class="note" style="margin:0 0 10px">' + esc(rec.bank) + ' · ' + esc(ch.label) + '</div>' +
     '<div class="field"><span>从哪个账户付</span><div class="amt"><select id="cur">' + curOpts(src) + '</select><input id="amt" inputmode="decimal" placeholder="0.00"></div><div class="sub-row"><span id="av"></span><button id="all">全部</button></div></div>' +
-    '<div class="card"><div class="kv"><span>手续费</span><span class="num" id="fee">—</span></div><div class="kv"><span>汇率</span><span class="num" id="rate">—</span></div><div class="kv"><span>对方收到</span><span class="num in" id="rcv" style="font-weight:700">—</span></div><div class="kv"><span>预计到账</span><span>' + esc(ch.eta) + '</span></div></div>' +
+    '<div class="card"><div class="kv"><span>手续费' + est + '</span><span class="num" id="fee">—</span></div><div class="kv"><span>汇率</span><span class="num" id="rate">—</span></div><div class="kv"><span>对方收到</span><span class="num in" id="rcv" style="font-weight:700">—</span></div><div class="kv"><span>预计到账</span><span>' + esc(ch.eta) + '</span></div></div>' +
     '<label class="field" style="margin-top:12px"><span>备注（选填）</span><input id="note" placeholder="例如 货款 / 生活费"></label><p class="note out" id="err"></p><button class="btn" id="go" disabled>确认' + (rec.self ? '提现' : '汇款') + '</button>');
   var upd = function () {
     var cur = $('#cur', sh).value, a = C.toMinor($('#amt', sh).value), err = '';
     $('#av', sh).textContent = '可用 ' + C.fmt(cur, C.balance(S, 'wallet', cur));
     var r = C.liveRate(cur, ch.cur);
-    $('#rate', sh).textContent = cur === ch.cur ? '无需换汇' : '1 ' + cur + ' = ' + r.toFixed(4) + ' ' + ch.cur;
+    $('#rate', sh).textContent = cur === ch.cur ? '无需换汇' : '1 ' + cur + ' ≈ ' + r.toFixed(4) + ' ' + ch.cur;
     if (a > 0) {
       var q = C.quoteSend(cur, rec.channel, a, r);
       $('#fee', sh).textContent = C.fmt(cur, q.fee) + (q.fxFee ? '（含换汇 ' + C.fmt(cur, q.fxFee) + '）' : '');
@@ -576,23 +791,32 @@ function amountSheet(rec) {
   $('#all', sh).onclick = function () { $('#amt', sh).value = C.fmtNum(C.balance(S, 'wallet', $('#cur', sh).value)).replace(/,/g, ''); upd(); };
   upd();
   $('#go', sh).onclick = function () {
+    var cur = $('#cur', sh).value, a = C.toMinor($('#amt', sh).value), note = $('#note', sh).value.trim();
+    if (remote()) {
+      return busy(this, api('POST', '/api/transfers', { recipientId: rec.id, cur: cur, amount: a, note: note })).then(function (r) {
+        if (r && r.txn) { vib(40); closeSheet(sh); trackSheet(r.txn.id); }
+      });
+    }
     try {
-      var cur = $('#cur', sh).value;
-      var t = C.sendStart(S, { cur: cur, amount: C.toMinor($('#amt', sh).value), recipient: rec, rate: C.liveRate(cur, ch.cur), note: $('#note', sh).value.trim() });
+      var t = C.sendStart(S, { cur: cur, amount: a, recipient: rec, rate: C.liveRate(cur, ch.cur), note: note });
       save(); vib(40); render(); closeSheet(sh); trackSheet(t.id);
     } catch (e) { toast(e.message); }
   };
 }
 function trackSheet(id) {
   var t = C.findTxn(S, id);
+  if (!t) return;
   var draw = function () {
-    t = C.findTxn(S, id);
-    return '<div class="result" style="padding-bottom:0"><div class="note" style="margin:0">' + esc(t.title) + '</div><div class="big out">-' + money(t.cur, t.amount) + '</div><div class="note" style="margin:0 0 14px">对方收到 ' + esc(C.fmt(t.toCur, t.receive)) + '</div></div>' + stepsHtml(t) + '<button class="btn" data-close>' + (t.status === 'pending' ? '后台继续处理' : '完成') + '</button>';
+    t = C.findTxn(S, id) || t;
+    var ps = t.providerStatus ? '<div class="note" style="margin:0 0 8px">Airwallex 状态：' + esc(t.providerStatus) + '</div>' : '';
+    return '<div class="result" style="padding-bottom:0"><div class="note" style="margin:0">' + esc(t.title) + '</div><div class="big out">-' + money(t.cur, t.amount) + '</div><div class="note" style="margin:0 0 14px">对方收到 ' + esc(C.fmt(t.toCur, t.receive)) + '</div></div>' + ps + stepsHtml(t) + '<button class="btn" data-close>' + (t.status === 'pending' ? '后台继续处理' : '完成') + '</button>';
   };
   var sh = openSheet(t.title, draw());
+  var n = 0;
   var timer = setInterval(function () {
-    var cur = C.findTxn(S, id);
     if (!sh.isConnected) return clearInterval(timer);
+    if (remote() && ++n % 5 === 0) refreshRemote(false, '/api/sync'); // ask the server to check the transfer every ~3 s
+    var cur = C.findTxn(S, id) || t;
     replaceSheet(sh, cur.title, draw());
     if (cur.status !== 'pending') clearInterval(timer);
   }, 600);
@@ -601,6 +825,7 @@ function trackSheet(id) {
 // Pending transfers move one step every few seconds (demo speed), also after the app is reopened.
 var STEP_MS = 2500;
 function advanceTransfers() {
+  if (remote()) return; // the server moves transfers in sandbox mode
   var changed = false, now = Date.now();
   S.txns.forEach(function (t) {
     if (t.type !== 'send' || t.status !== 'pending') return;
@@ -618,21 +843,82 @@ setInterval(advanceTransfers, 500);
 // ---------- KYC ----------
 function kycFlow() {
   if (S.kyc === 'verified') return openSheet('实名认证', resultHtml('已完成实名认证', '已认证', '个人单笔汇款上限 RM 50,000（演示）') + '<button class="btn" data-close>好的</button>');
-  if (S.kyc === 'pending') return openSheet('实名认证', '<div class="result"><span class="spin"></span><p class="note">资料审核中，演示版几秒后自动通过</p></div>');
+  if (S.kyc === 'pending') return openSheet('实名认证', '<div class="result"><span class="spin"></span><p class="note">资料审核中，几秒后自动通过</p></div>');
   var sh = openSheet('实名认证 1/3 · 基本资料', '<label class="field"><span>姓名（与证件一致）</span><input id="nm" placeholder="例如 ZHANG WEI"></label>' +
     '<label class="field"><span>证件类型</span><select id="doc"><option>马来西亚 MyKad</option><option>护照</option><option>中国居民身份证</option></select></label><label class="field"><span>国籍 / 居住地</span><select><option>马来西亚</option><option>中国</option><option>新加坡</option><option>泰国</option></select></label><button class="btn" id="n1">下一步</button>');
+  var approved = function () {
+    render(); vib(60);
+    if (sh.isConnected) replaceSheet(sh, '认证通过', resultHtml('实名认证已通过', '已认证', '现在可以汇款和提现了') + '<button class="btn" data-close>好的</button>'); else toast('实名认证已通过');
+  };
   $('#n1', sh).onclick = function () {
     if (!$('#nm', sh).value.trim()) return toast('请填写姓名');
-    replaceSheet(sh, '实名认证 2/3 · 拍摄证件', '<div class="card" style="padding:28px;text-align:center;border-style:dashed"><div style="font-size:2.2rem">🪪</div><p class="note">演示版不会打开相机，点下面按钮模拟拍照</p></div><button class="btn" style="margin-top:14px" id="n2">模拟拍摄证件正反面</button>');
+    replaceSheet(sh, '实名认证 2/3 · 拍摄证件', '<div class="card" style="padding:28px;text-align:center;border-style:dashed"><div style="font-size:2.2rem">🪪</div><p class="note">模拟流程，不会打开相机，点下面按钮模拟拍照</p></div><button class="btn" style="margin-top:14px" id="n2">模拟拍摄证件正反面</button>');
     $('#n2', sh).onclick = function () {
-      replaceSheet(sh, '实名认证 3/3 · 人脸核验', '<div class="card" style="padding:28px;text-align:center;border-style:dashed"><div style="font-size:2.2rem">🙂</div><p class="note">演示版不会采集人脸</p></div><button class="btn" style="margin-top:14px" id="n3">模拟人脸核验</button>');
+      replaceSheet(sh, '实名认证 3/3 · 人脸核验', '<div class="card" style="padding:28px;text-align:center;border-style:dashed"><div style="font-size:2.2rem">🙂</div><p class="note">模拟流程，不会采集人脸</p></div><button class="btn" style="margin-top:14px" id="n3">模拟人脸核验</button>');
       $('#n3', sh).onclick = function () {
+        if (remote()) {
+          return busy(this, api('POST', '/api/kyc')).then(function (r) {
+            if (!r) return;
+            replaceSheet(sh, '已提交', '<div class="result"><span class="spin"></span><p class="note">资料审核中，几秒后自动通过</p></div>');
+            setTimeout(function () { refreshRemote(true, '/api/sync').then(function () { if (S.kyc === 'verified') approved(); }); }, 3200);
+          });
+        }
         S.kyc = 'pending'; save(); render();
         replaceSheet(sh, '已提交', '<div class="result"><span class="spin"></span><p class="note">资料审核中，演示版 3 秒后自动通过</p></div>');
-        setTimeout(function () { S.kyc = 'verified'; save(); render(); vib(60); if (sh.isConnected) replaceSheet(sh, '认证通过', resultHtml('实名认证已通过', '已认证', '现在可以汇款和提现了') + '<button class="btn" data-close>好的</button>'); else toast('实名认证已通过'); }, 3000);
+        setTimeout(function () { S.kyc = 'verified'; save(); approved(); }, 3000);
       };
     };
   };
+}
+
+// ---------- server connection ----------
+function connectSheet() {
+  var sh = openSheet('连接服务器（沙盒模式）', '<label class="field"><span>服务器地址</span><input id="url" inputmode="url" autocapitalize="off" placeholder="https://你的服务器.onrender.com"></label>' +
+    '<label class="field"><span>访问令牌（APP_TOKEN）</span><input id="tok" autocapitalize="off" placeholder="部署时设置的 APP_TOKEN"></label>' +
+    '<p class="note">连接后余额和交易都来自服务器，资金走 Airwallex / Stripe 沙盒和 BTCPay 测试网。本机的演示数据会保留，断开后可以回到演示版。</p><button class="btn" id="go">测试并连接</button>');
+  $('#go', sh).onclick = function () {
+    var url = $('#url', sh).value.trim().replace(/\/+$/, ''), tok = $('#tok', sh).value.trim();
+    if (!/^https?:\/\/\S+$/.test(url)) return toast('请填写以 https:// 开头的地址');
+    if (!tok) return toast('请填写访问令牌');
+    var conn = { url: url, token: tok };
+    busy(this, api('GET', '/api/state', null, conn)).then(function (st) {
+      if (!st || !st.txns) return;
+      srv = conn;
+      try { localStorage.setItem(SKEY, JSON.stringify(srv)); } catch (e) {}
+      acctCache = {}; syncErr = '';
+      S = st; setRemoteState(st);
+      closeSheet(sh); go('me');
+      var p = st.providers || {};
+      toast('已连接：Airwallex ' + (p.airwallex === 'sandbox' ? '沙盒' : '模拟') + '，Stripe ' + (p.stripe === 'sandbox' ? '测试' : '模拟') + '，BTCPay ' + (p.btcpay === 'testnet' ? '测试网' : '模拟'));
+    });
+  };
+}
+function disconnect() {
+  var sh = openSheet('断开服务器', '<p class="note" style="font-size:.9rem;margin:0 0 16px">回到本机演示版。服务器上的沙盒数据不会删除，下次连接还在。</p><button class="btn" id="y" style="background:var(--out)">断开</button><button class="btn ghost" data-close>取消</button>');
+  $('#y', sh).onclick = function () {
+    srv = null;
+    try { localStorage.removeItem(SKEY); localStorage.removeItem(RKEY); } catch (e) {}
+    acctCache = {}; syncErr = ''; load(); closeSheet(sh); go('home'); toast('已回到演示版');
+  };
+}
+function reconcileSheet() {
+  var sh = openSheet('对账', '<div class="empty"><span class="spin"></span></div>');
+  api('GET', '/api/reconcile').then(function (r) {
+    var real = r.source === 'airwallex';
+    var h = '<div class="card"><div class="kv" style="font-weight:600"><span>币种</span><span>账本可用 / ' + (real ? 'Airwallex 可用' : '通道') + '</span></div>' + r.rows.map(function (x) {
+      var diff = real ? x.provider - x.ledger : 0;
+      var right = esc(C.fmt(x.cur, x.ledger)) + ' / ' + (real ? esc(C.fmt(x.cur, x.provider)) : '模拟');
+      return '<div class="kv"><span>' + C.CURRENCIES[x.cur].flag + ' ' + x.cur + '</span><span class="num">' + right + (real && diff !== 0 ? '<br><span class="out">差 ' + esc(C.fmt(x.cur, diff)) + '</span>' : (real ? ' <span class="in">✓</span>' : '')) + '</span></div>';
+    }).join('') + '</div>';
+    h += '<p class="note">' + (real ? '在途汇款已经从账本可用余额里扣掉，Airwallex 可能还没扣，所以汇款处理中时会暂时有差额。沙盒后台手动操作过的资金也会造成差额。' : '服务器没有配置 Airwallex，只能看账本余额。') + '</p><button class="btn" data-close>好的</button>';
+    replaceSheet(sh, '对账', h);
+  }, function (e) { replaceSheet(sh, '对账', '<div class="banner">⚠️ ' + esc(e.message) + '</div><button class="btn" data-close>好的</button>'); });
+}
+function setSetting(patch, btn) {
+  if (remote()) return busy(btn, api('PATCH', '/api/settings', patch));
+  Object.keys(patch).forEach(function (k) { if (k === 'stores') Object.assign(S.stores, patch.stores); else S[k] = patch[k]; });
+  save(); render();
+  return Promise.resolve({});
 }
 
 // ---------- misc sheets ----------
@@ -647,14 +933,24 @@ function feesSheet() {
 }
 function recipientsSheet() {
   var sh = openSheet('收款人管理', '<div class="card">' + S.recipients.map(function (r) {
-    return '<div class="li"><div class="flag">' + C.CURRENCIES[C.CHANNELS[r.channel].cur].flag + '</div><div class="mid"><div class="t">' + esc(r.name) + '</div><div class="s">' + esc(r.bank) + '</div></div>' + (r.self ? '<span class="tag">本人</span>' : '<button class="chip" data-del="' + r.id + '">删除</button>') + '</div>';
+    return '<div class="li"><div class="flag">' + C.CURRENCIES[C.CHANNELS[r.channel].cur].flag + '</div><div class="mid"><div class="t">' + esc(r.name) + '</div><div class="s">' + esc(r.bank) + (awxPayouts() ? ' · ' + (r.beneficiaryId ? '<span class="in">已绑定 Airwallex</span>' : '<span class="out">未绑定 Airwallex</span>') : '') + '</div></div>' +
+      (awxPayouts() ? '<button class="chip" data-bind="' + r.id + '">绑定</button>' : '') + (r.self ? '<span class="tag">本人</span>' : '<button class="chip" data-del="' + r.id + '">删除</button>') + '</div>';
   }).join('') + '</div><button class="btn ghost" style="margin-top:12px" id="add">＋ 新增收款人</button>');
-  sh.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { S.recipients = S.recipients.filter(function (r) { return r.id !== b.dataset.del; }); save(); closeSheet(sh); render(); recipientsSheet(); }; });
+  sh.querySelectorAll('[data-del]').forEach(function (b) {
+    b.onclick = function () {
+      var id = b.dataset.del;
+      if (remote()) return busy(b, api('DELETE', '/api/recipients/' + encodeURIComponent(id))).then(function (r) { if (r) { closeSheet(sh); recipientsSheet(); } });
+      S.recipients = S.recipients.filter(function (r) { return r.id !== id; }); save(); closeSheet(sh); render(); recipientsSheet();
+    };
+  });
+  sh.querySelectorAll('[data-bind]').forEach(function (b) {
+    b.onclick = function () { var r = S.recipients.filter(function (x) { return x.id === b.dataset.bind; })[0]; closeSheet(sh); bindSheet(r, function () { recipientsSheet(); }); };
+  });
   $('#add', sh).onclick = function () { closeSheet(sh); addRecipient(null); };
 }
 function aboutSheet() {
   openSheet('关于与风险提示', '<p class="note" style="font-size:.88rem;margin:0 0 10px">环球收款演示版用来展示跨境收款 APP 的完整流程：多币种收款账户、收款链接、电商回款、USDT 收款、换汇、汇款和提现。</p>' +
-    '<p class="note" style="font-size:.88rem">• 所有账户、地址、汇率和交易都是模拟的，不能用于真实收付款。<br>• 在马来西亚经营汇款或换汇业务需要国家银行（BNM）颁发的金钱服务业执照，正式版会接入持牌机构，由它们持有和划转资金。<br>• 余额和交易只保存在本机，卸载或重置后会清空。</p><button class="btn" data-close>知道了</button>');
+    '<p class="note" style="font-size:.88rem">• 所有账户、地址、汇率和交易都是模拟的，不能用于真实收付款。<br>• 在马来西亚经营汇款或换汇业务需要国家银行（BNM）颁发的金钱服务业执照，正式版会接入持牌机构，由它们持有和划转资金。<br>• 演示版的余额和交易只保存在本机，卸载或重置后会清空。<br>• 第 2 期沙盒模式：连接你自己部署的服务器后，收款链接、全球账户、换汇和汇款走 Airwallex / Stripe 沙盒，加密收款走 BTCPay 测试网，用的都是测试资金。服务器只接受测试密钥，拒绝正式环境密钥。</p><button class="btn" data-close>知道了</button>');
 }
 function curDetail(cur) {
   var b = C.balance(S, 'wallet', cur), list = S.txns.filter(function (t) { return t.cur === cur || t.toCur === cur; }).sort(function (a, x) { return x.ts - a.ts; }).slice(0, 8);
@@ -673,7 +969,7 @@ document.addEventListener('click', function (e) {
   var el = e.target.closest('[data-act]'); if (!el) return;
   var a = el.dataset.act, v = el.dataset.v;
   switch (a) {
-    case 'cycleDisplay': var ds = ['MYR', 'USD', 'CNY', 'SGD']; S.display = ds[(ds.indexOf(S.display) + 1) % ds.length]; save(); render(); break;
+    case 'cycleDisplay': var ds = ['MYR', 'USD', 'CNY', 'SGD']; setSetting({ display: ds[(ds.indexOf(S.display) + 1) % ds.length] }); break;
     case 'send': sendFlow(false); break;
     case 'withdraw': sendFlow(true); break;
     case 'tx': txDetail(el.dataset.id); break;
@@ -682,14 +978,19 @@ document.addEventListener('click', function (e) {
     case 'recvCur': ui.recvCur = v; render(); break;
     case 'usdtNet': ui.usdtNet = v; render(); break;
     case 'copy': copy(v); break;
-    case 'shareAcct': share('【演示】我的 ' + ui.recvCur + ' 收款账户\n' + C.fakeAccount(ui.recvCur, ui.recvCur.charCodeAt(0) * 7 + ui.recvCur.charCodeAt(2)).map(function (r) { return r[0] + '：' + r[1]; }).join('\n')); break;
+    case 'shareAcct': var ad = acctDetails(ui.recvCur); share((ad.source === 'airwallex' ? '【Airwallex 沙盒】' : '【演示】') + '我的 ' + ui.recvCur + ' 收款账户\n' + (ad.rows || []).map(function (r) { return r[0] + '：' + r[1]; }).join('\n')); break;
+    case 'acctRetry': delete acctCache[ui.recvCur]; render(); break;
+    case 'cryptoItem': cryptoSheet(el.dataset.id); break;
+    case 'connect': connectSheet(); break;
+    case 'disconnect': disconnect(); break;
+    case 'reconcile': reconcileSheet(); break;
     case 'simAccount': simAccount(); break;
     case 'newInvoice': newInvoice(); break;
     case 'invoice': invoiceSheet(el.dataset.id); break;
-    case 'toggleStore': S.stores[el.dataset.id] = !S.stores[el.dataset.id]; save(); render(); if (S.stores[el.dataset.id]) toast('已绑定（演示）'); break;
-    case 'payout': storePayout(el.dataset.id); break;
-    case 'autoConvert': S.autoConvert = !S.autoConvert; save(); render(); break;
-    case 'simCrypto': simCrypto(); break;
+    case 'toggleStore': var sid = el.dataset.id, on = !S.stores[sid], sp = {}; sp[sid] = on; setSetting({ stores: sp }).then(function (r) { if (r && on) toast('已绑定（演示）'); }); break;
+    case 'payout': storePayout(el.dataset.id, el); break;
+    case 'autoConvert': setSetting({ autoConvert: !S.autoConvert }); break;
+    case 'simCrypto': simCrypto(el); break;
     case 'fxAll': ui.fxAmt = C.fmtNum(C.balance(S, 'wallet', ui.fxFrom)).replace(/,/g, ''); $('#fxAmt').value = ui.fxAmt; updateFx(); break;
     case 'fxSwap': var tmp = ui.fxFrom; ui.fxFrom = ui.fxTo; ui.fxTo = tmp; render(); break;
     case 'fxReview': fxReview(); break;
@@ -709,13 +1010,14 @@ document.addEventListener('change', function (e) {
   var a = e.target.dataset && e.target.dataset.act;
   if (a === 'fxFrom') { ui.fxFrom = e.target.value; render(); }
   if (a === 'fxTo') { ui.fxTo = e.target.value; render(); }
-  if (a === 'autoTo') { S.autoTo = e.target.value; save(); render(); }
+  if (a === 'autoTo') setSetting({ autoTo: e.target.value });
 });
 document.addEventListener('input', function (e) { if (e.target.id === 'fxAmt') { ui.fxAmt = e.target.value.trim(); updateFx(); } });
 
 load();
 advanceTransfers();
 render();
+if (remote()) refreshRemote(true);
 </script>
 </body>
 </html>

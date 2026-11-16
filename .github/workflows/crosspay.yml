@@ -1,12 +1,15 @@
 name: Build crosspay APK
 
-# 环球收款（演示版）：先跑账本 / 手续费 / 二维码测试，再编译 APK，
+# 环球收款：先跑账本 / 二维码 / 服务器测试和 Docker 冒烟测试，再编译 APK，
 # 发布到固定的 "crosspay" 下载链接（不用等合并到 main）。
 on:
   push:
     paths:
       - "crosspay/**"
       - "tests/crosspay-core.test.js"
+      - "crosspay-server/**"
+      - "tests/crosspay-server.test.js"
+      - "render.yaml"
       - ".github/workflows/crosspay.yml"
   workflow_dispatch:
 
@@ -25,8 +28,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Ledger, fee and QR tests
-        run: node --test tests/crosspay-core.test.js 2>&1 | tee test.log
+      - name: Ledger, QR and server tests (fake Airwallex / Stripe / BTCPay)
+        run: |
+          set -o pipefail
+          node --test tests/crosspay-core.test.js tests/crosspay-server.test.js 2>&1 | tee test.log
+      - name: Server Docker image starts and answers
+        run: |
+          docker build -f crosspay-server/Dockerfile -t crosspay-server .
+          docker run -d --name cps -p 8080:8080 -e APP_TOKEN=ci-token crosspay-server
+          for i in $(seq 1 20); do curl -fsS -H "Authorization: Bearer ci-token" http://127.0.0.1:8080/api/health && break; sleep 1; done
+          curl -fsS -H "Authorization: Bearer ci-token" http://127.0.0.1:8080/api/health | grep -q '"ok":true'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/state)" = 401
+          docker logs cps
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -51,4 +64,4 @@ jobs:
         run: |
           cp crosspay/build/outputs/apk/debug/crosspay-debug.apk crosspay.apk
           gh release delete crosspay --yes --cleanup-tag || true
-          gh release create crosspay "crosspay.apk#环球收款（跨境收款演示版）.apk" --target "$GITHUB_SHA" --title "环球收款 下载" --notes "点中文名称即可下载安装。演示版：所有账户、余额和交易都是模拟数据，不涉及真实资金。由 GitHub Actions 自动编译（测试已通过）。" --latest=false
+          gh release create crosspay "crosspay.apk#环球收款（跨境收款演示版）.apk" --target "$GITHUB_SHA" --title "环球收款 下载" --notes "点中文名称即可下载安装。默认是演示版（本机模拟数据）；在「我的 → 连接服务器」填入第 2 期服务器后进入沙盒模式（Airwallex / Stripe 沙盒 + BTCPay 测试网，全是测试资金）。由 GitHub Actions 自动编译（测试已通过）。" --latest=false

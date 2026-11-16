@@ -7,6 +7,8 @@ on:
       - "ios/**"
       - ".github/workflows/pages.yml"
       - "tests/**"
+      - "crosspay-server/**"
+      - "render.yaml"
       - ".github/workflows/probe.yml"
       - ".github/workflows/probe-turn.yml"
       - ".github/workflows/probe-platforms.yml"

@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
@@ -16,7 +17,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-/** 环球收款 (demo): the whole app is the offline page in assets, shown full screen. */
+/** 环球收款: the app is the page in assets, shown full screen. Demo mode is fully offline;
+ *  sandbox mode (phase 2) calls the user's own server over HTTPS. */
 public class MainActivity extends Activity {
     private WebView web;
 
@@ -33,7 +35,11 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
-                return !"file".equals(r.getUrl().getScheme()); // the demo never leaves the app
+                Uri u = r.getUrl();
+                if ("file".equals(u.getScheme())) return false;
+                // payment pages (Stripe / Airwallex / BTCPay) open in the phone's browser
+                if ("https".equals(u.getScheme())) openExternal(MainActivity.this, u.toString());
+                return true;
             }
         });
         web.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
@@ -57,6 +63,15 @@ public class MainActivity extends Activity {
         });
     }
 
+    static void openExternal(Activity act, String url) {
+        if (url == null || !url.startsWith("https://")) return;
+        try {
+            act.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (Exception ignored) {
+            // no browser installed
+        }
+    }
+
     static class Bridge {
         private final Activity act;
         Bridge(Activity a) { act = a; }
@@ -73,6 +88,11 @@ public class MainActivity extends Activity {
         public void copy(String text) {
             ClipboardManager cm = (ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE);
             if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("环球收款", text));
+        }
+
+        @JavascriptInterface
+        public void openUrl(String url) {
+            act.runOnUiThread(() -> openExternal(act, url));
         }
 
         @JavascriptInterface

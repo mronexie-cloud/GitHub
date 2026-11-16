@@ -162,13 +162,18 @@
   }
 
   // Money in: from a global account, a payment link, a store payout or a USDT deposit.
+  // o.fee (optional) records the fee the provider really charged instead of the demo schedule.
   function collect(state, o) {
-    var q = quoteCollect(o.method, o.amount);
     if (!(o.amount > 0)) throw new Error('请输入金额');
+    var q = quoteCollect(o.method, o.amount);
+    if (o.fee != null) {
+      if (!(o.fee >= 0 && o.fee <= o.amount)) throw new Error('手续费不正确');
+      q = { gross: o.amount, fee: o.fee, net: o.amount - o.fee };
+    }
     return post(state, {
       id: o.id || nextId(state, 'TX'), type: 'collect', method: o.method, status: 'done',
       ts: o.ts || Date.now(), title: o.title, sub: o.sub || COLLECT_FEES[o.method].label,
-      cur: o.cur, amount: o.amount, fee: q.fee, net: q.net, meta: o.meta || {},
+      cur: o.cur, amount: o.amount, fee: q.fee, net: q.net, meta: o.meta || {}, ref: o.ref || null,
       entries: [
         { acct: 'world', cur: o.cur, amt: -o.amount },
         { acct: 'wallet', cur: o.cur, amt: q.net },
@@ -181,10 +186,15 @@
     if (o.from === o.to) throw new Error('请选择两种不同的币种');
     need(state, o.from, o.amount);
     var q = quoteConvert(o.from, o.to, o.amount, o.rate);
+    if (o.receive != null) { // amounts the provider actually booked
+      var fee = o.fee || 0;
+      if (!(o.receive > 0) || fee < 0 || fee >= o.amount) throw new Error('换汇金额不正确');
+      q = { amount: o.amount, fee: fee, net: o.amount - fee, rate: o.rate || o.receive / (o.amount - fee), receive: o.receive };
+    }
     return post(state, {
       id: nextId(state, 'FX'), type: 'convert', status: 'done', ts: o.ts || Date.now(),
       title: o.from + ' → ' + o.to, sub: '换汇 · 汇率 ' + q.rate.toFixed(4),
-      cur: o.from, amount: o.amount, fee: q.fee, toCur: o.to, receive: q.receive, rate: q.rate,
+      cur: o.from, amount: o.amount, fee: q.fee, toCur: o.to, receive: q.receive, rate: q.rate, ref: o.ref || null,
       entries: [
         { acct: 'wallet', cur: o.from, amt: -o.amount },
         { acct: 'fees', cur: o.from, amt: q.fee },
@@ -200,12 +210,17 @@
     var rec = o.recipient;
     need(state, o.cur, o.amount);
     var q = quoteSend(o.cur, rec.channel, o.amount, o.rate);
+    if (o.receive != null) { // fee and payout the provider quoted
+      var f = o.fee || 0;
+      if (f < 0 || f > o.amount || !(o.receive > 0)) throw new Error('汇款金额不正确');
+      q.fee = f; q.receive = o.receive; q.ok = true; if (o.rate) q.rate = o.rate;
+    }
     if (!q.ok) throw new Error('金额太小，不够支付手续费');
     return post(state, {
       id: nextId(state, 'TR'), type: 'send', status: 'pending', step: 1, ts: o.ts || Date.now(),
       title: (rec.self ? '提现到 ' : '汇款给 ') + rec.name, sub: CHANNELS[rec.channel].label,
       cur: o.cur, amount: o.amount, fee: q.fee, toCur: q.receiveCur, receive: q.receive,
-      rate: q.rate, eta: q.eta, recipient: rec, note: o.note || '',
+      rate: q.rate, eta: q.eta, recipient: rec, note: o.note || '', ref: o.ref || null,
       entries: [
         { acct: 'wallet', cur: o.cur, amt: -o.amount },
         { acct: 'hold', cur: o.cur, amt: o.amount }
@@ -214,6 +229,10 @@
   }
   function findTxn(state, id) {
     for (var i = 0; i < state.txns.length; i++) if (state.txns[i].id === id) return state.txns[i];
+    return null;
+  }
+  function findByRef(state, ref) {
+    for (var i = 0; i < state.txns.length; i++) if (state.txns[i].ref === ref) return state.txns[i];
     return null;
   }
   // Step 2a: delivered. The hold is released to the outside world and the fee is taken.
@@ -302,7 +321,7 @@
     quoteCollect: quoteCollect, quoteConvert: quoteConvert, quoteSend: quoteSend,
     newState: newState, nextId: nextId, balance: balance, balances: balances, total: total, checkBalanced: checkBalanced,
     collect: collect, convert: convert, sendStart: sendStart, sendComplete: sendComplete, sendFail: sendFail,
-    findTxn: findTxn, fakeAccount: fakeAccount, demoAddress: demoAddress, seedDemo: seedDemo, rnd: rnd
+    findTxn: findTxn, findByRef: findByRef, fakeAccount: fakeAccount, demoAddress: demoAddress, seedDemo: seedDemo, rnd: rnd
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Core = api;

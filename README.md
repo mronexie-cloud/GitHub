@@ -77,4 +77,6 @@
 - 汇款 / 提现：中国银行卡、支付宝、DuitNow、PayNow、PromptPay，需要先走一遍实名认证，进度一步步更新
 - 流水：每笔交易都能看到复式记账分录（`crosspay/src/main/assets/core.js`，第 2 期换成 Blnk 账本）
 
-所有演示账户号、链接和链上地址都故意做成无效格式，不能真的收付款。`tests/crosspay-core.test.js` 检查账本平衡、手续费、余额不足和二维码。第 2 期计划接入 Airwallex / Stripe 沙盒和 BTCPay Server 测试网。
+所有演示账户号、链接和链上地址都故意做成无效格式，不能真的收付款。`tests/crosspay-core.test.js` 检查账本平衡、手续费、余额不足和二维码。
+
+**第 2 期（沙盒）**：`crosspay-server/` 是后端服务，接 Airwallex 沙盒（全球账户、存款模拟、换汇、汇款、对账）、Stripe 测试环境（收款链接）和 BTCPay Server 测试网（加密收款），三家的 Webhook 都校验签名，同一笔钱只入账一次。App 在「我的 → 连接服务器」里填地址和令牌即可切换到沙盒模式。部署和申请密钥的步骤见 [crosspay-server/README.md](crosspay-server/README.md)。

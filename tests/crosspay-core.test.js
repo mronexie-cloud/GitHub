@@ -117,3 +117,18 @@ test('QR encoder: structure of version 1 and growth with length', () => {
   assert.strictEqual(QR.matrix('x'.repeat(200)).length > 41, true);
   assert.match(QR.svg('hello', 100), /^<svg/);
 });
+
+test('provider amounts override the demo fee schedule', () => {
+  const s = C.newState(0);
+  const t = C.collect(s, { method: 'link', cur: 'USD', amount: 50000, fee: 0, title: 'stripe', ref: 'stripe:cs_1' });
+  assert.strictEqual(t.net, 50000);
+  assert.strictEqual(C.findByRef(s, 'stripe:cs_1').id, t.id);
+  assert.throws(() => C.collect(s, { method: 'link', cur: 'USD', amount: 100, fee: 200, title: 'x' }), /手续费/);
+  const fx = C.convert(s, { from: 'USD', to: 'MYR', amount: 10000, receive: 42150, fee: 0, ref: 'awx:conv:1' });
+  assert.strictEqual(fx.receive, 42150);
+  assert.strictEqual(C.balance(s, 'wallet', 'MYR'), 42150);
+  const tr = C.sendStart(s, { cur: 'USD', amount: 20000, recipient: { name: 'a', channel: 'cn_bank' }, fee: 150, receive: 141000, rate: 7.1 });
+  assert.strictEqual(tr.fee, 150);
+  C.sendComplete(s, tr.id);
+  allBalanced(s);
+});
