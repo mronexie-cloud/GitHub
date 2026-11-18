@@ -1,0 +1,48 @@
+name: Build earbuds APK
+
+# 耳机翻译：编译 APK，
+# 发布到固定的 "earbuds" 下载链接（不用等合并到 main）。
+on:
+  push:
+    paths:
+      - "earbuds/**"
+      - ".github/workflows/earbuds.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: earbuds-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Test and build
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          chmod +x gradlew
+          set -o pipefail
+          for i in 1 2 3; do ./gradlew :earbuds:assembleDebug --no-daemon 2>&1 | tee build.log && break; echo "build try $i failed"; [ $i = 3 ] && exit 1; sleep 20; done
+      - name: Publish log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tail -c 200000 build.log > earbuds-build-tail.log
+          gh release delete earbuds-build-log --yes --cleanup-tag || true
+          gh release create earbuds-build-log earbuds-build-tail.log --target "$GITHUB_SHA" --title "earbuds build log" --notes "last failed earbuds build" --latest=false --prerelease
+      - name: Publish APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp earbuds/build/outputs/apk/debug/earbuds-debug.apk earbuds.apk
+          gh release delete earbuds --yes --cleanup-tag || true
+          gh release create earbuds "earbuds.apk#耳机翻译（实时翻译）.apk" --target "$GITHUB_SHA" --title "耳机翻译 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest=false
