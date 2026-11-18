@@ -13,11 +13,17 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Online speech recognition that does not need the phone's own recognizer (Google app):
- * records the microphone, cuts out each sentence by loudness, and sends it to Google's
- * web speech service. Keeps recording while a sentence is being recognized, so nothing is missed.
+ * Hands-free two-way speech recognition for a conversation.
+ * Records the microphone non-stop, cuts out each sentence by loudness, recognizes it in
+ * both conversation languages at once and keeps the one that fits, so nobody has to press
+ * anything to say who is talking. While someone is still talking, the sentence so far is
+ * recognized about once a second so the text (and its translation) appears live.
+ *
+ * Events: ready, begin, partial_them / partial_me, final_them / final_me, nothing, error.
  */
 final class CloudAsr {
     interface Callback {
@@ -28,27 +34,31 @@ final class CloudAsr {
     private static final String KEY = "AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw"; // Chromium's public speech key
     private static final int RATE = 16000;
     private static final int FRAME = RATE / 50; // 20 ms
+    private static final int INTERIM_EVERY = RATE * 9 / 10; // new audio between live updates
 
     private final Callback cb;
     private volatile boolean running;
-    private volatile boolean forceEnd;
-    private volatile String lang = "en-US";
+    private volatile String langThem = "en-US", langMe = "zh-CN";
     private volatile String tag = "";
     private Thread thread;
     private volatile int gen;
 
+    private volatile int segId;           // sentence being recorded
+    private volatile int doneSeg;         // last sentence whose final result was sent
+    private volatile String segSide;      // "them" / "me" once known for the current sentence
+    private final AtomicBoolean interimBusy = new AtomicBoolean(false);
+
     CloudAsr(Callback cb) { this.cb = cb; }
 
-    synchronized void start(String lang, String tag) {
-        this.lang = lang;
+    synchronized void start(String langThem, String langMe, String tag) {
+        this.langThem = langThem;
+        this.langMe = langMe;
         this.tag = tag;
-        forceEnd = false;
         if (running && thread != null && thread.isAlive()) { cb.event("ready", "", tag); return; }
         running = true;
         final int my = ++gen;
         final Thread prev = thread;
         thread = new Thread(() -> {
-            // let the previous recorder release the microphone first
             if (prev != null) { try { prev.join(500); } catch (InterruptedException ignored) { } }
             loop(my);
         }, "cloud-asr");
@@ -56,8 +66,6 @@ final class CloudAsr {
     }
 
     synchronized void stop() { running = false; }
-
-    void finish() { forceEnd = true; }
 
     boolean isRunning() { return running; }
 
@@ -81,7 +89,7 @@ final class CloudAsr {
         cb.event("ready", "", tag);
 
         short[] frame = new short[FRAME];
-        int maxLen = RATE * 15;
+        int maxLen = RATE * 10;
         short[] seg = new short[maxLen + RATE];
         int preFrames = 15; // 300 ms kept from before speech starts
         short[] pre = new short[FRAME * preFrames];
@@ -89,8 +97,7 @@ final class CloudAsr {
 
         double noise = 200;
         boolean speaking = false;
-        int segLen = 0, loudRun = 0, quietRun = 0, voiced = 0;
-        String segTag = tag, segLang = lang;
+        int segLen = 0, loudRun = 0, quietRun = 0, voiced = 0, lastInterimAt = 0;
 
         while (running && gen == my) {
             int got = 0;
@@ -110,15 +117,13 @@ final class CloudAsr {
                 if (rms < startTh) noise = noise * 0.97 + rms * 0.03;
                 noise = Math.max(60, Math.min(noise, 3000));
                 loudRun = rms > startTh ? loudRun + 1 : 0;
-                // keep a short history so the first syllable isn't cut off
                 System.arraycopy(frame, 0, pre, preIdx * FRAME, FRAME);
                 preIdx = (preIdx + 1) % preFrames;
                 if (preCount < preFrames) preCount++;
-                if (loudRun >= 3 || forceEnd) {
-                    if (forceEnd && loudRun < 3) { forceEnd = false; cb.event("final", "", tag); continue; }
+                if (loudRun >= 3) {
                     speaking = true;
-                    segTag = tag;
-                    segLang = lang;
+                    segId++;
+                    segSide = null;
                     segLen = 0;
                     int first = (preIdx - preCount + preFrames) % preFrames;
                     for (int i = 0; i < preCount; i++) {
@@ -128,18 +133,24 @@ final class CloudAsr {
                     quietRun = 0;
                     voiced = loudRun;
                     preCount = 0;
-                    cb.event("begin", "", segTag);
+                    lastInterimAt = 0;
+                    cb.event("begin", "", tag);
                 }
             } else {
                 System.arraycopy(frame, 0, seg, segLen, FRAME);
                 segLen += FRAME;
                 if (rms < endTh) quietRun++; else { quietRun = 0; voiced++; }
-                if (quietRun >= 40 || segLen >= maxLen || forceEnd) { // 800 ms of quiet ends a sentence
-                    forceEnd = false;
+                // a sentence ends after 600 ms of quiet; long speech is cut at a short pause (or at 10 s)
+                // so the listener hears the translation in pieces, like an interpreter
+                boolean end = quietRun >= 30 || segLen >= maxLen || (segLen > RATE * 6 && quietRun >= 12);
+                if (end) {
                     speaking = false;
                     loudRun = 0;
-                    if (voiced >= 10) send(seg, segLen, segLang, segTag);
-                    else if (segTag.startsWith("m")) cb.event("final", "", segTag);
+                    if (voiced >= 10) recognize(seg, segLen, segId, true);
+                    else doneSeg = segId;
+                } else if (voiced >= 15 && segLen - lastInterimAt >= INTERIM_EVERY && interimBusy.compareAndSet(false, true)) {
+                    lastInterimAt = segLen;
+                    recognize(seg, segLen, segId, false);
                 }
             }
         }
@@ -147,50 +158,155 @@ final class CloudAsr {
         rec.release();
     }
 
-    private void send(short[] seg, int len, String lang, String tag) {
+    private static final class Result {
+        String text = "";
+        double conf = -1;
+        boolean failed;
+    }
+
+    private void recognize(short[] seg, int len, int id, boolean isFinal) {
         short[] copy = new short[len];
         System.arraycopy(seg, 0, copy, 0, len);
-        cb.event("partial", "…", tag);
+        final String t = tag, lt = langThem, lm = langMe;
+        final String known = segSide;
         new Thread(() -> {
-            String text = null;
-            boolean failed = false;
-            HttpURLConnection c = null;
             try {
                 byte[] flac = Flac.encode(copy, len, RATE);
-                URL u = new URL("https://www.google.com/speech-api/v2/recognize?output=json&pFilter=0&lang="
-                        + URLEncoder.encode(lang, "UTF-8") + "&key=" + KEY);
-                c = (HttpURLConnection) u.openConnection();
-                c.setConnectTimeout(8000);
-                c.setReadTimeout(15000);
-                c.setDoOutput(true);
-                c.setRequestMethod("POST");
-                c.setRequestProperty("Content-Type", "audio/x-flac; rate=" + RATE);
-                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) AppleWebKit/537.36 Chrome Mobile Safari/537.36");
-                OutputStream os = c.getOutputStream();
-                os.write(flac);
-                os.close();
-                if (c.getResponseCode() != 200) failed = true;
-                else {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
-                    String line;
-                    while ((line = br.readLine()) != null && text == null) {
-                        line = line.trim();
-                        if (line.isEmpty()) continue;
-                        JSONArray res = new JSONObject(line).optJSONArray("result");
-                        if (res == null || res.length() == 0) continue;
-                        JSONArray alt = res.getJSONObject(0).optJSONArray("alternative");
-                        if (alt != null && alt.length() > 0) text = alt.getJSONObject(0).optString("transcript", null);
-                    }
-                    br.close();
+                String side;
+                Result r;
+                if (!isFinal && known != null) {
+                    r = request(flac, "me".equals(known) ? lm : lt);
+                    side = known;
+                } else {
+                    // both languages at once, keep the result that fits
+                    Result[] both = new Result[2];
+                    Thread a = new Thread(() -> both[0] = request(flac, lt));
+                    a.start();
+                    both[1] = request(flac, lm);
+                    try { a.join(20000); } catch (InterruptedException ignored) { }
+                    if (both[0] == null) { both[0] = new Result(); both[0].failed = true; }
+                    side = choose(both[0], lt, both[1], lm);
+                    r = "me".equals(side) ? both[1] : both[0];
+                    if (both[0].failed && both[1].failed) r.failed = true;
                 }
-            } catch (Throwable t) {
-                failed = true;
+                if (isFinal) {
+                    doneSeg = Math.max(doneSeg, id);
+                    if (r.failed && r.text.isEmpty()) cb.event("error", "2", t);
+                    else if (r.text.isEmpty()) cb.event("nothing", "", t);
+                    else cb.event("final_" + side, r.text, t);
+                } else {
+                    if (id == segId && id > doneSeg && !r.text.isEmpty()) {
+                        if (segSide == null) segSide = side;
+                        cb.event("partial_" + side, r.text, t);
+                    }
+                }
+            } catch (Throwable e) {
+                if (isFinal) { doneSeg = Math.max(doneSeg, id); cb.event("error", "2", t); }
             } finally {
-                if (c != null) c.disconnect();
+                if (!isFinal) interimBusy.set(false);
             }
-            if (failed) cb.event("error", "2", tag);
-            else if (text != null && !text.trim().isEmpty()) cb.event("final", text.trim(), tag);
-            else cb.event(tag.startsWith("m") ? "final" : "nothing", "", tag);
         }, "cloud-asr-send").start();
+    }
+
+    private static Result request(byte[] flac, String lang) {
+        Result res = new Result();
+        HttpURLConnection c = null;
+        try {
+            URL u = new URL("https://www.google.com/speech-api/v2/recognize?output=json&pFilter=0&lang="
+                    + URLEncoder.encode(lang, "UTF-8") + "&key=" + KEY);
+            c = (HttpURLConnection) u.openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(15000);
+            c.setDoOutput(true);
+            c.setRequestMethod("POST");
+            c.setRequestProperty("Content-Type", "audio/x-flac; rate=" + RATE);
+            c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) AppleWebKit/537.36 Chrome Mobile Safari/537.36");
+            OutputStream os = c.getOutputStream();
+            os.write(flac);
+            os.close();
+            if (c.getResponseCode() != 200) { res.failed = true; return res; }
+            BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                JSONArray arr = new JSONObject(line).optJSONArray("result");
+                if (arr == null || arr.length() == 0) continue;
+                JSONArray alt = arr.getJSONObject(0).optJSONArray("alternative");
+                if (alt != null && alt.length() > 0) {
+                    JSONObject a = alt.getJSONObject(0);
+                    res.text = a.optString("transcript", "").trim();
+                    res.conf = a.optDouble("confidence", -1);
+                    break;
+                }
+            }
+            br.close();
+        } catch (Throwable t) {
+            res.failed = true;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+        return res;
+    }
+
+    // ---------------------------------------------------------------- who is talking
+
+    static String scriptOf(String locale) {
+        String l = locale.toLowerCase(Locale.ROOT);
+        if (l.startsWith("zh") || l.startsWith("yue") || l.startsWith("cmn")) return "han";
+        if (l.startsWith("ja")) return "kana";
+        if (l.startsWith("ko")) return "hangul";
+        if (l.startsWith("th")) return "thai";
+        if (l.startsWith("ar")) return "arab";
+        if (l.startsWith("hi")) return "deva";
+        if (l.startsWith("ta")) return "tamil";
+        if (l.startsWith("ru")) return "cyr";
+        return "latin";
+    }
+
+    /** Share of the letters in text written in the script the language uses. */
+    static double scriptShare(String text, String script) {
+        int letters = 0, hit = 0;
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            i += Character.charCount(cp);
+            if (!Character.isLetter(cp)) continue;
+            letters++;
+            Character.UnicodeScript s = Character.UnicodeScript.of(cp);
+            boolean ok;
+            switch (script) {
+                case "han": ok = s == Character.UnicodeScript.HAN; break;
+                case "kana": ok = s == Character.UnicodeScript.HIRAGANA || s == Character.UnicodeScript.KATAKANA || s == Character.UnicodeScript.HAN; break;
+                case "hangul": ok = s == Character.UnicodeScript.HANGUL; break;
+                case "thai": ok = s == Character.UnicodeScript.THAI; break;
+                case "arab": ok = s == Character.UnicodeScript.ARABIC; break;
+                case "deva": ok = s == Character.UnicodeScript.DEVANAGARI; break;
+                case "tamil": ok = s == Character.UnicodeScript.TAMIL; break;
+                case "cyr": ok = s == Character.UnicodeScript.CYRILLIC; break;
+                default: ok = s == Character.UnicodeScript.LATIN;
+            }
+            if (ok) hit++;
+        }
+        return letters == 0 ? 0 : (double) hit / letters;
+    }
+
+    /** Decides whose language a sentence was in, from the two recognition results. Returns "them" or "me". */
+    static String choose(Result a, String langA, Result b, String langB) {
+        boolean ea = a.text.isEmpty(), eb = b.text.isEmpty();
+        if (ea && !eb) return "me";
+        if (eb) return "them";
+        String sa = scriptOf(langA), sb = scriptOf(langB);
+        double fa = scriptShare(a.text, sa), fb = scriptShare(b.text, sb);
+        double ca = a.conf >= 0 ? a.conf : 0.55, cb = b.conf >= 0 ? b.conf : 0.55;
+        if (!sa.equals(sb)) {
+            // a recognizer for a non-Latin language only writes its own script when it really heard that language
+            boolean aOwn = !sa.equals("latin") && fa >= 0.6, bOwn = !sb.equals("latin") && fb >= 0.6;
+            if (aOwn && !bOwn && ca >= cb - 0.3) return "them";
+            if (bOwn && !aOwn && cb >= ca - 0.3) return "me";
+            if (!sa.equals("latin") && fa < 0.3 && fb >= 0.5) return "me";
+            if (!sb.equals("latin") && fb < 0.3 && fa >= 0.5) return "them";
+        }
+        double scoreA = ca + 0.3 * fa, scoreB = cb + 0.3 * fb;
+        return scoreB > scoreA ? "me" : "them";
     }
 }

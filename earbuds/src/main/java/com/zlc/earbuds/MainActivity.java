@@ -399,11 +399,6 @@ public class MainActivity extends Activity {
             asr("error", "9");
             return;
         }
-        if ("cloud".equals(engine)) {
-            if (sr != null) { try { sr.cancel(); } catch (Exception ignored) { } }
-            cloud.start(lang, tag);
-            return;
-        }
         cloud.stop();
         if (!ensureRecognizer()) { asr("error", "none"); return; }
         try { sr.cancel(); } catch (Exception ignored) { }
@@ -622,7 +617,6 @@ public class MainActivity extends Activity {
                     am.requestAudioFocus(focusListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK);
                 }
             }
-            startEarbudButtons();
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             if (Build.VERSION.SDK_INT >= 26) {
@@ -754,14 +748,26 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public boolean earbuds() { return earbudsConnected(); }
 
-        @JavascriptInterface public void listen(String lang, String tag, String engine) { ui.post(() -> startListening(lang, tag, engine)); }
+        /** Hands-free conversation: listens non-stop and works out who is talking. */
+        @JavascriptInterface public void listen(String langThem, String langMe, String tag) {
+            ui.post(() -> {
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    askPermissions();
+                    asrTo("error", "9", tag);
+                    return;
+                }
+                if (sr != null) { try { sr.cancel(); } catch (Exception ignored) { } }
+                cloud.start(langThem, langMe, tag);
+            });
+        }
+        /** One sentence with the phone's own recognizer (kept for fallback use). */
+        @JavascriptInterface public void listenSystem(String lang, String tag) { ui.post(() -> startListening(lang, tag, "system")); }
         @JavascriptInterface public String recognizers() { return recognizerName(); }
         @JavascriptInterface public void stopListen() { ui.post(MainActivity.this::stopListening); }
         /** Stop recording now and return what was heard so far as the final result. */
         @JavascriptInterface public void finishListen() {
             ui.post(() -> {
-                if (cloud != null && cloud.isRunning()) cloud.finish();
-                else if (sr != null) { try { sr.stopListening(); } catch (Exception ignored) { } }
+                if (sr != null) { try { sr.stopListening(); } catch (Exception ignored) { } }
             });
         }
 

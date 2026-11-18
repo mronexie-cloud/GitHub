@@ -136,6 +136,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
 .talk{flex:1;margin:0 14px;height:58px;border-radius:29px;background:var(--indigo);color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
 .talk svg{width:22px;height:22px}
 .talk.active{background:var(--red);box-shadow:0 0 0 6px rgba(255,59,48,.18)}
+.talk{cursor:default;font-size:15px;background:var(--fill);color:var(--sub);height:54px}
+.msg.draft{opacity:.78}
+.msg.draft .tr{font-weight:500}
+.msg .cursor{display:inline-block;width:2px;height:1em;background:currentColor;margin-left:2px;vertical-align:-2px;animation:bl 1s infinite}
 .startwrap{position:fixed;left:16px;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:15}
 .startwrap .btn{width:100%;height:58px;border-radius:29px;font-size:18px;box-shadow:0 10px 26px rgba(0,122,255,.35)}
 .startwrap .hint{text-align:center;color:var(--sub);font-size:13px;margin-bottom:10px}
@@ -211,13 +215,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
   <div class="group">
     <button class="row" id="goTr">
       <span class="ic" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg></span>
-      <span class="lbl">实时翻译<span class="badge">新</span><small>对方说的话翻译后在耳机里读给你听</small></span><span class="chev">›</span>
+      <span class="lbl">实时翻译<span class="badge">新</span><small>双方随便说，自动听出是谁在说，边说边翻译</small></span><span class="chev">›</span>
     </button>
-    <label class="row static">
-      <span class="ic" style="background:var(--orange)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3a4 4 0 0 1 4 4v3.4l-.9 9.2A1.6 1.6 0 0 1 10.5 21h0a1.6 1.6 0 0 1-1.6-1.5L8.3 12A4 4 0 0 1 9 3z"/><path d="M16 6.5a5 5 0 0 1 0 7M18.5 4a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-      <span class="lbl">轻点耳机说话<small>翻译时轻点耳机（播放/暂停那一下），就轮到你说</small></span>
-      <span class="sw"><input type="checkbox" data-cfg="earTap"><i></i></span>
-    </label>
   </div>
 
   <div class="group-h">媒体音量</div>
@@ -270,7 +269,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
   <div class="live"><div class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></div><span class="st" id="liveSt"></span><span class="pt" id="livePt"></span></div>
   <div class="ctrls">
     <button class="cbtn stop" id="stopBtn" title="停止"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg></button>
-    <button class="talk" id="talkBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="talkTxt">我要说话</span></button>
+    <div class="talk" id="talkBtn"><span id="talkTxt">自动识别双方</span></div>
     <button class="cbtn" id="f2fBtn2" title="面对面"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M12 6v12"/></svg></button>
   </div>
 </div>
@@ -286,14 +285,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
     <div class="hl" id="fTopL"></div>
     <div class="ht" id="fTopT"></div>
     <div class="hs" id="fTopS"></div>
-    <div class="hb"><button class="mic" id="fTopMic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="fTopMicT"></span></button></div>
   </div>
   <button class="close" id="f2fClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   <div class="half bot">
     <div class="hl" id="fBotL"></div>
     <div class="ht" id="fBotT"></div>
     <div class="hs" id="fBotS"></div>
-    <div class="hb"><button class="mic" id="fBotMic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>我要说话</span></button></div>
   </div>
 </div>
 
@@ -311,16 +308,17 @@ if(!window.Android){
   window.Android={
     devices:()=>JSON.stringify({perm:true,mic:true,bt:true,devices:[{name:'OnePlus Buds Ace 3',addr:'demo',battery:90,a2dp:true,hfp:true}]}),
     refreshDevices(){cb('onDevices',JSON.parse(this.devices()))},asrStatus:()=>'ok',recognizers:()=>'demo',ttsHas:l=>!/^(ms|ta|tl|fil)/.test(l),earbuds:()=>true,
-    listen(lang,tag,engine){clearTimeout(lt);const me=tag[0]==='m';const txt=me?demoMe[said%2]:demoThem[said%3];let i=0;
+    listen(lt_,lm_,tag){clearTimeout(lt);let lv;const script=[['them','Hi! Is this seat taken?'],['me','没有人，请坐。'],['them','The train to KL Sentral leaves from platform two.'],['me','谢谢你！']];
       cb('onAsr','ready','',tag);
-      const step=()=>{const lv=setInterval(()=>window.onAsrLevel&&onAsrLevel(Math.random()*9),90);
-        const words=txt.split(/(?<=\s)|(?=[一-鿿])/);
-        const tick=()=>{i++;if(i<=words.length){cb('onAsr','partial',words.slice(0,i).join(''),tag);lt=setTimeout(tick,140)}else{clearInterval(lv);said++;cb('onAsr','final',txt,tag)}};
-        lt=setTimeout(tick,me?600:2200)};step();},
+      const next=()=>{const [who,txt]=script[said%4];const words=txt.split(/(?<=\s)|(?=[\u4e00-\u9fff])/);let i=0;
+        lv=setInterval(()=>window.onAsrLevel&&onAsrLevel(Math.random()*9),90);cb('onAsr','begin','',tag);
+        const tick=()=>{i+=2;if(i<words.length){cb('onAsr','partial_'+who,words.slice(0,i).join(''),tag);lt=setTimeout(tick,500)}else{clearInterval(lv);said++;cb('onAsr','final_'+who,txt,tag);lt=setTimeout(next,2500)}};
+        lt=setTimeout(tick,600)};
+      lt=setTimeout(next,1200);},
     stopListen(){clearTimeout(lt)},finishListen(){},
     speak(id){setTimeout(()=>window.onSpeak&&onSpeak('done',id),1400)},stopSpeak(){},session(){},earMic:()=>true,
     volume:()=>JSON.stringify({v:vol,max:15}),setVolume(v){vol=v},vibrate(){},openBluetooth(){},openAppSettings(){},openTtsSettings(){},openUrl(){},askPermissions(){},
-    httpGet(id,url){const q=decodeURIComponent((url.match(/[?&]q=([^&]*)/)||[])[1]||'');const map={'Hi! Is this seat taken?':'你好！这个位子有人坐吗？','The train to KL Sentral leaves from platform two.':'去吉隆坡中央车站的火车从二号站台出发。','You can pay by card or Touch ’n Go.':'你可以刷卡或用 Touch ’n Go 付款。','不好意思，请问去中央车站怎么走？':'Excuse me, how do I get to KL Sentral?','谢谢你！':'Thank you!'};
+    httpGet(id,url){const q=decodeURIComponent((url.match(/[?&]q=([^&]*)/)||[])[1]||'');const map={'没有人，请坐。':'No one, please sit.','没有':'No','没有人，':'No one,','Hi! Is ':'Hi! Is ','The train to ':'Go to ','The train to KL Sentral ':'Go to KL Sentral ','The train to KL Sentral leaves from ':'The train to KL Sentral departs from ','Hi! Is this seat taken?':'你好！这个位子有人坐吗？','The train to KL Sentral leaves from platform two.':'去吉隆坡中央车站的火车从二号站台出发。','You can pay by card or Touch ’n Go.':'你可以刷卡或用 Touch ’n Go 付款。','不好意思，请问去中央车站怎么走？':'Excuse me, how do I get to KL Sentral?','谢谢你！':'Thank you!'};
       setTimeout(()=>window.__httpCb(id,JSON.stringify([[[map[q]||q,q]],null,'en'])),500)}
   };
   window.__demo=true;
@@ -356,7 +354,7 @@ const L=c=>LANGS.find(x=>x.c===c)||LANGS[0];
 
 /* ================= storage ================= */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,earTap:true,rate:1,engine:'auto'},store.get('eb.cfg',{}));
+const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,rate:1},store.get('eb.cfg',{}));
 const saveCfg=()=>store.set('eb.cfg',cfg);
 let hist=store.get('eb.hist',[]);
 const saveHist=()=>store.set('eb.hist',hist.slice(-150));
@@ -442,8 +440,8 @@ $('#btSet').onclick=()=>A.openBluetooth();
 $('#ttsRow').onclick=()=>A.openTtsSettings();
 let asrState='ok';
 function checkAsr(){try{asrState=A.asrStatus()}catch(e){asrState='none'}
-  $('#asrVal').textContent=asrState==='none'?'在线识别':'可用';$('#asrVal').style.color=''}
-$('#asrRow').onclick=()=>{let r='';try{r=A.recognizers()}catch(e){}toast(asrState==='none'?'手机没有自带语音识别，会用在线识别':'识别服务：'+(r||'系统默认'),4000)};
+  $('#asrVal').textContent='在线 · 自动分辨双方';$('#asrVal').style.color=''}
+$('#asrRow').onclick=()=>toast('用在线语音识别，不需要安装 Google App；要联网',3500);
 function showAsrHelp(){
   openSheet('需要语音识别',`<div class="info"><div class="big" style="background:var(--orange)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
    <h2>手机没有语音识别服务</h2><p>听懂说话要用手机的语音识别。一加手机装上 Google App 就有：</p>
@@ -477,22 +475,17 @@ $('#setBtn').onclick=()=>{
   openSheet('翻译设置',`
    <div class="group-h" style="margin-top:6px">朗读</div><div class="group">
     ${sw('spkThem','翻译读到耳机里','对方说的话翻译后在耳机里读出来','var(--blue)')}
-    ${sw('spkMe','我的话用手机外放','你说的话翻译后用手机喇叭读给对方','var(--indigo)')}
+    ${sw('spkMe','我的话用手机外放','你说的话翻译后用手机喇叭读给对方（读的时候暂停收音，免得听到自己）','var(--indigo)')}
     ${sw('duck','翻译时压低其他声音','音乐、视频自动变小声','var(--orange)')}
    </div>
    <div class="group-h">朗读速度</div><div class="seg" id="rateSeg">${[[.8,'慢'],[1,'正常'],[1.2,'快']].map(([v,t])=>`<button data-r="${v}" class="${cfg.rate==v?'on':''}">${t}</button>`).join('')}</div>
-   <div class="group-h">识别方式</div><div class="seg" id="engSeg">${[['auto','自动'],['system','手机自带'],['cloud','在线']].map(([v,t])=>`<button data-e="${v}" class="${cfg.engine===v?'on':''}">${t}</button>`).join('')}</div>
-   <div class="foot" style="margin-bottom:4px">自动：先用手机自带的识别，用不了就自动换在线识别。在线识别不需要装 Google App，但要联网。</div>
    <div class="group-h">收音</div><div class="group">
-    ${sw('earTap','轻点耳机说话','翻译时轻点耳机（播放/暂停那一下）就轮到你说，说完再点一下马上翻译','var(--green)',ICON_MIC)}
     ${sw('earMic','用耳机麦克风（实验）','默认用手机麦克风，更容易听清对方。打开后改用耳机麦克风，音质会变成通话音质','#8E8E93',ICON_MIC)}
    </div>
    <div class="group-h">记录</div><div class="group"><button class="row danger noicon" id="clr"><span class="lbl">清空翻译记录</span></button></div>
    <div class="foot">翻译需要联网。手机没有某种语言的离线朗读语音时，会自动改用在线语音。</div>`);
   bindToggles($('#shB'));
   $('#rateSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.rate=+b.dataset.r;saveCfg();$('#rateSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
-  $('#engSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.engine=b.dataset.e;saveCfg();store.set('eb.sysBad',0);$('#engSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
-    if(S.running){const e=pickEngine();if(e){S.engine=e;S.hardErrs=0;S.errs=[];restartListen()}}});
   $('#clr').onclick=()=>{hist=[];saveHist();renderFeed();closeSheet();toast('已清空')};
 };
 
@@ -550,142 +543,124 @@ async function translate(text,sl,tl){
   throw last||new Error('fail');
 }
 
-/* ================= live session ================= */
-const S={engine:'system',hardErrs:0,running:false,phase:'idle',tag:'',seq:0,errs:[],speakQ:[],speaking:null,pendingThem:false};
+/* ================= live session (hands-free) ================= */
+// Listens non-stop. Each sentence is recognized in both languages; the phone decides who spoke.
+// While someone is still talking the text and its translation appear live; when they stop,
+// the translation is read out (theirs into the earbuds, yours from the phone speaker).
+const S={running:false,muted:false,tag:'',seq:0,errs:[],speakQ:[],speaking:null,draft:null,trBusy:false,trNext:null};
 function now(){return Date.now()}
 function renderStartHint(){
   const has=dev.devices&&dev.devices.length;
-  $('#startHint').textContent=has?`戴上耳机，对方说${L(cfg.them).n}时，你会在耳机里听到${L(cfg.me).n}`:'没检测到耳机：翻译会用手机喇叭读出来';
+  $('#startHint').textContent=has?`不用按任何键：对方说${L(cfg.them).n}，你在耳机里听到翻译；你说${L(cfg.me).n}，手机读给对方`:'没检测到耳机：翻译会用手机喇叭读出来';
 }
 function renderDock(){
   const onTr=tab==='tr';
   $('#startWrap').style.display=onTr&&!S.running?'block':'none';
   $('#dock').classList.toggle('on',onTr&&S.running);
-  const me=S.phase==='me';
-  $('#talkBtn').classList.toggle('active',me);
-  $('#talkTxt').textContent=me?'说完了':'我要说话';
-  $('#wave').classList.toggle('me',me);
-  const st={them:`正在听 · ${L(cfg.them).n}`,me:`请说${L(cfg.me).n}`,speakme:'正在给对方朗读',idle:''}[S.phase]||'';
-  $('#liveSt').textContent=st;
-  $('#fTopMic').classList.toggle('active',S.phase==='them'&&S.running);
-  $('#fBotMic').classList.toggle('active',me);
+  const who=S.draft&&S.draft.who;
+  $('#wave').classList.toggle('me',who==='me');
+  $('#liveSt').textContent=!S.running?'':S.muted?'正在给对方朗读…':who==='me'?'你在说':who==='them'?'对方在说':'正在听';
+  $('#talkTxt').textContent='免按键 · 自动识别双方';
 }
 function setLive(t){$('#livePt').textContent=t||''}
-window.onAsrLevel=db=>{const v=Math.max(0,Math.min(1,(db+2)/11));document.querySelectorAll('#wave i').forEach((b,i)=>{const k=[.55,.85,1,.8,.6][i];b.style.height=(5+v*21*k*(0.75+Math.random()*.5))+'px'})};
+window.onAsrLevel=db=>{if(S.muted)db=-2;const v=Math.max(0,Math.min(1,(db+2)/11));document.querySelectorAll('#wave i').forEach((b,i)=>{const k=[.55,.85,1,.8,.6][i];b.style.height=(5+v*21*k*(0.75+Math.random()*.5))+'px'})};
 
-function pickEngine(){
-  if(cfg.engine==='cloud')return 'cloud';
-  checkAsr();
-  if(asrState==='none')return cfg.engine==='system'?null:'cloud';
-  return cfg.engine==='system'?'system':(store.get('eb.sysBad',0)>=2?'cloud':'system');
-}
+function listen(){if(!S.running)return;S.muted=false;S.tag='c'+(++S.seq);A.listen(L(cfg.them).asr,L(cfg.me).asr,S.tag);renderDock()}
+function mute(){S.muted=true;S.tag='';A.stopListen();setLive('');renderDock()}
 function start(){
-  const eng=pickEngine();if(!eng){showAsrHelp();return}
-  S.engine=eng;S.hardErrs=0;
   if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');return}
-  S.running=true;S.errs=[];A.session(true,cfg.duck);
+  S.running=true;S.errs=[];S.draft=null;A.session(true,cfg.duck);
   if(cfg.earMic){const ok=A.earMic(true);if(!ok)toast('没找到耳机麦克风，改用手机麦克风')}
-  buzz(25);listenThem();renderDock();
+  buzz(25);listen();setLive('');
 }
 function stop(){
-  S.running=false;S.phase='idle';S.tag='';S.speakQ=[];S.speaking=null;
+  S.running=false;S.muted=false;S.tag='';S.speakQ=[];S.speaking=null;S.draft=null;
   A.stopListen();A.stopSpeak();A.session(false,false);if(cfg.earMic)A.earMic(false);
-  setLive('');renderDock();buzz(15);
+  setLive('');renderFeed();renderDock();buzz(15);
 }
-function listenThem(){if(!S.running)return;S.phase='them';S.tag='t'+(++S.seq);setLive('');A.listen(L(cfg.them).asr,S.tag,S.engine);renderDock()}
-function listenMe(){if(!S.running)return;S.phase='me';S.tag='m'+(++S.seq);setLive('');A.stopSpeak();S.speakQ=[];S.speaking=null;A.listen(L(cfg.me).asr,S.tag,S.engine);buzz(30);renderDock()}
-function restartListen(){if(!S.running)return;S.phase==='me'?listenMe():listenThem()}
-function talk(){
-  if(!S.running){start();return}
-  if(S.phase==='me'){A.finishListen();return}
-  if(S.phase==='speakme'){A.stopSpeak();return}
-  listenMe();
-}
-let lastTap=0;
-window.onEarTap=k=>{if(!cfg.earTap||!S.running)return;const t=now();if(t-lastTap<450)return;lastTap=t;
-  if(k==='next'){listenMe();return}if(k==='prev'){listenThem();return}talk()};
+function restartListen(){if(S.running&&!S.muted){A.stopListen();setTimeout(listen,150)}}
 
-const ERRNAME={'1':'网络超时','2':'网络错误','3':'录音出错','4':'服务器错误','5':'客户端错误','8':'识别服务忙','10':'请求太多','11':'服务断开','12':'不支持该语言','13':'语言包不可用'};
+const ERRNAME={'1':'网络超时','2':'网络错误','3':'麦克风被占用','9':'没有麦克风权限'};
 window.onAsr=(type,text,tag)=>{
   if(!S.running)return;
-  if(tag!==S.tag){
-    // online mode: a sentence the other person said can finish recognizing after we moved on
-    if(type==='final'&&tag&&tag[0]==='t'&&text.trim()&&S.engine==='cloud'){S.hardErrs=0;utterance('them',text.trim())}
-    return;
-  }
-  if(type==='nothing'){setLive('');return}
-  if(type==='begin'){if(S.engine==='cloud')setLive('识别中…');return}
-  if(type==='partial'){S.hardErrs=0;setLive(text);return}
-  if(type==='final'){
-    const who=S.phase;setLive('');S.hardErrs=0;
-    if(S.engine==='system')store.set('eb.sysBad',0);
-    if(!text.trim()){afterNothing(who);return}
-    utterance(who==='me'?'me':'them',text.trim());
-    if(who==='me'){S.phase='speakme';S.tag='';A.stopListen();renderDock()}
-    else if(!A.earbuds()&&cfg.spkThem){S.phase='them';S.tag='';S.pendingThem=true;A.stopListen()}// no earbuds: wait until the phone stops talking, or we'd hear ourselves
-    else if(S.engine==='system')listenThem();
-    return;
-  }
+  const m=/^(partial|final)_(them|me)$/.exec(type);
+  if(m&&m[1]==='final'){finalText(m[2],text);return}   // a finished sentence always counts, even if we muted meanwhile
+  if(tag!==S.tag)return;
+  if(type==='begin'){setLive('…');return}
+  if(type==='nothing'){if(S.draft){S.draft=null;renderFeed()}setLive('');renderDock();return}
+  if(m){liveText(m[2],text);return}
   if(type==='error'){
-    const code=String(text);
-    if(code==='none'){stop();showAsrHelp();return}
-    if(code==='9'){stop();toast('请允许使用麦克风');A.askPermissions();return}
-    if(code==='12'||code==='13'){stop();toast(`手机的语音识别不支持${L(S.phase==='me'?cfg.me:cfg.them).n}，请换一种语言或更新 Google App`,4200);return}
-    if(code!=='6'&&code!=='7'){
-      S.hardErrs++;
-      // the phone's own recognizer keeps failing: switch to online recognition by ourselves
-      if(S.engine==='system'&&cfg.engine==='auto'&&S.hardErrs>=3){
-        store.set('eb.sysBad',store.get('eb.sysBad',0)+1);
-        S.engine='cloud';S.hardErrs=0;S.errs=[];
-        toast(`手机自带语音识别用不了（${ERRNAME[code]||'代码'+code}），已自动改用在线识别`,4200);
-        restartListen();return;
-      }
-    }
-    const t=now();S.errs=S.errs.filter(x=>t-x<12000);
-    if(code!=='6'&&code!=='7')S.errs.push(t);
-    if(S.errs.length>8){stop();toast(`语音识别一直出错（${ERRNAME[code]||'代码 '+code}）。${S.engine==='cloud'?'请检查网络':'可在设置里把识别方式改成「在线」'}`,5000);return}
-    if(S.phase==='me'&&(code==='6'||code==='7')){toast('没听清，再说一次吧');listenThem();return}
-    const wait=(code==='2'||code==='4'||code==='11')?1500:(code==='5'||code==='8')?400:120;
-    if(code==='2'||code==='4')setLive('网络不稳定，正在重试…');
-    const tg=S.tag;setTimeout(()=>{if(S.running&&S.tag===tg)restartListen()},wait);
+    if(text==='9'){stop();toast('请允许使用麦克风');A.askPermissions();return}
+    if(text==='3'){stop();toast('麦克风被别的 App 占用了，关掉它再试');return}
+    const t=now();S.errs=S.errs.filter(x=>t-x<20000);S.errs.push(t);
+    setLive('网络不稳定，继续在听…');
+    if(S.errs.length>=6){stop();toast(`语音识别连不上（${ERRNAME[text]||'代码 '+text}），请检查网络后再试`,5000)}
   }
 };
-function afterNothing(who){if(who==='me'){toast('没听清，再说一次吧');listenThem()}else listenThem()}
 
-async function utterance(who,text){
-  const from=who==='them'?cfg.them:cfg.me,to=who==='them'?cfg.me:cfg.them;
-  const e={id:'u'+now()+Math.random().toString(36).slice(2,6),who,src:text,tr:'',from,to,st:'busy',t:now()};
-  hist.push(e);renderFeed(true);
-  try{e.tr=await translate(text,from,to);e.st='ok'}catch(err){e.st='fail'}
-  saveHist();renderFeed();updateF2F();
-  if(e.st!=='ok'){if(S.running&&(who==='me'&&S.phase==='speakme'||S.pendingThem)){S.pendingThem=false;listenThem()}return}
-  if(who==='them'){if(cfg.spkThem&&S.running)enqueue({id:e.id,text:e.tr,lang:L(to).tts,route:'ear'});else if(S.pendingThem){S.pendingThem=false;listenThem()}}
-  else{if(cfg.spkMe&&S.running){enqueue({id:e.id,text:e.tr,lang:L(to).tts,route:'speaker',me:true})}else if(S.running)listenThem()}
+/* live text while someone is still talking */
+function liveText(who,text){
+  S.errs=[];
+  if(!S.draft||S.draft.who!==who)S.draft={who,src:'',tr:''};
+  S.draft.src=text;setLive(text);renderDraft();renderDock();liveTranslate();
 }
-function enqueue(item){if(item.me){S.speakQ=[item]}else S.speakQ.push(item);if(!S.speaking||item.me)nextSpeak(item.me)}
-function nextSpeak(force){
-  if(S.speaking&&!force)return;const it=S.speakQ.shift();S.speaking=it||null;if(!it)return;
+async function liveTranslate(){
+  const d=S.draft;if(!d)return;
+  if(S.trBusy){S.trNext=true;return}
+  S.trBusy=true;S.trNext=false;
+  const who=d.who,src=d.src,from=who==='them'?cfg.them:cfg.me,to=who==='them'?cfg.me:cfg.them;
+  try{const tr=await translate(src,from,to);if(S.draft&&S.draft.who===who&&S.draft.src.startsWith(src.slice(0,Math.min(4,src.length)))){S.draft.tr=tr;renderDraft()}}catch(e){}
+  S.trBusy=false;if(S.trNext&&S.draft)liveTranslate();
+}
+function finalText(who,text){
+  S.errs=[];
+  const prev=S.draft&&S.draft.who===who?S.draft.tr:'';
+  S.draft=null;setLive('');
+  utterance(who,text,prev);
+  // your words are read from the phone speaker: stop listening meanwhile, or we'd translate ourselves
+  if(who==='me'&&cfg.spkMe)mute();
+  else if(who==='them'&&cfg.spkThem&&!A.earbuds())mute();
+  renderDock();
+}
+
+async function utterance(who,text,draftTr){
+  const from=who==='them'?cfg.them:cfg.me,to=who==='them'?cfg.me:cfg.them;
+  const e={id:'u'+now()+Math.random().toString(36).slice(2,6),who,src:text,tr:draftTr||'',from,to,st:'busy',t:now()};
+  hist.push(e);renderFeed(true);
+  try{e.tr=await translate(text,from,to);e.st='ok'}catch(err){e.st=e.tr?'ok':'fail'}
+  saveHist();renderFeed();updateF2F();
+  if(e.st!=='ok'||!S.running){if(S.muted&&!S.speaking)listen();return}
+  if(who==='them'&&cfg.spkThem)enqueue({id:e.id,text:e.tr,lang:L(to).tts,route:'ear'});
+  else if(who==='me'&&cfg.spkMe)enqueue({id:e.id,text:e.tr,lang:L(to).tts,route:'speaker'});
+  else if(S.muted&&!S.speaking)listen();
+}
+function enqueue(item){S.speakQ.push(item);if(!S.speaking)nextSpeak()}
+function nextSpeak(){
+  const it=S.speakQ.shift();S.speaking=it||null;
+  if(!it){if(S.muted&&S.running)setTimeout(()=>{if(S.muted&&!S.speaking)listen()},250);return}
+  if(it.route==='speaker'&&!S.muted)mute();
   A.speak(it.id+'#'+now(),it.text,it.lang,it.route,cfg.rate);
 }
 window.onSpeak=(how,id)=>{
   const it=S.speaking;if(!it||!id.startsWith(it.id+'#'))return;S.speaking=null;
-  if(how==='error'&&it.route==='ear')toast('朗读失败，可在“朗读语音”里安装语音包',3200);
-  if(it.me&&S.running&&S.phase==='speakme')listenThem();
-  if(!it.me&&S.pendingThem&&S.running){S.pendingThem=false;listenThem()}
+  if(how==='error')toast('朗读失败，可在“朗读语音”里安装语音包',3200);
   nextSpeak();
 };
 function replay(id){const e=hist.find(x=>x.id===id);if(!e||!e.tr)return;
-  const route=e.who==='me'?'speaker':'ear';S.speakQ=[];S.speaking={id:e.id,route,me:false};A.speak(e.id+'#'+now(),e.tr,L(e.to).tts,route,cfg.rate)}
+  enqueue({id:e.id,text:e.tr,lang:L(e.to).tts,route:e.who==='me'?'speaker':'ear'})}
 async function retry(id){const e=hist.find(x=>x.id===id);if(!e)return;e.st='busy';renderFeed();try{e.tr=await translate(e.src,e.from,e.to);e.st='ok'}catch(err){e.st='fail'}saveHist();renderFeed();updateF2F()}
 
+function draftHTML(){const d=S.draft;if(!d)return'';
+  return `<div class="msg draft ${d.who==='me'?'me':''}" id="draft"><div class="meta">${d.who==='me'?'我':'对方'} · 正在说…</div><div class="tr">${d.tr?esc(d.tr):'<div class="typing"><i></i><i></i><i></i></div>'}</div><div class="src">${esc(d.src)}<span class="cursor"></span></div></div>`}
+function renderDraft(){const el=$('#draft');if(el&&S.draft&&el.classList.contains('me')===(S.draft.who==='me')){el.outerHTML=draftHTML();const p=$('#pg-tr');p.scrollTop=p.scrollHeight}else renderFeed(true)}
 function renderFeed(scroll){
   const f=$('#feed');
-  if(!hist.length){f.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg><br>点下面的按钮开始。<br>对方说话会自动翻译，<br>轮到你时点「我要说话」或轻点耳机。</div>`;return}
+  if(!hist.length&&!S.draft){f.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg><br>点下面的按钮开始。<br>你和对方直接轮流说话，<br>App 会自动听出谁在说，边说边翻译。</div>`;return}
   const p=$('#pg-tr'),atBottom=p.scrollHeight-p.scrollTop-p.clientHeight<140;
   f.innerHTML=hist.slice(-80).map(e=>{
     const who=e.who==='me'?'我':'对方';
-    const body=e.st==='busy'?`<div class="typing"><i></i><i></i><i></i></div>`:e.st==='fail'?`<div class="fail" data-retry="${e.id}">翻译失败 · 点此重试</div>`:`<div class="tr">${esc(e.tr)}</div>`;
-    return `<div class="msg ${e.who==='me'?'me':''}"><div class="meta">${who} · ${esc(L(e.from).n)} → ${esc(L(e.to).n)}${e.st==='ok'?`<button class="play" data-play="${e.id}">${ICON_SPK}</button>`:''}</div>${body}<div class="src">${esc(e.src)}</div></div>`}).join('');
+    const body=e.st==='busy'?(e.tr?`<div class="tr">${esc(e.tr)}</div>`:`<div class="typing"><i></i><i></i><i></i></div>`):e.st==='fail'?`<div class="fail" data-retry="${e.id}">翻译失败 · 点此重试</div>`:`<div class="tr">${esc(e.tr)}</div>`;
+    return `<div class="msg ${e.who==='me'?'me':''}"><div class="meta">${who} · ${esc(L(e.from).n)} → ${esc(L(e.to).n)}${e.st==='ok'?`<button class="play" data-play="${e.id}">${ICON_SPK}</button>`:''}</div>${body}<div class="src">${esc(e.src)}</div></div>`}).join('')+draftHTML();
   f.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>replay(b.dataset.play));
   f.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>retry(b.dataset.retry));
   if(scroll||atBottom)requestAnimationFrame(()=>p.scrollTop=p.scrollHeight);
@@ -695,7 +670,7 @@ function renderFeed(scroll){
 function updateF2F(){
   const t=L(cfg.them),m=L(cfg.me);
   const lastMe=[...hist].reverse().find(e=>e.who==='me'&&e.st==='ok'),lastThem=[...hist].reverse().find(e=>e.who==='them'&&e.st==='ok');
-  $('#fTopL').textContent=t.o;$('#fTopMicT').textContent=t.ui;
+  $('#fTopL').textContent=t.o;
   $('#fTopT').textContent=lastMe?lastMe.tr:'👋';$('#fTopS').textContent=lastMe?lastMe.src:'';
   $('#fBotL').textContent=m.n;
   $('#fBotT').textContent=lastThem?lastThem.tr:'对方说的话会显示在这里';$('#fBotS').textContent=lastThem?lastThem.src:'';
@@ -703,10 +678,8 @@ function updateF2F(){
 function openF2F(){updateF2F();$('#f2f').classList.add('on');if(!S.running)start()}
 $('#f2fBtn').onclick=openF2F;$('#f2fBtn2').onclick=openF2F;
 $('#f2fClose').onclick=()=>$('#f2f').classList.remove('on');
-$('#fTopMic').onclick=()=>{if(!S.running)start();else listenThem()};
-$('#fBotMic').onclick=talk;
 
-$('#startBtn').onclick=start;$('#stopBtn').onclick=stop;$('#talkBtn').onclick=talk;
+$('#startBtn').onclick=start;$('#stopBtn').onclick=stop;
 
 window.onAndroidBack=()=>{
   if($('#sheet').classList.contains('on')){closeSheet();return true}
