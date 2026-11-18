@@ -187,6 +187,10 @@ final class CloudAsr {
                     if (both[0] == null) { both[0] = new Result(); both[0].failed = true; }
                     side = choose(both[0], lt, both[1], lm);
                     r = "me".equals(side) ? both[1] : both[0];
+                    if (isFinal) {
+                        Result other = "me".equals(side) ? both[0] : both[1];
+                        cb.event("alt", other.text, t);
+                    }
                     if (both[0].failed && both[1].failed) r.failed = true;
                 }
                 if (isFinal) {
@@ -258,7 +262,7 @@ final class CloudAsr {
         if (l.startsWith("ko")) return "hangul";
         if (l.startsWith("th")) return "thai";
         if (l.startsWith("ar")) return "arab";
-        if (l.startsWith("hi")) return "deva";
+        if (l.startsWith("hi") || l.startsWith("ne") || l.startsWith("mr")) return "deva";
         if (l.startsWith("ta")) return "tamil";
         if (l.startsWith("ru")) return "cyr";
         return "latin";
@@ -290,23 +294,37 @@ final class CloudAsr {
         return letters == 0 ? 0 : (double) hit / letters;
     }
 
-    /** Decides whose language a sentence was in, from the two recognition results. Returns "them" or "me". */
+    /**
+     * Decides whose language a sentence was in, from the two recognition results. Returns "them" or "me".
+     * A recognizer always tries to write *something* in its own language (Chinese speech "谢谢" comes out
+     * as English "seaweed", English "hello" as Chinese "哈啰"), so the script of the text proves little;
+     * the recognizer's own confidence is the main signal.
+     */
     static String choose(Result a, String langA, Result b, String langB) {
         boolean ea = a.text.isEmpty(), eb = b.text.isEmpty();
         if (ea && !eb) return "me";
         if (eb) return "them";
         String sa = scriptOf(langA), sb = scriptOf(langB);
         double fa = scriptShare(a.text, sa), fb = scriptShare(b.text, sb);
-        double ca = a.conf >= 0 ? a.conf : 0.55, cb = b.conf >= 0 ? b.conf : 0.55;
-        if (!sa.equals(sb)) {
-            // a recognizer for a non-Latin language only writes its own script when it really heard that language
-            boolean aOwn = !sa.equals("latin") && fa >= 0.6, bOwn = !sb.equals("latin") && fb >= 0.6;
-            if (aOwn && !bOwn && ca >= cb - 0.3) return "them";
-            if (bOwn && !aOwn && cb >= ca - 0.3) return "me";
-            if (!sa.equals("latin") && fa < 0.3 && fb >= 0.5) return "me";
-            if (!sb.equals("latin") && fb < 0.3 && fa >= 0.5) return "them";
+        // a recognizer for a non-Latin language that still writes Latin letters did not hear its language
+        if (!sb.equals("latin") && fb < 0.3 && !sa.equals(sb)) return "them";
+        if (!sa.equals("latin") && fa < 0.3 && !sa.equals(sb)) return "me";
+        if (a.conf >= 0 && b.conf >= 0 && Math.abs(a.conf - b.conf) >= 0.05) return a.conf > b.conf ? "them" : "me";
+        if (a.conf >= 0 && b.conf < 0) return a.conf >= 0.6 ? "them" : "me";
+        if (b.conf >= 0 && a.conf < 0) return b.conf >= 0.6 ? "me" : "them";
+        // no usable confidence: the result with more real words is usually the right one
+        int wa = words(a.text, sa), wb = words(b.text, sb);
+        if (wa != wb) return wa > wb ? "them" : "me";
+        return "them";
+    }
+
+    /** Rough amount of speech in a transcript, comparable across scripts (a CJK character ≈ half a word). */
+    static int words(String t, String script) {
+        if (script.equals("han") || script.equals("kana") || script.equals("thai")) {
+            int n = 0;
+            for (int i = 0; i < t.length(); i++) if (Character.isLetter(t.charAt(i))) n++;
+            return (n + 1) / 2;
         }
-        double scoreA = ca + 0.3 * fa, scoreB = cb + 0.3 * fb;
-        return scoreB > scoreA ? "me" : "them";
+        return t.trim().isEmpty() ? 0 : t.trim().split("\\s+").length;
     }
 }

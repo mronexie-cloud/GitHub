@@ -112,6 +112,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
 .msg.me .meta{color:rgba(255,255,255,.8)}
 .msg .play{margin-left:auto;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(120,120,128,.14)}
 .msg.me .play{background:rgba(255,255,255,.22)}
+.msg .flip{margin-left:auto;font-size:12px;padding:3px 9px;border-radius:11px;background:rgba(120,120,128,.14);color:var(--sub);white-space:nowrap}
+.msg.me .flip{background:rgba(255,255,255,.22);color:#fff}
+.msg .flip+.play{margin-left:0}
 .msg .play svg{width:15px;height:15px}
 .msg .fail{color:var(--red);font-size:15px}
 .msg.me .fail{color:#FFE1DE}
@@ -377,6 +380,7 @@ const LANGS=[
  {c:'tl',n:'菲律宾语',o:'Filipino',asr:'fil-PH',tts:'fil-PH',ui:'Magsalita'},
  {c:'ja',n:'日语',o:'日本語',asr:'ja-JP',tts:'ja-JP',ui:'話す'},
  {c:'ko',n:'韩语',o:'한국어',asr:'ko-KR',tts:'ko-KR',ui:'말하기'},
+ {c:'ne',n:'尼泊尔语',o:'नेपाली',asr:'ne-NP',tts:'ne-NP',ui:'बोल्नुहोस्'},
  {c:'hi',n:'印地语',o:'हिन्दी',asr:'hi-IN',tts:'hi-IN',ui:'बोलिए'},
  {c:'ar',n:'阿拉伯语',o:'العربية',asr:'ar-SA',tts:'ar-SA',ui:'تحدث'},
  {c:'fr',n:'法语',o:'Français',asr:'fr-FR',tts:'fr-FR',ui:'Parler'},
@@ -661,6 +665,7 @@ const ERRNAME={'1':'网络超时','2':'网络错误','3':'麦克风被占用','9
 window.onAsr=(type,text,tag)=>{
   if(!S.running)return;
   const m=/^(partial|final)_(them|me)$/.exec(type);
+  if(type==='alt'){S.alt=text;return}
   if(m&&m[1]==='final'){finalText(m[2],text);return}   // a finished sentence always counts, even if we muted meanwhile
   if(tag!==S.tag)return;
   if(type==='begin'){setLive('…');return}
@@ -693,16 +698,17 @@ function finalText(who,text){
   S.errs=[];
   const prev=S.draft&&S.draft.who===who?S.draft.tr:'';
   S.draft=null;setLive('');
-  utterance(who,text,prev);
+  const alt=S.alt||'';S.alt='';
+  utterance(who,text,prev,alt);
   // your words are read from the phone speaker: stop listening meanwhile, or we'd translate ourselves
   if(who==='me'&&cfg.spkMe)mute();
   else if(who==='them'&&cfg.spkThem&&!A.earbuds())mute();
   renderDock();
 }
 
-async function utterance(who,text,draftTr){
+async function utterance(who,text,draftTr,alt){
   const from=who==='them'?cfg.them:cfg.me,to=who==='them'?cfg.me:cfg.them;
-  const e={id:'u'+now()+Math.random().toString(36).slice(2,6),who,src:text,tr:draftTr||'',from,to,st:'busy',t:now()};
+  const e={id:'u'+now()+Math.random().toString(36).slice(2,6),who,src:text,alt:alt||'',tr:draftTr||'',from,to,st:'busy',t:now()};
   hist.push(e);renderFeed(true);
   try{e.tr=await translate(text,from,to);e.st='ok'}catch(err){e.st=e.tr?'ok':'fail'}
   saveHist();renderFeed();updateF2F();
@@ -723,6 +729,18 @@ window.onSpeak=(how,id)=>{
   if(how==='error')toast('朗读失败，可在“朗读语音”里安装语音包',3200);
   nextSpeak();
 };
+/* the phone guessed the wrong speaker: switch the sentence to the other side, using what the other
+   language's recognizer heard, and translate it again */
+async function flip(id){
+  const e=hist.find(x=>x.id===id);if(!e)return;
+  const who=e.who==='me'?'them':'me';
+  const src=(e.alt||'').trim()||e.src;
+  Object.assign(e,{who,alt:e.src,src,from:who==='them'?cfg.them:cfg.me,to:who==='them'?cfg.me:cfg.them,tr:'',st:'busy'});
+  renderFeed();buzz(10);
+  try{e.tr=await translate(e.src,e.from,e.to);e.st='ok'}catch(err){e.st='fail'}
+  saveHist();renderFeed();updateF2F();
+  if(e.st==='ok')enqueue({id:e.id,text:e.tr,lang:L(e.to).tts,route:who==='me'?'speaker':'ear'});
+}
 function replay(id){const e=hist.find(x=>x.id===id);if(!e||!e.tr)return;
   enqueue({id:e.id,text:e.tr,lang:L(e.to).tts,route:e.who==='me'?'speaker':'ear'})}
 async function retry(id){const e=hist.find(x=>x.id===id);if(!e)return;e.st='busy';renderFeed();try{e.tr=await translate(e.src,e.from,e.to);e.st='ok'}catch(err){e.st='fail'}saveHist();renderFeed();updateF2F()}
@@ -737,9 +755,10 @@ function renderFeed(scroll){
   f.innerHTML=hist.slice(-80).map(e=>{
     const who=e.who==='me'?'我':'对方';
     const body=e.st==='busy'?(e.tr?`<div class="tr">${esc(e.tr)}</div>`:`<div class="typing"><i></i><i></i><i></i></div>`):e.st==='fail'?`<div class="fail" data-retry="${e.id}">翻译失败 · 点此重试</div>`:`<div class="tr">${esc(e.tr)}</div>`;
-    return `<div class="msg ${e.who==='me'?'me':''}"><div class="meta">${who} · ${esc(L(e.from).n)} → ${esc(L(e.to).n)}${e.st==='ok'?`<button class="play" data-play="${e.id}">${ICON_SPK}</button>`:''}</div>${body}<div class="src">${esc(e.src)}</div></div>`}).join('')+draftHTML();
+    return `<div class="msg ${e.who==='me'?'me':''}"><div class="meta">${who} · ${esc(L(e.from).n)} → ${esc(L(e.to).n)}<button class="flip" data-flip="${e.id}">${e.who==='me'?'其实是对方':'其实是我'}</button>${e.st==='ok'?`<button class="play" data-play="${e.id}">${ICON_SPK}</button>`:''}</div>${body}<div class="src">${esc(e.src)}</div></div>`}).join('')+draftHTML();
   f.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>replay(b.dataset.play));
   f.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>retry(b.dataset.retry));
+  f.querySelectorAll('[data-flip]').forEach(b=>b.onclick=()=>flip(b.dataset.flip));
   if(scroll||atBottom)requestAnimationFrame(()=>p.scrollTop=p.scrollHeight);
 }
 
