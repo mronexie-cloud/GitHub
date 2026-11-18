@@ -84,6 +84,9 @@ public class MainActivity extends Activity {
     private String srTag = "";
     private long lastLevelAt;
     private CloudAsr cloud;
+    private OppoBuds buds;
+    private long budsFailedAt;
+    private String budsFailedAddr;
 
     // text-to-speech
     private TextToSpeech tts;
@@ -140,8 +143,40 @@ public class MainActivity extends Activity {
             }
         });
 
+        buds = new OppoBuds(json -> js("window.onBuds&&window.onBuds(" + json + ")"));
+
         askPermissions();
         setupBluetooth();
+        ui.postDelayed(budsPoll, 60000);
+    }
+
+    /** Re-reads battery and noise mode every minute. */
+    private final Runnable budsPoll = new Runnable() {
+        @Override public void run() {
+            if (buds != null && buds.isConnected()) new Thread(buds::refresh).start();
+            ui.postDelayed(this, 60000);
+        }
+    };
+
+    /** Opens the earbuds' control channel for the connected OnePlus/OPPO/realme earbuds. */
+    @SuppressLint("MissingPermission")
+    private void syncBuds(List<BluetoothDevice> connected) {
+        if (buds == null) return;
+        BluetoothDevice pick = null;
+        for (BluetoothDevice d : connected) {
+            String n = null;
+            try { n = d.getName(); } catch (Exception ignored) { }
+            n = n == null ? "" : n.toLowerCase(Locale.ROOT);
+            if (n.contains("oneplus") || n.contains("oppo") || n.contains("enco") || n.contains("realme") || n.contains("buds")) { pick = d; break; }
+        }
+        if (pick == null && !connected.isEmpty()) pick = connected.get(0);
+        if (pick == null) { if (buds.address() != null) buds.close(); return; }
+        if (pick.getAddress().equals(buds.address()) && (buds.isConnected() || System.currentTimeMillis() - budsFailedAt < 30000)) return;
+        // don't hammer earbuds that refused the control channel
+        if (pick.getAddress().equals(budsFailedAddr) && System.currentTimeMillis() - budsFailedAt < 30000) return;
+        budsFailedAddr = pick.getAddress();
+        budsFailedAt = System.currentTimeMillis();
+        buds.connect(pick);
     }
 
     // ---------------------------------------------------------------- permissions
@@ -249,6 +284,7 @@ public class MainActivity extends Activity {
             o.put("bt", adapter != null && btAllowed() && adapter.isEnabled());
             JSONArray arr = new JSONArray();
             Map<String, JSONObject> seen = new HashMap<>();
+            List<BluetoothDevice> connected = new ArrayList<>();
             if (btAllowed()) {
                 for (int p = 0; p < 2; p++) {
                     BluetoothProfile prof = p == 0 ? a2dp : headset;
@@ -268,12 +304,14 @@ public class MainActivity extends Activity {
                             x.put("battery", b);
                             seen.put(d.getAddress(), x);
                             arr.put(x);
+                            connected.add(d);
                         }
                         x.put(p == 0 ? "a2dp" : "hfp", true);
                     }
                 }
             }
             o.put("devices", arr);
+            if (btAllowed()) { final List<BluetoothDevice> c = connected; ui.post(() -> syncBuds(c)); }
         } catch (Exception ignored) {
         }
         return o.toString();
@@ -729,6 +767,8 @@ public class MainActivity extends Activity {
         setSession(false, false);
         if (session != null) { session.release(); session = null; }
         if (earMic) setEarMic(false);
+        ui.removeCallbacks(budsPoll);
+        if (buds != null) buds.close();
         if (receiver != null) { try { unregisterReceiver(receiver); } catch (Exception ignored) { } }
         if (adapter != null) {
             if (a2dp != null) adapter.closeProfileProxy(BluetoothProfile.A2DP, a2dp);
@@ -740,6 +780,14 @@ public class MainActivity extends Activity {
 
     class Bridge {
         @JavascriptInterface public String devices() { return devicesJson(); }
+        @JavascriptInterface public String buds() { return buds.json(); }
+        @JavascriptInterface public boolean budsNoise(String mode) { return buds.setNoise(mode); }
+        @JavascriptInterface public boolean budsGame(boolean on) { return buds.setGame(on); }
+        @JavascriptInterface public boolean budsFind(boolean on) { return buds.find(on); }
+        @JavascriptInterface public void budsRefresh() { new Thread(buds::refresh).start(); }
+        @JavascriptInterface public void budsReconnect() {
+            ui.post(() -> { budsFailedAddr = null; buds.close(); pushDevices(); });
+        }
         @JavascriptInterface public void refreshDevices() { ui.post(MainActivity.this::pushDevices); }
         @JavascriptInterface public String asrStatus() { return MainActivity.this.asrStatus(); }
         @JavascriptInterface public boolean ttsHas(String lang) {

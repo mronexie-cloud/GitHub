@@ -191,6 +191,27 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
 .toast.on{transform:translate(-50%,0)}
 .banner{background:#FFF4E5;color:#8A5300;border-radius:16px;padding:12px 14px;font-size:14px;line-height:1.45;margin-top:12px;display:flex;gap:10px;align-items:center}
 .banner button{color:var(--blue);font-weight:600;white-space:nowrap}
+
+.batt3{display:flex;justify-content:center;gap:12px;margin-top:16px}
+.bi{flex:1;max-width:104px;background:var(--bg);border-radius:16px;padding:10px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bi .bl{font-size:12px;color:var(--sub)}
+.bi .bv{font-size:17px;font-weight:700;display:flex;align-items:center;gap:3px}
+.bi .bv svg{width:13px;height:13px;color:var(--green)}
+.bbar{width:46px;height:8px;border-radius:4px;background:#E3E3E8;overflow:hidden}
+.bbar i{display:block;height:100%;border-radius:4px}
+.anc button.on .c{background:var(--blue);color:#fff;box-shadow:0 6px 16px rgba(0,122,255,.3)}
+.anc button.on{color:var(--blue);font-weight:600}
+.anc button:disabled{opacity:.45}
+.levels{display:flex;gap:6px;padding:0 14px 14px}
+.levels button{flex:1;height:34px;border-radius:17px;background:var(--fill);font-size:14px;font-weight:500}
+.levels button.on{background:rgba(0,122,255,.13);color:var(--blue);font-weight:600}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border-radius:var(--r);padding:16px 14px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.tile:active{transform:scale(.98)}
+.tile .ti{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;margin-bottom:6px}
+.tile .ti svg{width:22px;height:22px}
+.tile b{font-size:17px}
+.tile small{font-size:12.5px;color:var(--sub);line-height:1.35}
 </style>
 </head>
 <body>
@@ -200,22 +221,39 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
   <div class="large">耳机</div>
   <div id="permBanner"></div>
   <div class="hero" id="hero" style="margin-top:12px"></div>
+  <div id="ctlBanner"></div>
 
   <div class="group-h">噪声控制</div>
   <div class="group">
     <div class="anc">
       <button data-anc="anc"><span class="c"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/><circle cx="12" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>降噪</button>
       <button data-anc="off"><span class="c"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>关闭</button>
-      <button data-anc="aware"><span class="c"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/><g fill="currentColor"><circle cx="12" cy="1.6" r="1"/><circle cx="16.6" cy="3.4" r="1"/><circle cx="7.4" cy="3.4" r="1"/><circle cx="18.6" cy="7.6" r="1"/><circle cx="5.4" cy="7.6" r="1"/></g></svg></span>通透</button>
+      <button data-anc="transparency"><span class="c"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/><g><circle cx="12" cy="1.6" r="1"/><circle cx="16.6" cy="3.4" r="1"/><circle cx="7.4" cy="3.4" r="1"/><circle cx="18.6" cy="7.6" r="1"/><circle cx="5.4" cy="7.6" r="1"/></g></svg></span>通透</button>
     </div>
+    <div id="ancLevels"></div>
   </div>
-  <div class="foot">轻点任一模式，打开系统耳机页切换。</div>
+  <div class="foot" id="ancFoot">直接切换耳机的降噪模式。</div>
 
   <div class="group-h">翻译</div>
+  <div class="tiles">
+    <button class="tile" id="goLive"><span class="ti" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg></span><b>同声传译</b><small>戴上耳机，双方随便说，自动翻译</small></button>
+    <button class="tile" id="goF2F"><span class="ti" style="background:linear-gradient(135deg,#FF9F0A,#FF375F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M12 6v12"/><path d="M7 10.5h2M15 13.5h2"/></svg></span><b>面对面翻译</b><small>手机分上下两半，各看各的语言</small></button>
+  </div>
+
+  <div class="group-h">更多功能</div>
   <div class="group">
-    <button class="row" id="goTr">
-      <span class="ic" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg></span>
-      <span class="lbl">实时翻译<span class="badge">新</span><small>双方随便说，自动听出是谁在说，边说边翻译</small></span><span class="chev">›</span>
+    <label class="row static" id="gameRow" style="display:none">
+      <span class="ic" style="background:#FF2D55"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 4a2.6 2.6 0 0 1-4.5 1.2L14.4 16H9.6l-2.2 2.2A2.6 2.6 0 0 1 2.9 17l-.8-4A5 5 0 0 1 7 7zm1 3v1.5H6.5v1.5H8v1.5h1.5V13H11v-1.5H9.5V10zm8 .5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg></span>
+      <span class="lbl">游戏模式<small>降低声音延迟，打游戏声画同步</small></span>
+      <span class="sw"><input type="checkbox" id="gameSw"><i></i></span>
+    </label>
+    <button class="row" id="findBtn">
+      <span class="ic" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7zm0 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>
+      <span class="lbl">查找耳机<small id="findSub">让耳机发出提示音</small></span><span class="chev">›</span>
+    </button>
+    <button class="row" id="dualRow">
+      <span class="ic" style="background:#5AC8FA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="9" height="14" rx="2"/><rect x="13" y="8" width="9" height="11" rx="2"/></svg></span>
+      <span class="lbl">双设备连接<small>耳机可同时连两台设备，在系统耳机页设置</small></span><span class="chev">›</span>
     </button>
   </div>
 
@@ -228,14 +266,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
     </div>
   </div>
 
-  <div class="group-h">查找</div>
+  <div class="group-h">耳机详情</div>
   <div class="group">
-    <button class="row link noicon" id="findBtn"><span class="lbl">播放声音</span></button>
-  </div>
-  <div class="foot">耳机找不到时，在耳机里播放一段渐强的提示音。</div>
-
-  <div class="group-h">设备</div>
-  <div class="group">
+    <div class="row static noicon"><span class="lbl">型号</span><span class="val" id="mdlVal">—</span></div>
+    <div class="row static noicon"><span class="lbl">固件版本</span><span class="val" id="fwVal">—</span></div>
     <button class="row noicon" id="btSet"><span class="lbl">蓝牙设置</span><span class="chev">›</span></button>
     <button class="row noicon" id="asrRow"><span class="lbl">语音识别</span><span class="val" id="asrVal">—</span><span class="chev">›</span></button>
     <button class="row noicon" id="ttsRow"><span class="lbl">朗读语音</span><span class="val">系统设置</span><span class="chev">›</span></button>
@@ -315,6 +349,9 @@ if(!window.Android){
         const tick=()=>{i+=2;if(i<words.length){cb('onAsr','partial_'+who,words.slice(0,i).join(''),tag);lt=setTimeout(tick,500)}else{clearInterval(lv);said++;cb('onAsr','final_'+who,txt,tag);lt=setTimeout(next,2500)}};
         lt=setTimeout(tick,600)};
       lt=setTimeout(next,1200);},
+    buds(){return JSON.stringify(this._b)},_b:{status:'ok',model:'OnePlus Buds Ace 3',fw:'1.0.4.6',left:90,right:85,case:64,chL:false,chR:false,chCase:true,noise:'transparency',level:null,levels:['smart','mild','moderate','max'],game:false,finding:false},
+    budsNoise(m){const b=this._b;if(['smart','mild','moderate','max'].includes(m)){b.noise='anc';b.level=m}else{b.noise=m;b.level=m==='anc'?'smart':null}cb('onBuds',JSON.parse(JSON.stringify(b)));return true},
+    budsGame(on){this._b.game=on;cb('onBuds',JSON.parse(JSON.stringify(this._b)));return true},budsFind(on){this._b.finding=on;cb('onBuds',JSON.parse(JSON.stringify(this._b)));return true},budsRefresh(){},budsReconnect(){},
     stopListen(){clearTimeout(lt)},finishListen(){},
     speak(id){setTimeout(()=>window.onSpeak&&onSpeak('done',id),1400)},stopSpeak(){},session(){},earMic:()=>true,
     volume:()=>JSON.stringify({v:vol,max:15}),setVolume(v){vol=v},vibrate(){},openBluetooth(){},openAppSettings(){},openTtsSettings(){},openUrl(){},askPermissions(){},
@@ -354,7 +391,7 @@ const L=c=>LANGS.find(x=>x.c===c)||LANGS[0];
 
 /* ================= storage ================= */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,rate:1},store.get('eb.cfg',{}));
+const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,rate:1,trNoise:'anc'},store.get('eb.cfg',{}));
 const saveCfg=()=>store.set('eb.cfg',cfg);
 let hist=store.get('eb.hist',[]);
 const saveHist=()=>store.set('eb.hist',hist.slice(-150));
@@ -371,7 +408,6 @@ let tab='buds';
 function setTab(t){tab=t;document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='pg-'+t));
   document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));renderDock()}
 document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
-$('#goTr').onclick=()=>setTab('tr');
 
 /* ================= earbuds page ================= */
 let dev={perm:true,mic:true,bt:true,devices:[]};
@@ -381,35 +417,68 @@ const BUDS_SVG=`<svg class="buds" viewBox="0 0 230 170">
  <g transform="translate(46 18) rotate(6 22 26)"><ellipse cx="22" cy="26" rx="26" ry="24" fill="url(#g1)"/><ellipse cx="13" cy="24" rx="9" ry="8" fill="#C9CDD6"/><circle cx="12" cy="24" r="4" fill="#9AA0AC"/><rect x="28" y="30" width="17" height="98" rx="8.5" fill="url(#g2)"/><rect x="31" y="112" width="11" height="12" rx="5" fill="#D3D6DD"/></g>
  <g transform="translate(184 18) scale(-1 1) rotate(6 22 26)"><ellipse cx="22" cy="26" rx="26" ry="24" fill="url(#g1)"/><ellipse cx="13" cy="24" rx="9" ry="8" fill="#C9CDD6"/><circle cx="12" cy="24" r="4" fill="#9AA0AC"/><rect x="28" y="30" width="17" height="98" rx="8.5" fill="url(#g2)"/><rect x="31" y="112" width="11" height="12" rx="5" fill="#D3D6DD"/></g>
 </svg>`;
-function ring(p,color){const r=23,c=2*Math.PI*r,v=p<0?0:p/100;
-  return `<div class="ring"><svg viewBox="0 0 54 54"><circle cx="27" cy="27" r="${r}" fill="none" stroke="#E5E5EA" stroke-width="4.5"/><circle cx="27" cy="27" r="${r}" fill="none" stroke="${color}" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="${c*v} ${c}"/></svg><b>${p<0?'—':p+'%'}</b></div>`}
+let buds={status:'idle'};
+const BOLT='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>';
+function battItem(label,v,ch){
+  const col=v<0?'#C7C7CC':v<=20?'var(--red)':v<=40?'var(--orange)':'var(--green)';
+  return `<div class="bi"><span class="bl">${label}</span><span class="bv">${ch?BOLT:''}${v<0?'—':v+'%'}</span><span class="bbar"><i style="width:${v<0?0:v}%;background:${col}"></i></span></div>`}
 function renderBuds(){
   const d=dev.devices[0];
   const pb=$('#permBanner');
-  if(!dev.perm||!dev.mic){pb.innerHTML=`<div class="banner"><span style="flex:1">${!dev.perm?'需要“附近设备/蓝牙”权限才能读取耳机名称和电量。':'需要麦克风权限才能听懂对方说话。'}</span><button id="permFix">去允许</button></div>`;
+  if(!dev.perm||!dev.mic){pb.innerHTML=`<div class="banner"><span style="flex:1">${!dev.perm?'需要“附近设备/蓝牙”权限才能控制耳机、读取电量。':'需要麦克风权限才能翻译。'}</span><button id="permFix">去允许</button></div>`;
     $('#permFix').onclick=()=>{A.askPermissions();setTimeout(()=>A.openAppSettings(),900)}}else pb.innerHTML='';
   const h=$('#hero');
-  if(!d){h.innerHTML=`${BUDS_SVG.replace('class="buds"','class="buds" style="opacity:.45"')}<div class="name">${dev.bt?'未连接耳机':'蓝牙已关闭'}</div><div class="state"><span class="dot off"></span>打开耳机盒，在蓝牙里连接耳机</div><button class="btn btn gray" id="heroBt">打开蓝牙设置</button>`;
-    $('#heroBt').onclick=()=>A.openBluetooth();return}
-  const b=d.battery,col=b<0?'#C7C7CC':b<=20?'var(--red)':b<=40?'var(--orange)':'var(--green)';
-  const prof=[d.a2dp&&'媒体音频',d.hfp&&'通话'].filter(Boolean).join(' · ');
-  h.innerHTML=`${BUDS_SVG}<div class="name">${esc(d.name)}</div><div class="state"><span class="dot"></span>已连接${prof?' · '+prof:''}</div>
-   <div class="batt"><div class="b">${ring(b,col)}耳机</div></div>
-   ${b<0?'<div class="foot" style="margin:10px 0 0">这副耳机没有把电量告诉系统，可在系统耳机页查看左右耳电量。</div>':''}
-   ${dev.devices.length>1?`<div class="foot" style="margin:10px 0 0">另有 ${dev.devices.length-1} 个蓝牙音频设备已连接</div>`:''}`;
+  if(!d){h.innerHTML=`${BUDS_SVG.replace('class="buds"','class="buds" style="opacity:.45"')}<div class="name">${dev.bt?'未连接耳机':'蓝牙已关闭'}</div><div class="state"><span class="dot off"></span>打开耳机盒，在蓝牙里连接耳机</div><button class="btn gray" id="heroBt" style="margin-top:16px">打开蓝牙设置</button>`;
+    $('#heroBt').onclick=()=>A.openBluetooth();renderCtl();return}
+  const ok=buds.status==='ok'&&(buds.left>=0||buds.right>=0);
+  const name=buds.model||d.name;
+  const st=buds.status==='ok'?'已连接 · 可控制':buds.status==='connecting'?'已连接 · 正在连接控制…':'已连接';
+  const batt=ok?`<div class="batt3">${battItem('左耳',buds.left,buds.chL)}${battItem('右耳',buds.right,buds.chR)}${battItem('充电盒',buds.case,buds.chCase)}</div>`
+    :`<div class="batt3">${battItem('耳机',d.battery,false)}</div>`;
+  h.innerHTML=`${BUDS_SVG}<div class="name">${esc(name)}</div><div class="state"><span class="dot"></span>${st}</div>${batt}`;
+  renderCtl();
+}
+const LV={smart:'智能',mild:'轻度',moderate:'中度',max:'深度'};
+function renderCtl(){
+  const d=dev.devices[0],can=!!d&&buds.status==='ok';
+  document.querySelectorAll('[data-anc]').forEach(b=>{b.classList.toggle('on',can&&buds.noise===b.dataset.anc)});
+  const lv=$('#ancLevels');
+  if(can&&buds.noise==='anc'&&buds.levels&&buds.levels.length){lv.innerHTML=`<div class="levels">${buds.levels.map(l=>`<button data-lv="${l}" class="${buds.level===l?'on':''}">${LV[l]}</button>`).join('')}</div>`;
+    lv.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>setNoise(b.dataset.lv))}else lv.innerHTML='';
+  $('#ancFoot').textContent=can?(buds.noise==='anc'&&buds.levels&&buds.levels.length?'「智能」会根据环境自动调节降噪强度。':'直接切换耳机的降噪模式。'):d?'正在连接耳机控制…连不上时，轻点会打开系统耳机页。':'连接耳机后可切换。';
+  const cb=$('#ctlBanner');
+  cb.innerHTML=d&&buds.status==='failed'?`<div class="banner"><span style="flex:1">连不上耳机的控制通道（可能被系统耳机页占用）。降噪、左右耳电量、游戏模式暂时用不了。</span><button id="ctlRetry">重试</button></div>`:'';
+  if($('#ctlRetry'))$('#ctlRetry').onclick=()=>{A.budsReconnect();toast('正在重新连接…')};
+  $('#gameRow').style.display=can&&buds.game!==undefined?'flex':'none';
+  $('#gameSw').checked=!!buds.game;
+  $('#mdlVal').textContent=buds.model||(d?d.name:'—');
+  $('#fwVal').textContent=buds.fw||'—';
+  $('#findSub').textContent=buds.finding?'正在响…点一下停止':can?'让耳机发出提示音':'在耳机里播放渐强的提示音';
+  $('#findBtn').classList.toggle('danger',!!buds.finding);
 }
 window.onDevices=d=>{dev=d||dev;renderBuds();renderStartHint()};
 window.onPerms=()=>{try{dev=JSON.parse(A.devices())}catch(e){}renderBuds();checkAsr()};
+let lastNoiseShown=null;
+window.onBuds=b=>{const prev=buds;buds=b||{status:'idle'};if(buds.game===null)delete buds.game;
+  renderBuds();
+  if(prev.noise&&buds.noise&&prev.noise!==buds.noise&&lastNoiseShown!==buds.noise&&tab==='buds'){}};
+try{buds=JSON.parse(A.buds());if(buds.game===null)delete buds.game}catch(e){}
 
-document.querySelectorAll('[data-anc]').forEach(b=>b.onclick=()=>{
-  const names={anc:'降噪',off:'关闭',aware:'通透'};
-  openSheet('噪声控制',`<div class="info"><div class="big" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></div>
-   <h2>切换到「${names[b.dataset.anc]}」</h2>
-   <p>一加 / OPPO 耳机的降噪开关只开放给手机自带的耳机页面，其他 App 不能直接切换。点下面按钮打开系统耳机页即可一键切换；也可以长按耳机柄切换。</p>
-   <p><b>翻译小建议：</b>和人面对面说话时用「通透」，你能同时听到对方原声和耳机里的翻译。</p></div>
-   <button class="btn wide" id="ancGo">打开系统耳机页</button>`);
-  $('#ancGo').onclick=()=>{closeSheet();A.openBluetooth()};
-});
+function setNoise(mode){
+  if(buds.status!=='ok'){
+    openSheet('噪声控制',`<div class="info"><div class="big" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></div>
+     <h2>暂时连不上耳机控制</h2><p>可能是手机自带的耳机页正在使用耳机的控制通道。可以先在系统耳机页切换，或者点「重试」。</p></div>
+     <button class="btn wide" id="ancGo">打开系统耳机页</button><div style="height:10px"></div><button class="btn gray wide" id="ancRe">重试连接</button>`);
+    $('#ancGo').onclick=()=>{closeSheet();A.openBluetooth()};$('#ancRe').onclick=()=>{closeSheet();A.budsReconnect()};return false}
+  const ok=A.budsNoise(mode);buzz(12);
+  if(!ok)toast('这副耳机不支持这个模式');
+  return ok;
+}
+document.querySelectorAll('[data-anc]').forEach(b=>b.onclick=()=>setNoise(b.dataset.anc));
+$('#gameSw').onchange=e=>{if(!A.budsGame(e.target.checked)){e.target.checked=!e.target.checked;toast('切换失败')}};
+$('#dualRow').onclick=()=>A.openBluetooth();
+$('#goLive').onclick=()=>{setTab('tr');if(!S.running)start()};
+$('#goF2F').onclick=()=>{setTab('tr');openF2F()};
 
 // volume
 const volEl=$('#vol');
@@ -419,22 +488,23 @@ try{loadVol(JSON.parse(A.volume()))}catch(e){}
 volEl.oninput=()=>{paintVol();A.setVolume(+volEl.value)};
 window.onVolume=o=>{if(document.activeElement!==volEl)loadVol(o)};
 
-// find my earbuds
+// find my earbuds: the earbuds' own beep when we can talk to them, else a sound played into them
 let findCtx=null;
 $('#findBtn').onclick=()=>{
+  if(buds.finding){A.budsFind(false);return}
   if(findCtx){stopFind();return}
-  openSheet('播放声音',`<div class="info"><div class="big" style="background:var(--green)">${ICON_SPK.replace('<svg','<svg style="color:#fff"')}</div><h2>在耳机里播放声音</h2><p>声音会逐渐变大，持续约 15 秒。如果耳机还戴在耳朵上，请先取下。</p></div><button class="btn wide" id="findGo">播放</button>`);
-  $('#findGo').onclick=()=>{closeSheet();startFind()};
+  openSheet('查找耳机',`<div class="info"><div class="big" style="background:var(--green)">${ICON_SPK.replace('<svg','<svg style="color:#fff"')}</div><h2>让耳机响起来</h2><p>耳机会发出较大的提示音。如果耳机还戴在耳朵上，请先取下。</p></div><button class="btn wide" id="findGo">播放声音</button>`);
+  $('#findGo').onclick=()=>{closeSheet();if(buds.status==='ok'&&A.budsFind(true))return;startFind()};
 };
 function startFind(){
   try{const ctx=new (window.AudioContext||window.webkitAudioContext)();findCtx=ctx;const t0=ctx.currentTime;
     const g=ctx.createGain();g.connect(ctx.destination);g.gain.setValueAtTime(.05,t0);g.gain.linearRampToValueAtTime(.9,t0+10);
     for(let i=0;i<30;i++){const o=ctx.createOscillator(),e=ctx.createGain();o.type='triangle';o.frequency.setValueAtTime(1760,t0+i*.5);o.frequency.exponentialRampToValueAtTime(2637,t0+i*.5+.18);
       e.gain.setValueAtTime(0,t0+i*.5);e.gain.linearRampToValueAtTime(1,t0+i*.5+.02);e.gain.exponentialRampToValueAtTime(.001,t0+i*.5+.32);o.connect(e);e.connect(g);o.start(t0+i*.5);o.stop(t0+i*.5+.35)}
-    $('#findBtn .lbl').textContent='停止播放';$('#findBtn').classList.replace('link','danger');
+    $('#findSub').textContent='正在响…点一下停止';$('#findBtn').classList.add('danger');
     setTimeout(stopFind,15200);}catch(e){toast('无法播放声音')}
 }
-function stopFind(){if(findCtx){try{findCtx.close()}catch(e){}findCtx=null}$('#findBtn .lbl').textContent='播放声音';$('#findBtn').classList.replace('danger','link')}
+function stopFind(){if(findCtx){try{findCtx.close()}catch(e){}findCtx=null}renderCtl()}
 
 $('#btSet').onclick=()=>A.openBluetooth();
 $('#ttsRow').onclick=()=>A.openTtsSettings();
@@ -478,6 +548,8 @@ $('#setBtn').onclick=()=>{
     ${sw('spkMe','我的话用手机外放','你说的话翻译后用手机喇叭读给对方（读的时候暂停收音，免得听到自己）','var(--indigo)')}
     ${sw('duck','翻译时压低其他声音','音乐、视频自动变小声','var(--orange)')}
    </div>
+   <div class="group-h">翻译时耳机模式</div><div class="seg" id="trnSeg">${[['anc','降噪'],['transparency','通透'],['keep','不变']].map(([v,t])=>`<button data-n="${v}" class="${cfg.trNoise===v?'on':''}">${t}</button>`).join('')}</div>
+   <div class="foot" style="margin-bottom:4px">降噪：像 AirPods 一样压低对方原声，只听翻译。通透：原声和翻译都能听到。结束后自动恢复原来的模式。</div>
    <div class="group-h">朗读速度</div><div class="seg" id="rateSeg">${[[.8,'慢'],[1,'正常'],[1.2,'快']].map(([v,t])=>`<button data-r="${v}" class="${cfg.rate==v?'on':''}">${t}</button>`).join('')}</div>
    <div class="group-h">收音</div><div class="group">
     ${sw('earMic','用耳机麦克风（实验）','默认用手机麦克风，更容易听清对方。打开后改用耳机麦克风，音质会变成通话音质','#8E8E93',ICON_MIC)}
@@ -486,6 +558,7 @@ $('#setBtn').onclick=()=>{
    <div class="foot">翻译需要联网。手机没有某种语言的离线朗读语音时，会自动改用在线语音。</div>`);
   bindToggles($('#shB'));
   $('#rateSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.rate=+b.dataset.r;saveCfg();$('#rateSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+  $('#trnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.trNoise=b.dataset.n;saveCfg();$('#trnSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
   $('#clr').onclick=()=>{hist=[];saveHist();renderFeed();closeSheet();toast('已清空')};
 };
 
@@ -570,12 +643,16 @@ function mute(){S.muted=true;S.tag='';A.stopListen();setLive('');renderDock()}
 function start(){
   if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');return}
   S.running=true;S.errs=[];S.draft=null;A.session(true,cfg.duck);
+  // like AirPods: switch the earbuds' noise mode for the conversation, put it back afterwards
+  S.prevNoise=null;
+  if(cfg.trNoise!=='keep'&&buds.status==='ok'&&buds.noise){S.prevNoise=buds.level||buds.noise;if(S.prevNoise!==cfg.trNoise&&buds.noise!==cfg.trNoise)A.budsNoise(cfg.trNoise);else S.prevNoise=null}
   if(cfg.earMic){const ok=A.earMic(true);if(!ok)toast('没找到耳机麦克风，改用手机麦克风')}
   buzz(25);listen();setLive('');
 }
 function stop(){
   S.running=false;S.muted=false;S.tag='';S.speakQ=[];S.speaking=null;S.draft=null;
   A.stopListen();A.stopSpeak();A.session(false,false);if(cfg.earMic)A.earMic(false);
+  if(S.prevNoise&&buds.status==='ok'){A.budsNoise(S.prevNoise);S.prevNoise=null}
   setLive('');renderFeed();renderDock();buzz(15);
 }
 function restartListen(){if(S.running&&!S.muted){A.stopListen();setTimeout(listen,150)}}
