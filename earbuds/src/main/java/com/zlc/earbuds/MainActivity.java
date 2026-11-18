@@ -8,6 +8,9 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
+import android.speech.RecognitionService;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -80,6 +83,7 @@ public class MainActivity extends Activity {
     private boolean srOnDevice;
     private String srTag = "";
     private long lastLevelAt;
+    private CloudAsr cloud;
 
     // text-to-speech
     private TextToSpeech tts;
@@ -124,6 +128,16 @@ public class MainActivity extends Activity {
                 @Override public void onDone(String id) { ui.post(() -> speakFinished(id, "done")); }
                 @Override public void onError(String id) { ui.post(() -> speakFinished(id, "error")); }
             });
+        });
+
+        cloud = new CloudAsr(new CloudAsr.Callback() {
+            @Override public void event(String type, String text, String tag) { asrTo(type, text, tag); }
+            @Override public void level(float db) {
+                long now = System.currentTimeMillis();
+                if (now - lastLevelAt < 90) return;
+                lastLevelAt = now;
+                js("window.onAsrLevel&&window.onAsrLevel(" + db + ")");
+            }
         });
 
         askPermissions();
@@ -316,8 +330,10 @@ public class MainActivity extends Activity {
         return r != null && !r.isEmpty() && r.get(0) != null ? r.get(0) : "";
     }
 
-    private void asr(String type, String text) {
-        js("window.onAsr&&window.onAsr(" + JSONObject.quote(type) + "," + JSONObject.quote(text) + "," + JSONObject.quote(srTag) + ")");
+    private void asr(String type, String text) { asrTo(type, text, srTag); }
+
+    private void asrTo(String type, String text, String tag) {
+        js("window.onAsr&&window.onAsr(" + JSONObject.quote(type) + "," + JSONObject.quote(text) + "," + JSONObject.quote(tag) + ")");
     }
 
     private String asrStatus() {
@@ -326,10 +342,43 @@ public class MainActivity extends Activity {
         return "none";
     }
 
+    /** Prefer Google's recognizer: some phones' own default voice assistant service fails for other apps. */
+    private ComponentName googleRecognizer() {
+        try {
+            List<ResolveInfo> l = getPackageManager().queryIntentServices(new Intent(RecognitionService.SERVICE_INTERFACE), 0);
+            ComponentName best = null;
+            for (ResolveInfo r : l) {
+                if (r.serviceInfo == null) continue;
+                String pkg = r.serviceInfo.packageName;
+                ComponentName cn = new ComponentName(pkg, r.serviceInfo.name);
+                if ("com.google.android.googlequicksearchbox".equals(pkg)) return cn;
+                if (best == null && pkg.startsWith("com.google.")) best = cn;
+            }
+            return best;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String recognizerName() {
+        try {
+            List<ResolveInfo> l = getPackageManager().queryIntentServices(new Intent(RecognitionService.SERVICE_INTERFACE), 0);
+            StringBuilder b = new StringBuilder();
+            for (ResolveInfo r : l) if (r.serviceInfo != null) b.append(b.length() > 0 ? "," : "").append(r.serviceInfo.packageName);
+            return b.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     private boolean ensureRecognizer() {
         if (sr != null) return true;
         try {
-            if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            ComponentName g = googleRecognizer();
+            if (g != null) {
+                sr = SpeechRecognizer.createSpeechRecognizer(this, g);
+                srOnDevice = false;
+            } else if (SpeechRecognizer.isRecognitionAvailable(this)) {
                 sr = SpeechRecognizer.createSpeechRecognizer(this);
                 srOnDevice = false;
             } else if (Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(this)) {
@@ -343,20 +392,25 @@ public class MainActivity extends Activity {
         return sr != null;
     }
 
-    private void startListening(String lang, String tag) {
+    private void startListening(String lang, String tag, String engine) {
         srTag = tag;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             askPermissions();
             asr("error", "9");
             return;
         }
+        if ("cloud".equals(engine)) {
+            if (sr != null) { try { sr.cancel(); } catch (Exception ignored) { } }
+            cloud.start(lang, tag);
+            return;
+        }
+        cloud.stop();
         if (!ensureRecognizer()) { asr("error", "none"); return; }
         try { sr.cancel(); } catch (Exception ignored) { }
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang);
-        i.putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", new String[]{});
         i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
         i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
         i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
@@ -372,6 +426,7 @@ public class MainActivity extends Activity {
     }
 
     private void stopListening() {
+        if (cloud != null) cloud.stop();
         if (sr == null) return;
         try { sr.cancel(); } catch (Exception ignored) { }
     }
@@ -699,11 +754,15 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public boolean earbuds() { return earbudsConnected(); }
 
-        @JavascriptInterface public void listen(String lang, String tag) { ui.post(() -> startListening(lang, tag)); }
+        @JavascriptInterface public void listen(String lang, String tag, String engine) { ui.post(() -> startListening(lang, tag, engine)); }
+        @JavascriptInterface public String recognizers() { return recognizerName(); }
         @JavascriptInterface public void stopListen() { ui.post(MainActivity.this::stopListening); }
         /** Stop recording now and return what was heard so far as the final result. */
         @JavascriptInterface public void finishListen() {
-            ui.post(() -> { if (sr != null) { try { sr.stopListening(); } catch (Exception ignored) { } } });
+            ui.post(() -> {
+                if (cloud != null && cloud.isRunning()) cloud.finish();
+                else if (sr != null) { try { sr.stopListening(); } catch (Exception ignored) { } }
+            });
         }
 
         @JavascriptInterface public void speak(String id, String text, String lang, String route, float rate) {

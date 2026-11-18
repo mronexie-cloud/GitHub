@@ -310,8 +310,8 @@ if(!window.Android){
   const demoMe=['不好意思，请问去中央车站怎么走？','谢谢你！'];
   window.Android={
     devices:()=>JSON.stringify({perm:true,mic:true,bt:true,devices:[{name:'OnePlus Buds Ace 3',addr:'demo',battery:90,a2dp:true,hfp:true}]}),
-    refreshDevices(){cb('onDevices',JSON.parse(this.devices()))},asrStatus:()=>'ok',ttsHas:l=>!/^(ms|ta|tl|fil)/.test(l),earbuds:()=>true,
-    listen(lang,tag){clearTimeout(lt);const me=tag[0]==='m';const txt=me?demoMe[said%2]:demoThem[said%3];let i=0;
+    refreshDevices(){cb('onDevices',JSON.parse(this.devices()))},asrStatus:()=>'ok',recognizers:()=>'demo',ttsHas:l=>!/^(ms|ta|tl|fil)/.test(l),earbuds:()=>true,
+    listen(lang,tag,engine){clearTimeout(lt);const me=tag[0]==='m';const txt=me?demoMe[said%2]:demoThem[said%3];let i=0;
       cb('onAsr','ready','',tag);
       const step=()=>{const lv=setInterval(()=>window.onAsrLevel&&onAsrLevel(Math.random()*9),90);
         const words=txt.split(/(?<=\s)|(?=[一-鿿])/);
@@ -356,7 +356,7 @@ const L=c=>LANGS.find(x=>x.c===c)||LANGS[0];
 
 /* ================= storage ================= */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,earTap:true,rate:1},store.get('eb.cfg',{}));
+const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,earTap:true,rate:1,engine:'auto'},store.get('eb.cfg',{}));
 const saveCfg=()=>store.set('eb.cfg',cfg);
 let hist=store.get('eb.hist',[]);
 const saveHist=()=>store.set('eb.hist',hist.slice(-150));
@@ -442,8 +442,8 @@ $('#btSet').onclick=()=>A.openBluetooth();
 $('#ttsRow').onclick=()=>A.openTtsSettings();
 let asrState='ok';
 function checkAsr(){try{asrState=A.asrStatus()}catch(e){asrState='none'}
-  $('#asrVal').textContent=asrState==='none'?'未安装':'可用';$('#asrVal').style.color=asrState==='none'?'var(--red)':''}
-$('#asrRow').onclick=()=>asrState==='none'?showAsrHelp():toast('语音识别可用'+(asrState==='ondevice'?'（离线模式）':''));
+  $('#asrVal').textContent=asrState==='none'?'在线识别':'可用';$('#asrVal').style.color=''}
+$('#asrRow').onclick=()=>{let r='';try{r=A.recognizers()}catch(e){}toast(asrState==='none'?'手机没有自带语音识别，会用在线识别':'识别服务：'+(r||'系统默认'),4000)};
 function showAsrHelp(){
   openSheet('需要语音识别',`<div class="info"><div class="big" style="background:var(--orange)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
    <h2>手机没有语音识别服务</h2><p>听懂说话要用手机的语音识别。一加手机装上 Google App 就有：</p>
@@ -481,6 +481,8 @@ $('#setBtn').onclick=()=>{
     ${sw('duck','翻译时压低其他声音','音乐、视频自动变小声','var(--orange)')}
    </div>
    <div class="group-h">朗读速度</div><div class="seg" id="rateSeg">${[[.8,'慢'],[1,'正常'],[1.2,'快']].map(([v,t])=>`<button data-r="${v}" class="${cfg.rate==v?'on':''}">${t}</button>`).join('')}</div>
+   <div class="group-h">识别方式</div><div class="seg" id="engSeg">${[['auto','自动'],['system','手机自带'],['cloud','在线']].map(([v,t])=>`<button data-e="${v}" class="${cfg.engine===v?'on':''}">${t}</button>`).join('')}</div>
+   <div class="foot" style="margin-bottom:4px">自动：先用手机自带的识别，用不了就自动换在线识别。在线识别不需要装 Google App，但要联网。</div>
    <div class="group-h">收音</div><div class="group">
     ${sw('earTap','轻点耳机说话','翻译时轻点耳机（播放/暂停那一下）就轮到你说，说完再点一下马上翻译','var(--green)',ICON_MIC)}
     ${sw('earMic','用耳机麦克风（实验）','默认用手机麦克风，更容易听清对方。打开后改用耳机麦克风，音质会变成通话音质','#8E8E93',ICON_MIC)}
@@ -489,6 +491,8 @@ $('#setBtn').onclick=()=>{
    <div class="foot">翻译需要联网。手机没有某种语言的离线朗读语音时，会自动改用在线语音。</div>`);
   bindToggles($('#shB'));
   $('#rateSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.rate=+b.dataset.r;saveCfg();$('#rateSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+  $('#engSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.engine=b.dataset.e;saveCfg();store.set('eb.sysBad',0);$('#engSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    if(S.running){const e=pickEngine();if(e){S.engine=e;S.hardErrs=0;S.errs=[];restartListen()}}});
   $('#clr').onclick=()=>{hist=[];saveHist();renderFeed();closeSheet();toast('已清空')};
 };
 
@@ -547,7 +551,7 @@ async function translate(text,sl,tl){
 }
 
 /* ================= live session ================= */
-const S={running:false,phase:'idle',tag:'',seq:0,errs:[],speakQ:[],speaking:null,pendingThem:false};
+const S={engine:'system',hardErrs:0,running:false,phase:'idle',tag:'',seq:0,errs:[],speakQ:[],speaking:null,pendingThem:false};
 function now(){return Date.now()}
 function renderStartHint(){
   const has=dev.devices&&dev.devices.length;
@@ -569,8 +573,15 @@ function renderDock(){
 function setLive(t){$('#livePt').textContent=t||''}
 window.onAsrLevel=db=>{const v=Math.max(0,Math.min(1,(db+2)/11));document.querySelectorAll('#wave i').forEach((b,i)=>{const k=[.55,.85,1,.8,.6][i];b.style.height=(5+v*21*k*(0.75+Math.random()*.5))+'px'})};
 
+function pickEngine(){
+  if(cfg.engine==='cloud')return 'cloud';
+  checkAsr();
+  if(asrState==='none')return cfg.engine==='system'?null:'cloud';
+  return cfg.engine==='system'?'system':(store.get('eb.sysBad',0)>=2?'cloud':'system');
+}
 function start(){
-  if(asrState==='none'){checkAsr();if(asrState==='none'){showAsrHelp();return}}
+  const eng=pickEngine();if(!eng){showAsrHelp();return}
+  S.engine=eng;S.hardErrs=0;
   if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');return}
   S.running=true;S.errs=[];A.session(true,cfg.duck);
   if(cfg.earMic){const ok=A.earMic(true);if(!ok)toast('没找到耳机麦克风，改用手机麦克风')}
@@ -581,8 +592,8 @@ function stop(){
   A.stopListen();A.stopSpeak();A.session(false,false);if(cfg.earMic)A.earMic(false);
   setLive('');renderDock();buzz(15);
 }
-function listenThem(){if(!S.running)return;S.phase='them';S.tag='t'+(++S.seq);setLive('');A.listen(L(cfg.them).asr,S.tag);renderDock()}
-function listenMe(){if(!S.running)return;S.phase='me';S.tag='m'+(++S.seq);setLive('');A.stopSpeak();S.speakQ=[];S.speaking=null;A.listen(L(cfg.me).asr,S.tag);buzz(30);renderDock()}
+function listenThem(){if(!S.running)return;S.phase='them';S.tag='t'+(++S.seq);setLive('');A.listen(L(cfg.them).asr,S.tag,S.engine);renderDock()}
+function listenMe(){if(!S.running)return;S.phase='me';S.tag='m'+(++S.seq);setLive('');A.stopSpeak();S.speakQ=[];S.speaking=null;A.listen(L(cfg.me).asr,S.tag,S.engine);buzz(30);renderDock()}
 function restartListen(){if(!S.running)return;S.phase==='me'?listenMe():listenThem()}
 function talk(){
   if(!S.running){start();return}
@@ -594,16 +605,25 @@ let lastTap=0;
 window.onEarTap=k=>{if(!cfg.earTap||!S.running)return;const t=now();if(t-lastTap<450)return;lastTap=t;
   if(k==='next'){listenMe();return}if(k==='prev'){listenThem();return}talk()};
 
+const ERRNAME={'1':'网络超时','2':'网络错误','3':'录音出错','4':'服务器错误','5':'客户端错误','8':'识别服务忙','10':'请求太多','11':'服务断开','12':'不支持该语言','13':'语言包不可用'};
 window.onAsr=(type,text,tag)=>{
-  if(!S.running||tag!==S.tag)return;
-  if(type==='partial'){setLive(text);return}
+  if(!S.running)return;
+  if(tag!==S.tag){
+    // online mode: a sentence the other person said can finish recognizing after we moved on
+    if(type==='final'&&tag&&tag[0]==='t'&&text.trim()&&S.engine==='cloud'){S.hardErrs=0;utterance('them',text.trim())}
+    return;
+  }
+  if(type==='nothing'){setLive('');return}
+  if(type==='begin'){if(S.engine==='cloud')setLive('识别中…');return}
+  if(type==='partial'){S.hardErrs=0;setLive(text);return}
   if(type==='final'){
-    const who=S.phase;setLive('');
+    const who=S.phase;setLive('');S.hardErrs=0;
+    if(S.engine==='system')store.set('eb.sysBad',0);
     if(!text.trim()){afterNothing(who);return}
     utterance(who==='me'?'me':'them',text.trim());
-    if(who==='me'){S.phase='speakme';S.tag='';renderDock()}
-    else if(!A.earbuds()&&cfg.spkThem){S.phase='them';S.tag='';S.pendingThem=true}// no earbuds: wait until the phone stops talking, or we'd hear ourselves
-    else listenThem();
+    if(who==='me'){S.phase='speakme';S.tag='';A.stopListen();renderDock()}
+    else if(!A.earbuds()&&cfg.spkThem){S.phase='them';S.tag='';S.pendingThem=true;A.stopListen()}// no earbuds: wait until the phone stops talking, or we'd hear ourselves
+    else if(S.engine==='system')listenThem();
     return;
   }
   if(type==='error'){
@@ -611,9 +631,19 @@ window.onAsr=(type,text,tag)=>{
     if(code==='none'){stop();showAsrHelp();return}
     if(code==='9'){stop();toast('请允许使用麦克风');A.askPermissions();return}
     if(code==='12'||code==='13'){stop();toast(`手机的语音识别不支持${L(S.phase==='me'?cfg.me:cfg.them).n}，请换一种语言或更新 Google App`,4200);return}
+    if(code!=='6'&&code!=='7'){
+      S.hardErrs++;
+      // the phone's own recognizer keeps failing: switch to online recognition by ourselves
+      if(S.engine==='system'&&cfg.engine==='auto'&&S.hardErrs>=3){
+        store.set('eb.sysBad',store.get('eb.sysBad',0)+1);
+        S.engine='cloud';S.hardErrs=0;S.errs=[];
+        toast(`手机自带语音识别用不了（${ERRNAME[code]||'代码'+code}），已自动改用在线识别`,4200);
+        restartListen();return;
+      }
+    }
     const t=now();S.errs=S.errs.filter(x=>t-x<12000);
     if(code!=='6'&&code!=='7')S.errs.push(t);
-    if(S.errs.length>8){stop();toast('语音识别一直出错，请检查网络后再试',4000);return}
+    if(S.errs.length>8){stop();toast(`语音识别一直出错（${ERRNAME[code]||'代码 '+code}）。${S.engine==='cloud'?'请检查网络':'可在设置里把识别方式改成「在线」'}`,5000);return}
     if(S.phase==='me'&&(code==='6'||code==='7')){toast('没听清，再说一次吧');listenThem();return}
     const wait=(code==='2'||code==='4'||code==='11')?1500:(code==='5'||code==='8')?400:120;
     if(code==='2'||code==='4')setLive('网络不稳定，正在重试…');
