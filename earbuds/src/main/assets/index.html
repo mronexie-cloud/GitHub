@@ -208,6 +208,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
 .levels{display:flex;gap:6px;padding:0 14px 14px}
 .levels button{flex:1;height:34px;border-radius:17px;background:var(--fill);font-size:14px;font-weight:500}
 .levels button.on{background:rgba(0,122,255,.13);color:var(--blue);font-weight:600}
+.autocard{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--r);padding:12px 16px;margin-top:12px}
+.autocard .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none}
+.autocard .ic svg{width:20px;height:20px}
+.autocard .lbl{flex:1;font-size:17px}
+.autocard small{display:block;font-size:13px;color:var(--sub);margin-top:2px}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tile{background:var(--card);border-radius:var(--r);padding:16px 14px;text-align:left;display:flex;flex-direction:column;gap:4px}
 .tile:active{transform:scale(.98)}
@@ -241,6 +246,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
   <div class="tiles">
     <button class="tile" id="goLive"><span class="ti" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg></span><b>同声传译</b><small>戴上耳机，双方随便说，自动翻译</small></button>
     <button class="tile" id="goF2F"><span class="ti" style="background:linear-gradient(135deg,#FF9F0A,#FF375F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M12 6v12"/><path d="M7 10.5h2M15 13.5h2"/></svg></span><b>面对面翻译</b><small>手机分上下两半，各看各的语言</small></button>
+  </div>
+
+  <div class="group" style="margin-top:10px">
+    <label class="row static">
+      <span class="ic" style="background:linear-gradient(135deg,#34C759,#30B0C7)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a4 4 0 0 1 4 4v1.5l-.8 10.3a1.7 1.7 0 0 1-1.7 1.6h-.1a1.7 1.7 0 0 1-1.7-1.6L6.2 11A4 4 0 0 1 7 3z"/><path d="M15 6.5a5 5 0 0 1 0 7M18 4a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+      <span class="lbl">自动翻译<small>戴上耳机就自动听，听到外语就翻译到耳机里</small></span>
+      <span class="sw"><input type="checkbox" data-auto><i></i></span>
+    </label>
   </div>
 
   <div class="group-h">更多功能</div>
@@ -294,6 +307,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
     <button class="lrow" data-pick="me"><span class="who">我说</span><span class="ln" id="lnMe"></span><span class="chev" style="color:#C4C4C7">›</span></button>
     <button class="swap" id="swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 7.5 7 4l3.5 3.5M17 20V4M13.5 16.5 17 20l3.5-3.5"/></svg></button>
   </div>
+  <label class="autocard">
+    <span class="ic" style="background:linear-gradient(135deg,#34C759,#30B0C7)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a4 4 0 0 1 4 4v1.5l-.8 10.3a1.7 1.7 0 0 1-1.7 1.6h-.1a1.7 1.7 0 0 1-1.7-1.6L6.2 11A4 4 0 0 1 7 3z"/><path d="M15 6.5a5 5 0 0 1 0 7M18 4a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+    <span class="lbl"><b>自动翻译</b><small>不用打开，戴上耳机就自动开始 · <span id="autoSt">关闭</span></small></span>
+    <span class="sw"><input type="checkbox" data-auto><i></i></span>
+  </label>
   <div class="feed" id="feed"></div>
 </section>
 
@@ -345,16 +363,19 @@ if(!window.Android){
   window.Android={
     devices:()=>JSON.stringify({perm:true,mic:true,bt:true,devices:[{name:'OnePlus Buds Ace 3',addr:'demo',battery:90,a2dp:true,hfp:true}]}),
     refreshDevices(){cb('onDevices',JSON.parse(this.devices()))},asrStatus:()=>'ok',recognizers:()=>'demo',ttsHas:l=>!/^(ms|ta|tl|fil)/.test(l),earbuds:()=>true,
-    listen(lt_,lm_,tag){clearTimeout(lt);let lv;const script=[['them','Hi! Is this seat taken?'],['me','没有人，请坐。'],['them','The train to KL Sentral leaves from platform two.'],['me','谢谢你！']];
-      cb('onAsr','ready','',tag);
-      const next=()=>{const [who,txt]=script[said%4];const words=txt.split(/(?<=\s)|(?=[\u4e00-\u9fff])/);let i=0;
-        lv=setInterval(()=>window.onAsrLevel&&onAsrLevel(Math.random()*9),90);cb('onAsr','begin','',tag);
-        const tick=()=>{i+=2;if(i<words.length){cb('onAsr','partial_'+who,words.slice(0,i).join(''),tag);lt=setTimeout(tick,500)}else{clearInterval(lv);said++;cb('onAsr','final_'+who,txt,tag);lt=setTimeout(next,2500)}};
-        lt=setTimeout(tick,600)};
-      lt=setTimeout(next,1200);},
-    buds(){return JSON.stringify(this._b)},_b:{status:'ok',model:'OnePlus Buds Ace 3',fw:'1.0.4.6',left:90,right:85,case:64,chL:false,chR:false,chCase:true,noise:'transparency',level:null,levels:['smart','mild','moderate','max'],game:false,finding:false},
-    budsNoise(m){const b=this._b;if(['smart','mild','moderate','max'].includes(m)){b.noise='anc';b.level=m}else{b.noise=m;b.level=m==='anc'?'smart':null}cb('onBuds',JSON.parse(JSON.stringify(b)));return true},
-    budsGame(on){this._b.game=on;cb('onBuds',JSON.parse(JSON.stringify(this._b)));return true},budsFind(on){this._b.finding=on;cb('onBuds',JSON.parse(JSON.stringify(this._b)));return true},budsRefresh(){},budsReconnect(){},
+    _st:{manual:false,auto:false,listening:false,muted:false,earbuds:true},
+    _ev(o){setTimeout(()=>window.onLive&&onLive(o),0)},
+    _state(){this._ev(Object.assign({t:'state'},this._st))},
+    liveState(){return JSON.stringify(Object.assign({t:'state'},this._st))},liveConfig(){},autoEnabled(){return this._st.auto},
+    history(){return localStorage.getItem('demo.hist')||'[]'},saveHistory(j){localStorage.setItem('demo.hist',j)},
+    batteryOk(){return false},askBattery(){},
+    live(a){const st=this._st;if(a==='manual_on')st.manual=true;if(a==='manual_off')st.manual=false;if(a==='auto_on')st.auto=true;if(a==='auto_off')st.auto=false;
+      const want=st.manual||(st.auto&&st.earbuds);if(want&&!st.listening){st.listening=true;this._run()}if(!want){st.listening=false;clearTimeout(lt)}this._state();return true},
+    _run(){const self=this,script=[['them','Hi! Is this seat taken?','你好！这个位子有人坐吗？'],['me','没有人，请坐。','No one, please sit.'],['them','The train to KL Sentral leaves from platform two.','去吉隆坡中央车站的火车从二号站台出发。'],['me','谢谢你！','Thank you!']];
+      const next=()=>{if(!self._st.listening)return;const [who,txt,tr]=script[said%4];const words=txt.split(/(?<=\s)|(?=[一-鿿])/);let i=0;const lv=setInterval(()=>self._ev({t:'level',v:Math.random()*9}),90);
+        const tick=()=>{if(!self._st.listening){clearInterval(lv);return}i+=2;if(i<words.length){self._ev({t:'draft',who,src:words.slice(0,i).join(''),tr:i>3?tr.slice(0,Math.ceil(tr.length*i/words.length)):''});lt=setTimeout(tick,500)}
+          else{clearInterval(lv);said++;self._ev({t:'draft_clear'});const e={id:'u'+Date.now(),who,src:txt,alt:'',from:who==='me'?'zh-CN':'en',to:who==='me'?'en':'zh-CN',tr,st:'ok',t:Date.now()};self._ev({t:'entry',e});lt=setTimeout(next,2500)}};
+        lt=setTimeout(tick,600)};lt=setTimeout(next,1200)},
     stopListen(){clearTimeout(lt)},finishListen(){},
     speak(id){setTimeout(()=>window.onSpeak&&onSpeak('done',id),1400)},stopSpeak(){},session(){},earMic:()=>true,
     volume:()=>JSON.stringify({v:vol,max:15}),setVolume(v){vol=v},vibrate(){},openBluetooth(){},openAppSettings(){},openTtsSettings(){},openUrl(){},askPermissions(){},
@@ -397,8 +418,9 @@ const L=c=>LANGS.find(x=>x.c===c)||LANGS[0];
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,rate:1,trNoise:'anc'},store.get('eb.cfg',{}));
 const saveCfg=()=>store.set('eb.cfg',cfg);
-let hist=store.get('eb.hist',[]);
-const saveHist=()=>store.set('eb.hist',hist.slice(-150));
+let hist=[];try{hist=JSON.parse(A.history())||[]}catch(e){}
+const saveHist=()=>{try{A.saveHistory(JSON.stringify(hist.slice(-150)))}catch(e){}};
+window.onHistory=()=>{try{hist=JSON.parse(A.history())||[];renderFeed()}catch(e){}};
 
 /* ================= helpers ================= */
 const $=s=>document.querySelector(s);
@@ -540,8 +562,7 @@ function bindToggles(root){root.querySelectorAll('[data-cfg]').forEach(i=>{i.che
   document.querySelectorAll(`[data-cfg="${i.dataset.cfg}"]`).forEach(o=>o.checked=i.checked)}})}
 bindToggles(document);
 function onCfg(k){
-  if(k==='earMic'&&S.running){const ok=A.earMic(cfg.earMic);if(cfg.earMic&&!ok){toast('没找到耳机麦克风，继续用手机麦克风');cfg.earMic=false;saveCfg();document.querySelectorAll('[data-cfg=earMic]').forEach(o=>o.checked=false)}restartListen()}
-  if(k==='duck'&&S.running){A.session(true,cfg.duck)}
+  if(k==='spkThem'||k==='spkMe')pushConfig();
 }
 $('#setBtn').onclick=()=>{
   const ICON_MIC='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -550,18 +571,14 @@ $('#setBtn').onclick=()=>{
    <div class="group-h" style="margin-top:6px">朗读</div><div class="group">
     ${sw('spkThem','翻译读到耳机里','对方说的话翻译后在耳机里读出来','var(--blue)')}
     ${sw('spkMe','我的话用手机外放','你说的话翻译后用手机喇叭读给对方（读的时候暂停收音，免得听到自己）','var(--indigo)')}
-    ${sw('duck','翻译时压低其他声音','音乐、视频自动变小声','var(--orange)')}
    </div>
    <div class="group-h">翻译时耳机模式</div><div class="seg" id="trnSeg">${[['anc','降噪'],['transparency','通透'],['keep','不变']].map(([v,t])=>`<button data-n="${v}" class="${cfg.trNoise===v?'on':''}">${t}</button>`).join('')}</div>
    <div class="foot" style="margin-bottom:4px">降噪：像 AirPods 一样压低对方原声，只听翻译。通透：原声和翻译都能听到。结束后自动恢复原来的模式。</div>
    <div class="group-h">朗读速度</div><div class="seg" id="rateSeg">${[[.8,'慢'],[1,'正常'],[1.2,'快']].map(([v,t])=>`<button data-r="${v}" class="${cfg.rate==v?'on':''}">${t}</button>`).join('')}</div>
-   <div class="group-h">收音</div><div class="group">
-    ${sw('earMic','用耳机麦克风（实验）','默认用手机麦克风，更容易听清对方。打开后改用耳机麦克风，音质会变成通话音质','#8E8E93',ICON_MIC)}
-   </div>
    <div class="group-h">记录</div><div class="group"><button class="row danger noicon" id="clr"><span class="lbl">清空翻译记录</span></button></div>
    <div class="foot">翻译需要联网。手机没有某种语言的离线朗读语音时，会自动改用在线语音。</div>`);
   bindToggles($('#shB'));
-  $('#rateSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.rate=+b.dataset.r;saveCfg();$('#rateSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+  $('#rateSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.rate=+b.dataset.r;saveCfg();pushConfig();$('#rateSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
   $('#trnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.trNoise=b.dataset.n;saveCfg();$('#trnSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
   $('#clr').onclick=()=>{hist=[];saveHist();renderFeed();closeSheet();toast('已清空')};
 };
@@ -579,10 +596,10 @@ function pickLang(who){
     return `<button class="row noicon" data-l="${x.c}"><span class="lbl">${esc(x.n)}<small>${esc(x.o)}${has?'':'<span class="tag">在线朗读</span>'}</small></span>${x.c===cur?'<span class="check">✓</span>':''}</button>`}).join('');
   openSheet(who==='them'?'对方说的语言':'我说的语言',`<div class="search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="lq" placeholder="搜索语言"></div><div class="group" id="ll">${draw('')}</div>`);
   const bind=()=>$('#ll').querySelectorAll('[data-l]').forEach(r=>r.onclick=()=>{
-    const v=r.dataset.l,other=who==='them'?'me':'them';if(cfg[other]===v)cfg[other]=cfg[who];cfg[who]=v;saveCfg();renderLangs();renderStartHint();closeSheet();if(S.running)restartListen()});
+    const v=r.dataset.l,other=who==='them'?'me':'them';if(cfg[other]===v)cfg[other]=cfg[who];cfg[who]=v;saveCfg();renderLangs();renderStartHint();closeSheet();pushConfig()});
   bind();$('#lq').oninput=e=>{$('#ll').innerHTML=draw(e.target.value);bind()};
 }
-$('#swap').onclick=()=>{[cfg.them,cfg.me]=[cfg.me,cfg.them];saveCfg();renderLangs();const s=$('#swap');s.classList.toggle('spin');buzz(10);if(S.running)restartListen()};
+$('#swap').onclick=()=>{[cfg.them,cfg.me]=[cfg.me,cfg.them];saveCfg();renderLangs();const s=$('#swap');s.classList.toggle('spin');buzz(10);pushConfig()};
 
 /* ================= translation ================= */
 const nativeWait={};let nativeSeq=0;
@@ -620,15 +637,18 @@ async function translate(text,sl,tl){
   throw last||new Error('fail');
 }
 
-/* ================= live session (hands-free) ================= */
-// Listens non-stop. Each sentence is recognized in both languages; the phone decides who spoke.
-// While someone is still talking the text and its translation appear live; when they stop,
-// the translation is read out (theirs into the earbuds, yours from the phone speaker).
-const S={running:false,muted:false,tag:'',seq:0,errs:[],speakQ:[],speaking:null,draft:null,trBusy:false,trNext:null};
+/* ================= live session ================= */
+// The listening/translating engine runs in the app's background service (LiveService); this page
+// shows what it hears. Manual: 开始实时翻译. Auto (自动翻译): earbuds in = translating, no button.
+const S={running:false,manual:false,auto:false,listening:false,muted:false,earbuds:false,draft:null,prevNoise:null,errs:[]};
 function now(){return Date.now()}
+function pushConfig(){
+  try{A.liveConfig(JSON.stringify({them:cfg.them,me:cfg.me,themAsr:L(cfg.them).asr,meAsr:L(cfg.me).asr,themTts:L(cfg.them).tts,meTts:L(cfg.me).tts,spkThem:cfg.spkThem,spkMe:cfg.spkMe,rate:cfg.rate}))}catch(e){}
+}
 function renderStartHint(){
   const has=dev.devices&&dev.devices.length;
-  $('#startHint').textContent=has?`不用按任何键：对方说${L(cfg.them).n}，你在耳机里听到翻译；你说${L(cfg.me).n}，手机读给对方`:'没检测到耳机：翻译会用手机喇叭读出来';
+  $('#startHint').textContent=S.auto?(has?'自动翻译已开启，正在准备…':'自动翻译已开启：戴上耳机就自动开始，不用按按钮')
+    :has?`对方说${L(cfg.them).n}，你在耳机里听到翻译；你说${L(cfg.me).n}，手机读给对方`:'没检测到耳机：翻译会用手机喇叭读出来';
 }
 function renderDock(){
   const onTr=tab==='tr';
@@ -636,99 +656,72 @@ function renderDock(){
   $('#dock').classList.toggle('on',onTr&&S.running);
   const who=S.draft&&S.draft.who;
   $('#wave').classList.toggle('me',who==='me');
-  $('#liveSt').textContent=!S.running?'':S.muted?'正在给对方朗读…':who==='me'?'你在说':who==='them'?'对方在说':'正在听';
-  $('#talkTxt').textContent='免按键 · 自动识别双方';
+  $('#liveSt').textContent=!S.running?'':S.muted?'正在朗读…':who==='me'?'你在说':who==='them'?'对方在说':'正在听';
+  $('#talkTxt').textContent=S.manual?'免按键 · 自动识别双方':'自动翻译 · 听到外语就翻译';
+  renderStartHint();
+}
+function renderAuto(){
+  document.querySelectorAll('[data-auto]').forEach(i=>i.checked=S.auto);
+  const st=$('#autoSt');if(st)st.textContent=!S.auto?'关闭':S.listening?'正在听':'待命 · 戴上耳机自动开始';
 }
 function setLive(t){$('#livePt').textContent=t||''}
 window.onAsrLevel=db=>{if(S.muted)db=-2;const v=Math.max(0,Math.min(1,(db+2)/11));document.querySelectorAll('#wave i').forEach((b,i)=>{const k=[.55,.85,1,.8,.6][i];b.style.height=(5+v*21*k*(0.75+Math.random()*.5))+'px'})};
 
-function listen(){if(!S.running)return;S.muted=false;S.tag='c'+(++S.seq);A.listen(L(cfg.them).asr,L(cfg.me).asr,S.tag);renderDock()}
-function mute(){S.muted=true;S.tag='';A.stopListen();setLive('');renderDock()}
-function start(){
-  if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');return}
-  S.running=true;S.errs=[];S.draft=null;A.session(true,cfg.duck);
-  // like AirPods: switch the earbuds' noise mode for the conversation, put it back afterwards
-  S.prevNoise=null;
-  if(cfg.trNoise!=='keep'&&buds.status==='ok'&&buds.noise){S.prevNoise=buds.level||buds.noise;if(S.prevNoise!==cfg.trNoise&&buds.noise!==cfg.trNoise)A.budsNoise(cfg.trNoise);else S.prevNoise=null}
-  if(cfg.earMic){const ok=A.earMic(true);if(!ok)toast('没找到耳机麦克风，改用手机麦克风')}
-  buzz(25);listen();setLive('');
-}
-function stop(){
-  S.running=false;S.muted=false;S.tag='';S.speakQ=[];S.speaking=null;S.draft=null;
-  A.stopListen();A.stopSpeak();A.session(false,false);if(cfg.earMic)A.earMic(false);
-  if(S.prevNoise&&buds.status==='ok'){A.budsNoise(S.prevNoise);S.prevNoise=null}
-  setLive('');renderFeed();renderDock();buzz(15);
-}
-function restartListen(){if(S.running&&!S.muted){A.stopListen();setTimeout(listen,150)}}
-
-const ERRNAME={'1':'网络超时','2':'网络错误','3':'麦克风被占用','9':'没有麦克风权限'};
-window.onAsr=(type,text,tag)=>{
-  if(!S.running)return;
-  const m=/^(partial|final)_(them|me)$/.exec(type);
-  if(type==='alt'){S.alt=text;return}
-  if(m&&m[1]==='final'){finalText(m[2],text);return}   // a finished sentence always counts, even if we muted meanwhile
-  if(tag!==S.tag)return;
-  if(type==='begin'){setLive('…');return}
-  if(type==='nothing'){if(S.draft){S.draft=null;renderFeed()}setLive('');renderDock();return}
-  if(m){liveText(m[2],text);return}
-  if(type==='error'){
-    if(text==='9'){stop();toast('请允许使用麦克风');A.askPermissions();return}
-    if(text==='3'){stop();toast('麦克风被别的 App 占用了，关掉它再试');return}
-    const t=now();S.errs=S.errs.filter(x=>t-x<20000);S.errs.push(t);
-    setLive('网络不稳定，继续在听…');
-    if(S.errs.length>=6){stop();toast(`语音识别连不上（${ERRNAME[text]||'代码 '+text}），请检查网络后再试`,5000)}
+window.onLive=ev=>{
+  if(!ev)return;
+  switch(ev.t){
+    case 'state':
+      Object.assign(S,{manual:!!ev.manual,auto:!!ev.auto,listening:!!ev.listening,muted:!!ev.muted,earbuds:!!ev.earbuds});
+      S.running=S.manual||S.listening;
+      if(!S.running){S.draft=null;setLive('')}
+      renderDock();renderAuto();break;
+    case 'level':onAsrLevel(ev.v);break;
+    case 'draft':S.errs=[];S.draft={who:ev.who,src:ev.src,tr:ev.tr};setLive(ev.src);renderDraft();renderDock();break;
+    case 'draft_clear':S.draft=null;setLive('');renderFeed();renderDock();break;
+    case 'entry':{S.errs=[];const e=ev.e,k=hist.findIndex(x=>x.id===e.id);if(k>=0)hist[k]=e;else hist.push(e);
+      if(hist.length>150)hist.splice(0,hist.length-150);renderFeed(true);updateF2F();break}
+    case 'error':
+      if(ev.code==='3'){toast('麦克风被别的 App 占用了，稍后会自动重试');break}
+      S.errs=S.errs.filter(x=>now()-x<20000);S.errs.push(now());setLive('网络不稳定，继续在听…');
+      if(S.errs.length===6)toast('语音识别连不上，请检查网络',4000);
+      break;
   }
 };
 
-/* live text while someone is still talking */
-function liveText(who,text){
-  S.errs=[];
-  if(!S.draft||S.draft.who!==who)S.draft={who,src:'',tr:''};
-  S.draft.src=text;setLive(text);renderDraft();renderDock();liveTranslate();
+function start(){
+  if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');return}
+  pushConfig();
+  if(!A.live('manual_on')){toast('请允许使用麦克风');return}
+  // like AirPods: switch the earbuds' noise mode for the conversation, put it back afterwards
+  S.prevNoise=null;
+  if(cfg.trNoise!=='keep'&&buds.status==='ok'&&buds.noise){S.prevNoise=buds.level||buds.noise;if(S.prevNoise!==cfg.trNoise&&buds.noise!==cfg.trNoise)A.budsNoise(cfg.trNoise);else S.prevNoise=null}
+  buzz(25);
 }
-async function liveTranslate(){
-  const d=S.draft;if(!d)return;
-  if(S.trBusy){S.trNext=true;return}
-  S.trBusy=true;S.trNext=false;
-  const who=d.who,src=d.src,from=who==='them'?cfg.them:cfg.me,to=who==='them'?cfg.me:cfg.them;
-  try{const tr=await translate(src,from,to);if(S.draft&&S.draft.who===who&&S.draft.src.startsWith(src.slice(0,Math.min(4,src.length)))){S.draft.tr=tr;renderDraft()}}catch(e){}
-  S.trBusy=false;if(S.trNext&&S.draft)liveTranslate();
+function stop(){
+  if(S.manual)A.live('manual_off');else setAuto(false);
+  if(S.prevNoise&&buds.status==='ok'){A.budsNoise(S.prevNoise);S.prevNoise=null}
+  buzz(15);
 }
-function finalText(who,text){
-  S.errs=[];
-  const prev=S.draft&&S.draft.who===who?S.draft.tr:'';
-  S.draft=null;setLive('');
-  const alt=S.alt||'';S.alt='';
-  utterance(who,text,prev,alt);
-  // your words are read from the phone speaker: stop listening meanwhile, or we'd translate ourselves
-  if(who==='me'&&cfg.spkMe)mute();
-  else if(who==='them'&&cfg.spkThem&&!A.earbuds())mute();
-  renderDock();
+function setAuto(on){
+  if(on){
+    if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');renderAuto();return}
+    pushConfig();
+    if(!A.live('auto_on')){renderAuto();return}
+    S.auto=true;renderAuto();
+    if(!A.batteryOk())openSheet('保持自动翻译',`<div class="info"><div class="big" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h10v3h2v14H5V7h2zm3 6v4H8l4 5v-4h2z"/></svg></div>
+      <h2>允许在后台运行</h2><p>自动翻译要在后台一直等你戴上耳机。一加手机会自动关掉后台 App，请点下面按钮，选「允许」。</p>
+      <p>开着时通知栏会一直有一条「自动翻译」，点「关闭」就停。只有听到有人说话时才会联网识别。</p></div>
+      <button class="btn wide" id="batGo">允许后台运行</button>`),$('#batGo').onclick=()=>{closeSheet();A.askBattery()};
+    else toast('已开启：戴上耳机就自动翻译',3000);
+  }else{A.live('auto_off');S.auto=false;renderAuto();toast('自动翻译已关闭')}
 }
 
-async function utterance(who,text,draftTr,alt){
-  const from=who==='them'?cfg.them:cfg.me,to=who==='them'?cfg.me:cfg.them;
-  const e={id:'u'+now()+Math.random().toString(36).slice(2,6),who,src:text,alt:alt||'',tr:draftTr||'',from,to,st:'busy',t:now()};
-  hist.push(e);renderFeed(true);
-  try{e.tr=await translate(text,from,to);e.st='ok'}catch(err){e.st=e.tr?'ok':'fail'}
-  saveHist();renderFeed();updateF2F();
-  if(e.st!=='ok'||!S.running){if(S.muted&&!S.speaking)listen();return}
-  if(who==='them'&&cfg.spkThem)enqueue({id:e.id,text:e.tr,lang:L(to).tts,route:'ear'});
-  else if(who==='me'&&cfg.spkMe)enqueue({id:e.id,text:e.tr,lang:L(to).tts,route:'speaker'});
-  else if(S.muted&&!S.speaking)listen();
-}
-function enqueue(item){S.speakQ.push(item);if(!S.speaking)nextSpeak()}
-function nextSpeak(){
-  const it=S.speakQ.shift();S.speaking=it||null;
-  if(!it){if(S.muted&&S.running)setTimeout(()=>{if(S.muted&&!S.speaking)listen()},250);return}
-  if(it.route==='speaker'&&!S.muted)mute();
-  A.speak(it.id+'#'+now(),it.text,it.lang,it.route,cfg.rate);
-}
-window.onSpeak=(how,id)=>{
-  const it=S.speaking;if(!it||!id.startsWith(it.id+'#'))return;S.speaking=null;
-  if(how==='error')toast('朗读失败，可在“朗读语音”里安装语音包',3200);
-  nextSpeak();
-};
+function draftHTML(){const d=S.draft;if(!d)return'';
+  return `<div class="msg draft ${d.who==='me'?'me':''}" id="draft"><div class="meta">${d.who==='me'?'我':'对方'} · 正在说…</div><div class="tr">${d.tr?esc(d.tr):'<div class="typing"><i></i><i></i><i></i></div>'}</div><div class="src">${esc(d.src)}<span class="cursor"></span></div></div>`}
+function renderDraft(){const el=$('#draft');if(el&&S.draft&&el.classList.contains('me')===(S.draft.who==='me')){el.outerHTML=draftHTML();const p=$('#pg-tr');p.scrollTop=p.scrollHeight}else renderFeed(true)}
+function sayEntry(e){A.speak(e.id+'#'+now(),e.tr,L(e.to).tts,e.who==='me'?'speaker':'ear',cfg.rate)}
+window.onSpeak=()=>{};
+
 /* the phone guessed the wrong speaker: switch the sentence to the other side, using what the other
    language's recognizer heard, and translate it again */
 async function flip(id){
@@ -739,10 +732,10 @@ async function flip(id){
   renderFeed();buzz(10);
   try{e.tr=await translate(e.src,e.from,e.to);e.st='ok'}catch(err){e.st='fail'}
   saveHist();renderFeed();updateF2F();
-  if(e.st==='ok')enqueue({id:e.id,text:e.tr,lang:L(e.to).tts,route:who==='me'?'speaker':'ear'});
+  if(e.st==='ok')sayEntry(e);
 }
 function replay(id){const e=hist.find(x=>x.id===id);if(!e||!e.tr)return;
-  enqueue({id:e.id,text:e.tr,lang:L(e.to).tts,route:e.who==='me'?'speaker':'ear'})}
+  sayEntry(e)}
 async function retry(id){const e=hist.find(x=>x.id===id);if(!e)return;e.st='busy';renderFeed();try{e.tr=await translate(e.src,e.from,e.to);e.st='ok'}catch(err){e.st='fail'}saveHist();renderFeed();updateF2F()}
 
 function draftHTML(){const d=S.draft;if(!d)return'';
@@ -775,6 +768,7 @@ function openF2F(){updateF2F();$('#f2f').classList.add('on');if(!S.running)start
 $('#f2fBtn').onclick=openF2F;$('#f2fBtn2').onclick=openF2F;
 $('#f2fClose').onclick=()=>$('#f2f').classList.remove('on');
 
+document.querySelectorAll('[data-auto]').forEach(i=>i.onchange=()=>setAuto(i.checked));
 $('#startBtn').onclick=start;$('#stopBtn').onclick=stop;
 
 window.onAndroidBack=()=>{
@@ -786,7 +780,8 @@ window.onAndroidBack=()=>{
 
 /* ================= init ================= */
 try{dev=JSON.parse(A.devices())}catch(e){}
-renderBuds();renderLangs();renderFeed();renderStartHint();checkAsr();renderDock();
+renderBuds();renderLangs();renderFeed();renderStartHint();checkAsr();renderDock();pushConfig();
+try{onLive(JSON.parse(A.liveState()))}catch(e){}
 if(location.hash==='#tr')setTab('tr');
 </script>
 </body>

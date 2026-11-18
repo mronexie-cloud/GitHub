@@ -42,6 +42,7 @@ final class CloudAsr {
     private volatile String tag = "";
     private Thread thread;
     private volatile int gen;
+    private volatile boolean paused;
 
     private volatile int segId;           // sentence being recorded
     private volatile int doneSeg;         // last sentence whose final result was sent
@@ -66,6 +67,9 @@ final class CloudAsr {
     }
 
     synchronized void stop() { running = false; }
+
+    /** While paused the microphone keeps running but everything heard is thrown away (e.g. while the phone speaks). */
+    void setPaused(boolean p) { paused = p; }
 
     boolean isRunning() { return running; }
 
@@ -107,6 +111,13 @@ final class CloudAsr {
                 got += r;
             }
             if (!running || gen != my) break;
+            if (paused) {
+                if (speaking) { speaking = false; doneSeg = segId; }
+                loudRun = 0;
+                preCount = 0;
+                cb.level(-2);
+                continue;
+            }
             double sum = 0;
             for (short s : frame) sum += (double) s * s;
             double rms = Math.sqrt(sum / FRAME);
