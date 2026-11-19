@@ -49,6 +49,8 @@ final class CloudAsr {
     private volatile boolean paused;
     private MediaProjection projection; // set: listen to what other apps play instead of the microphone
     private int maxSeconds = 10;
+    private int endQuiet = 30;               // 20 ms frames of quiet that end a sentence
+    private int interimEvery = INTERIM_EVERY;
 
     private volatile int segId;           // sentence being recorded
     private volatile int doneSeg;         // last sentence whose final result was sent
@@ -75,7 +77,7 @@ final class CloudAsr {
     synchronized void stop() { running = false; }
 
     /** Listen to the sound other apps are playing (a film) instead of the microphone. Android 10+. */
-    void useCapture(MediaProjection p) { projection = p; maxSeconds = 7; }
+    void useCapture(MediaProjection p) { projection = p; maxSeconds = 7; endQuiet = 18; interimEvery = RATE * 6 / 10; }
 
     /** While paused the microphone keeps running but everything heard is thrown away (e.g. while the phone speaks). */
     void setPaused(boolean p) { paused = p; }
@@ -163,13 +165,13 @@ final class CloudAsr {
                 if (rms < endTh) quietRun++; else { quietRun = 0; voiced++; }
                 // a sentence ends after 600 ms of quiet; long speech is cut at a short pause (or at 10 s)
                 // so the listener hears the translation in pieces, like an interpreter
-                boolean end = quietRun >= 30 || segLen >= maxLen || (segLen > RATE * (maxSeconds - 4) && quietRun >= 12);
+                boolean end = quietRun >= endQuiet || segLen >= maxLen || (segLen > RATE * (maxSeconds - 4) && quietRun >= 12);
                 if (end) {
                     speaking = false;
                     loudRun = 0;
                     if (voiced >= 10) recognize(seg, segLen, segId, true);
                     else doneSeg = segId;
-                } else if (voiced >= 15 && segLen - lastInterimAt >= INTERIM_EVERY && interimBusy.compareAndSet(false, true)) {
+                } else if (voiced >= 15 && segLen - lastInterimAt >= interimEvery && interimBusy.compareAndSet(false, true)) {
                     lastInterimAt = segLen;
                     recognize(seg, segLen, segId, false);
                 }

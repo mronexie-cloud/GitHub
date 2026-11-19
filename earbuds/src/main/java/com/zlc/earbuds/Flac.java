@@ -10,49 +10,60 @@ public final class Flac {
 
     public static byte[] encode(short[] pcm, int n, int rate) {
         ByteArrayOutputStream out = new ByteArrayOutputStream(n * 2 + 1024);
+        byte[] h = header(rate, BLOCK, n);
+        out.write(h, 0, h.length);
+        int frame = 0;
+        for (int off = 0; off < n; off += BLOCK, frame++) {
+            byte[] f = frame(pcm, off, Math.min(BLOCK, n - off), frame, rate);
+            out.write(f, 0, f.length);
+        }
+        return out.toByteArray();
+    }
+
+    /** "fLaC" + STREAMINFO. For a live stream pass total = 0 (unknown length). */
+    public static byte[] header(int rate, int block, long total) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(42);
         out.write('f'); out.write('L'); out.write('a'); out.write('C');
-        // STREAMINFO, last metadata block, 34 bytes
         out.write(0x80); out.write(0); out.write(0); out.write(34);
         Bits b = new Bits();
-        b.put(BLOCK, 16);
-        b.put(BLOCK, 16);
+        b.put(block, 16);
+        b.put(block, 16);
         b.put(0, 24);
         b.put(0, 24);
         b.put(rate, 20);
-        b.put(0, 3);          // channels - 1
-        b.put(15, 5);         // bits per sample - 1
-        b.put(0, 4);          // total samples, high 4 of 36 bits
-        b.put(n, 32);
-        for (int i = 0; i < 16; i++) b.put(0, 8); // MD5 not computed
+        b.put(0, 3);
+        b.put(15, 5);
+        b.put(total >> 32, 4);
+        b.put(total & 0xffffffffL, 32);
+        for (int i = 0; i < 16; i++) b.put(0, 8);
         byte[] si = b.bytes();
         out.write(si, 0, si.length);
-
-        int frame = 0;
-        for (int off = 0; off < n; off += BLOCK, frame++) {
-            int len = Math.min(BLOCK, n - off);
-            ByteArrayOutputStream f = new ByteArrayOutputStream(len * 2 + 16);
-            f.write(0xFF);
-            f.write(0xF8);                       // sync + fixed block size
-            f.write((0x7 << 4) | rateCode(rate)); // block size: 16-bit value at end of header
-            f.write(0x08);                        // mono, 16 bits per sample
-            writeUtf8(f, frame);
-            f.write(((len - 1) >> 8) & 0xFF);
-            f.write((len - 1) & 0xFF);
-            byte[] head = f.toByteArray();
-            f.write(crc8(head, head.length));
-            f.write(0x02);                        // verbatim subframe
-            for (int i = 0; i < len; i++) {
-                short s = pcm[off + i];
-                f.write((s >> 8) & 0xFF);
-                f.write(s & 0xFF);
-            }
-            byte[] fr = f.toByteArray();
-            int crc = crc16(fr, fr.length);
-            out.write(fr, 0, fr.length);
-            out.write((crc >> 8) & 0xFF);
-            out.write(crc & 0xFF);
-        }
         return out.toByteArray();
+    }
+
+    /** One self-contained frame of len samples (len <= 65536). */
+    public static byte[] frame(short[] pcm, int off, int len, int frameNo, int rate) {
+        ByteArrayOutputStream f = new ByteArrayOutputStream(len * 2 + 16);
+        f.write(0xFF);
+        f.write(0xF8);
+        f.write((0x7 << 4) | rateCode(rate));
+        f.write(0x08);
+        writeUtf8(f, frameNo);
+        f.write(((len - 1) >> 8) & 0xFF);
+        f.write((len - 1) & 0xFF);
+        byte[] head = f.toByteArray();
+        f.write(crc8(head, head.length));
+        f.write(0x02);
+        for (int i = 0; i < len; i++) {
+            short s = pcm[off + i];
+            f.write((s >> 8) & 0xFF);
+            f.write(s & 0xFF);
+        }
+        byte[] fr = f.toByteArray();
+        int crc = crc16(fr, fr.length);
+        f.write((crc >> 8) & 0xFF);
+        f.write(crc & 0xFF);
+        return f.toByteArray();
     }
 
     private static int rateCode(int rate) {

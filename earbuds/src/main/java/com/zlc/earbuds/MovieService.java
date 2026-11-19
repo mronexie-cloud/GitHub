@@ -49,7 +49,7 @@ public class MovieService extends Service {
     static final String PREFS = "movie";
     private static final String CH = "movie";
     private static final int NOTE_ID = 80;
-    private static final long STALE_MS = 6000; // a line the voice can't get to within 6 s is only shown
+    private static final long STALE_MS = 4000; // a line the voice can't get to within 4 s is only shown
 
     static volatile Sink sink;
     static volatile MovieService instance;
@@ -60,7 +60,10 @@ public class MovieService extends Service {
     private Voice voice;
     private String from = "en", to = "zh-CN", fromAsr = "en-US", toTts = "zh-CN";
     private boolean subs = true, dub = true, duck = true;
-    private float rate = 1.15f;
+    private float rate = 1.25f;
+    private StreamAsr stream;
+    private int draftSession = -1;   // which stretch of speech the live subtitle belongs to
+    private int draftGen;            // bumps when a line is finished, so late translations of it are dropped
 
     private String draftSrc = "", draftTr = "";
     private boolean draftBusy;
@@ -111,21 +114,34 @@ public class MovieService extends Service {
             @Override public void onStop() { ui.post(MovieService.this::stopSelf); }
         }, ui);
 
+        // live (streaming) recognition first; if Google's streaming service doesn't answer, sentence-by-sentence
+        stream = new StreamAsr(projection, fromAsr, new StreamAsr.Cb() {
+            @Override public void partial(int session, String text) { ui.post(() -> draft(session, text)); }
+            @Override public void fin(int session, String text) { ui.post(() -> finalLine(session, text)); }
+            @Override public void failed() { ui.post(MovieService.this::fallback); }
+        });
+        stream.start();
+        if (subs) showOverlay();
+        emit(state());
+        return START_NOT_STICKY;
+    }
+
+    private void fallback() {
+        if (projection == null || asr != null) return;
+        stream = null;
         asr = new CloudAsr(new CloudAsr.Callback() {
             @Override public void event(String type, String text, String tag) { ui.post(() -> onAsr(type, text)); }
             @Override public void level(float db) { }
         });
         asr.useCapture(projection);
         asr.start(fromAsr, "", "movie");
-        if (subs) showOverlay();
-        emit(state());
-        return START_NOT_STICKY;
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override
     public void onDestroy() {
+        if (stream != null) stream.stop();
         if (asr != null) asr.stop();
         if (projection != null) { try { projection.stop(); } catch (Exception ignored) { } projection = null; }
         if (speaking) voice.stop(false);
@@ -142,7 +158,7 @@ public class MovieService extends Service {
             from = c.optString("from", from); to = c.optString("to", to);
             fromAsr = c.optString("fromAsr", fromAsr); toTts = c.optString("toTts", toTts);
             subs = c.optBoolean("subs", true); dub = c.optBoolean("dub", true); duck = c.optBoolean("duck", true);
-            rate = (float) c.optDouble("rate", 1.15);
+            rate = (float) Math.max(1.25, c.optDouble("rate", 1.25));
         } catch (Exception ignored) { }
         if (subs && !overlayAllowed(this)) subs = false;
     }
@@ -150,33 +166,41 @@ public class MovieService extends Service {
     // ---------------------------------------------------------------- recognition → subtitles / voice
 
     private void onAsr(String type, String text) {
-        if (type.startsWith("partial_")) { draft(text); return; }
-        if (type.startsWith("final_")) { finalLine(text); return; }
+        if (type.startsWith("partial_")) { if (!"…".equals(text)) draft(0, text); return; }
+        if (type.startsWith("final_")) { finalLine(0, text); return; }
         if ("error".equals(type) && "3".equals(text)) emitError("record");
     }
 
-    private void draft(String text) {
+    /** Live subtitle while a line is still being spoken. */
+    private void draft(int session, String text) {
+        if (session != draftSession) { draftSession = session; draftTr = ""; }
         draftSrc = text;
         showSubs(text, draftTr, true);
         if (draftBusy) return;
         draftBusy = true;
         final String src = text;
+        final int gen = draftGen, ses = session;
         new Thread(() -> {
             String tr = null;
             try { tr = Translator.translate(src, from, to); } catch (Exception ignored) { }
             final String r = tr;
             ui.post(() -> {
                 draftBusy = false;
-                if (r != null && !draftSrc.isEmpty()) { draftTr = r; showSubs(draftSrc, draftTr, true); }
-                if (!draftSrc.isEmpty() && !src.equals(draftSrc)) draft(draftSrc);
+                // only if it is still the same line (a late answer for an earlier line is dropped)
+                if (gen != draftGen || ses != draftSession) { if (!draftSrc.isEmpty()) draft(draftSession, draftSrc); return; }
+                if (r != null) { draftTr = r; showSubs(draftSrc, draftTr, true); }
+                if (!src.equals(draftSrc)) draft(draftSession, draftSrc);
             });
         }).start();
     }
 
-    private void finalLine(String text) {
+    private void finalLine(int session, String text) {
+        draftGen++;
         draftSrc = "";
-        final String shown = draftTr;
+        final String shown = session == draftSession ? draftTr : "";
         draftTr = "";
+        final int gen = draftGen;
+        showSubs(text, shown, true);
         new Thread(() -> {
             String tr = null;
             try { tr = Translator.translate(text, from, to); } catch (Exception ignored) { }
@@ -184,7 +208,8 @@ public class MovieService extends Service {
             ui.post(() -> {
                 if (r == null || r.isEmpty()) return;
                 lines++;
-                showSubs(text, r, false);
+                // don't cover a newer line that is already being shown live
+                if (gen == draftGen && draftSrc.isEmpty()) showSubs(text, r, false);
                 emitLine(text, r);
                 if (dub) {
                     speakQ.addLast(new String[]{r, String.valueOf(System.currentTimeMillis())});

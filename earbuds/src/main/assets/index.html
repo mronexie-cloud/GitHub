@@ -851,7 +851,7 @@ function startMovie(){
     openSheet('允许显示字幕',`<div class="info"><div class="big" style="background:var(--blue)">${MOVIE_ICON}</div><h2>允许浮在其他应用上面</h2><p>中文字幕要浮在视频画面上，需要「显示在其他应用上层」权限。打开后返回这里再点开始。</p></div><button class="btn wide" id="ovGo">去开启</button>`);
     $('#ovGo').onclick=()=>{closeSheet();A.openOverlaySettings()};return;
   }
-  const c={from:mcfg.from,to:cfg.me,fromAsr:L(mcfg.from).asr,toTts:L(cfg.me).tts,subs,dub,duck:mcfg.duck,rate:1.15};
+  const c={from:mcfg.from,to:cfg.me,fromAsr:L(mcfg.from).asr,toTts:L(cfg.me).tts,subs,dub,duck:mcfg.duck,rate:1.25};
   const r=A.movieStart(JSON.stringify(c));
   if(r==='old'){toast('需要 Android 10 或以上才能读取视频声音',4000);return}
   if(r==='mic'){toast('请先允许麦克风权限（读取视频声音也需要它）',4000);return}
