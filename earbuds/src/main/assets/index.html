@@ -213,6 +213,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
 .autocard .ic svg{width:20px;height:20px}
 .autocard .lbl{flex:1;font-size:17px}
 .autocard small{display:block;font-size:13px;color:var(--sub);margin-top:2px}
+.fxgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fx{background:var(--card);border-radius:var(--r);padding:14px 13px 13px;text-align:left;display:flex;flex-direction:column;gap:3px;position:relative;border:2px solid transparent;transition:.2s}
+.fx:active{transform:scale(.98)}
+.fx .fi{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;margin-bottom:6px}
+.fx .fi svg{width:22px;height:22px}
+.fx b{font-size:15px;line-height:1.25}
+.fx small{font-size:12px;color:var(--sub);line-height:1.35}
+.fx .ck{position:absolute;right:10px;top:10px;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-style:normal;font-size:13px;font-weight:700;display:none;place-items:center}
+.fx.on{border-color:var(--blue);background:linear-gradient(180deg,rgba(0,122,255,.07),var(--card) 60%)}
+.fx.on .ck{display:grid}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tile{background:var(--card);border-radius:var(--r);padding:16px 14px;text-align:left;display:flex;flex-direction:column;gap:4px}
 .tile:active{transform:scale(.98)}
@@ -241,6 +251,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
     <div id="ancLevels"></div>
   </div>
   <div class="foot" id="ancFoot">直接切换耳机的降噪模式。</div>
+
+  <div class="group-h">音效</div>
+  <div class="fxgrid" id="fxgrid">
+    <button class="fx" data-fx="spatial"><span class="fi" style="background:linear-gradient(135deg,#5E5CE6,#BF5AF2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8"/></svg></span><b>超清AUDIO 全景声</b><small>无损全面升级，沉浸式空间环绕音感</small><i class="ck">✓</i></button>
+    <button class="fx" data-fx="studio"><span class="fi" style="background:linear-gradient(135deg,#FF9F0A,#FF375F)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><b>超清录音室音质</b><small>还原录音室音质，更通透纯净</small><i class="ck">✓</i></button>
+    <button class="fx" data-fx="lossless"><span class="fi" style="background:linear-gradient(135deg,#FFD60A,#FF9F0A)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 12h2.5M5.5 8v8M8.5 5v14M11.5 9v6M14.5 6.5v11M17.5 9.5v5M20.5 11v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><b>超清AUDIO 无损音质</b><small>真无损，原汁原味</small><i class="ck">✓</i></button>
+    <button class="fx" data-fx="smart"><span class="fi" style="background:linear-gradient(135deg,#30D158,#0A84FF)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.1L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9zM18.5 14l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9zM5.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8L3 17.5l1.8-.7z"/></svg></span><b>超清智能音效</b><small id="smartSub">跟随曲风智能适配</small><i class="ck">✓</i></button>
+  </div>
+  <div class="foot" id="fxFoot">对手机播放的音乐、视频生效。再点一次已选的音效可关闭。</div>
 
   <div class="group-h">翻译</div>
   <div class="tiles">
@@ -368,7 +387,7 @@ if(!window.Android){
     _state(){this._ev(Object.assign({t:'state'},this._st))},
     liveState(){return JSON.stringify(Object.assign({t:'state'},this._st))},liveConfig(){},autoEnabled(){return this._st.auto},
     history(){return localStorage.getItem('demo.hist')||'[]'},saveHistory(j){localStorage.setItem('demo.hist',j)},
-    batteryOk(){return false},askBattery(){},
+    batteryOk(){return false},askBattery(){},_fx:{t:'sound',preset:'off',running:false,genre:null,ok:true},soundState(){return JSON.stringify(this._fx)},soundSet(p){const f=this._fx;f.preset=p;f.running=p!=='off'&&p!=='lossless';f.genre=null;if(p==='smart')setTimeout(()=>{f.genre='pop';window.onSound(Object.assign({},f))},2500);setTimeout(()=>window.onSound(Object.assign({},f)),300)},
     live(a){const st=this._st;if(a==='manual_on')st.manual=true;if(a==='manual_off')st.manual=false;if(a==='auto_on')st.auto=true;if(a==='auto_off')st.auto=false;
       const want=st.manual||(st.auto&&st.earbuds);if(want&&!st.listening){st.listening=true;this._run()}if(!want){st.listening=false;clearTimeout(lt)}this._state();return true},
     _run(){const self=this,script=[['them','Hi! Is this seat taken?','你好！这个位子有人坐吗？'],['me','没有人，请坐。','No one, please sit.'],['them','The train to KL Sentral leaves from platform two.','去吉隆坡中央车站的火车从二号站台出发。'],['me','谢谢你！','Thank you!']];
@@ -505,6 +524,25 @@ $('#gameSw').onchange=e=>{if(!A.budsGame(e.target.checked)){e.target.checked=!e.
 $('#dualRow').onclick=()=>A.openBluetooth();
 $('#goLive').onclick=()=>{setTab('tr');if(!S.running)start()};
 $('#goF2F').onclick=()=>{setTab('tr');openF2F()};
+
+// sound effects
+let fx={preset:'off',genre:null};
+const GENRE={vocal:'人声 / 播客',bass:'电子 / 嘻哈',acoustic:'古典 / 原声',pop:'流行'};
+function renderFx(){
+  document.querySelectorAll('[data-fx]').forEach(b=>b.classList.toggle('on',fx.preset===b.dataset.fx));
+  $('#smartSub').textContent=fx.preset==='smart'?(fx.genre?'已适配：'+GENRE[fx.genre]:'正在听，识别曲风中…'):'跟随曲风智能适配';
+  $('#fxFoot').textContent=fx.preset==='lossless'?'无损：关闭所有音效处理，声音原样输出。'
+    :fx.preset!=='off'&&fx.running&&!fx.ok?'这台手机不允许给全部声音加音效，只对会发出音效信号的播放器（如 Spotify、YouTube Music）生效。'
+    :'对手机播放的音乐、视频生效。再点一次已选的音效可关闭。';
+}
+window.onSound=o=>{if(o&&o.t==='sound'){fx=o;renderFx()}};
+try{fx=JSON.parse(A.soundState())}catch(e){}
+document.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{
+  const p=fx.preset===b.dataset.fx?'off':b.dataset.fx;
+  fx.preset=p;fx.genre=null;renderFx();buzz(12);A.soundSet(p);
+  if(p!=='off')toast({spatial:'已开启全景声',studio:'已开启录音室音质',lossless:'已切换到无损：关闭所有音效处理',smart:'已开启智能音效，播放音乐后自动识别曲风'}[p],2600);
+});
+renderFx();
 
 // volume
 const volEl=$('#vol');

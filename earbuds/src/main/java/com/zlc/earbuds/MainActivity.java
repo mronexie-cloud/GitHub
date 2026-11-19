@@ -84,6 +84,11 @@ public class MainActivity extends Activity {
         web.loadUrl("file:///android_asset/index.html");
 
         LiveService.sink = json -> js("window.onLive&&window.onLive(" + json + ")");
+        SoundService.sink = json -> js("window.onSound&&window.onSound(" + json + ")");
+        // keep the chosen sound effect on
+        if (SoundService.needsService(SoundService.saved(this)) && SoundService.instance == null) {
+            try { SoundService.set(this, SoundService.saved(this)); } catch (Exception ignored) { }
+        }
         buds = new OppoBuds(json -> js("window.onBuds&&window.onBuds(" + json + ")"));
 
         askPermissions();
@@ -300,6 +305,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         LiveService.sink = null;
+        SoundService.sink = null;
         ui.removeCallbacks(budsPoll);
         if (buds != null) buds.close();
         if (receiver != null) { try { unregisterReceiver(receiver); } catch (Exception ignored) { } }
@@ -325,6 +331,15 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void budsRefresh() { new Thread(buds::refresh).start(); }
         @JavascriptInterface public void budsReconnect() {
             ui.post(() -> { budsFailedAddr = null; buds.close(); pushDevices(); });
+        }
+
+        // sound effects (runs in SoundService): off, spatial, studio, lossless, smart
+        @JavascriptInterface public String soundState() { return SoundService.state(MainActivity.this); }
+        @JavascriptInterface public void soundSet(String preset) {
+            ui.post(() -> {
+                try { SoundService.set(MainActivity.this, preset); } catch (Exception ignored) { }
+                ui.postDelayed(() -> js("window.onSound&&window.onSound(" + SoundService.state(MainActivity.this) + ")"), 400);
+            });
         }
 
         // live translation (runs in LiveService)
