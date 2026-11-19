@@ -275,6 +275,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
     </label>
   </div>
 
+  <div class="group" style="margin-top:10px">
+    <button class="row" id="movieRow">
+      <span class="ic" style="background:linear-gradient(135deg,#FF375F,#FF9F0A)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm6 3.5v7l6-3.5z"/></svg></span>
+      <span class="lbl">视频同传<small id="movieSub2">看美剧、电影时，耳机里同步听中文、屏幕上出中文字幕</small></span><span class="chev">›</span>
+    </button>
+  </div>
+
   <div class="group-h">更多功能</div>
   <div class="group">
     <label class="row static" id="gameRow" style="display:none">
@@ -331,6 +338,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
     <span class="lbl"><b>自动翻译</b><small>不用打开，戴上耳机就自动开始 · <span id="autoSt">关闭</span></small></span>
     <span class="sw"><input type="checkbox" data-auto><i></i></span>
   </label>
+  <button class="autocard" id="movieCard" style="width:100%;text-align:left;margin-top:10px">
+    <span class="ic" style="background:linear-gradient(135deg,#FF375F,#FF9F0A)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm6 3.5v7l6-3.5z"/></svg></span>
+    <span class="lbl"><b>视频同传</b><small id="movieSub">手机看美剧、电影，耳机里同步听中文</small></span>
+    <span class="chev" style="color:#C4C4C7;font-size:20px">›</span>
+  </button>
   <div class="feed" id="feed"></div>
 </section>
 
@@ -387,7 +399,7 @@ if(!window.Android){
     _state(){this._ev(Object.assign({t:'state'},this._st))},
     liveState(){return JSON.stringify(Object.assign({t:'state'},this._st))},liveConfig(){},autoEnabled(){return this._st.auto},
     history(){return localStorage.getItem('demo.hist')||'[]'},saveHistory(j){localStorage.setItem('demo.hist',j)},
-    batteryOk(){return false},askBattery(){},_fx:{t:'sound',preset:'off',running:false,genre:null,ok:true},soundState(){return JSON.stringify(this._fx)},soundSet(p){const f=this._fx;f.preset=p;f.running=p!=='off'&&p!=='lossless';f.genre=null;if(p==='smart')setTimeout(()=>{f.genre='pop';window.onSound(Object.assign({},f))},2500);setTimeout(()=>window.onSound(Object.assign({},f)),300)},
+    batteryOk(){return false},askBattery(){},movieState(){return JSON.stringify({t:'movie',on:false,lines:0})},overlayOk(){return true},openOverlaySettings(){},movieStart(){setTimeout(()=>{window.onMovie({t:'movie',on:true,lines:0});window.onMovie({t:'movie_line'})},500);return 'ok'},movieStop(){},_fx:{t:'sound',preset:'off',running:false,genre:null,ok:true},soundState(){return JSON.stringify(this._fx)},soundSet(p){const f=this._fx;f.preset=p;f.running=p!=='off'&&p!=='lossless';f.genre=null;if(p==='smart')setTimeout(()=>{f.genre='pop';window.onSound(Object.assign({},f))},2500);setTimeout(()=>window.onSound(Object.assign({},f)),300)},
     live(a){const st=this._st;if(a==='manual_on')st.manual=true;if(a==='manual_off')st.manual=false;if(a==='auto_on')st.auto=true;if(a==='auto_off')st.auto=false;
       const want=st.manual||(st.auto&&st.earbuds);if(want&&!st.listening){st.listening=true;this._run()}if(!want){st.listening=false;clearTimeout(lt)}this._state();return true},
     _run(){const self=this,script=[['them','Hi! Is this seat taken?','你好！这个位子有人坐吗？'],['me','没有人，请坐。','No one, please sit.'],['them','The train to KL Sentral leaves from platform two.','去吉隆坡中央车站的火车从二号站台出发。'],['me','谢谢你！','Thank you!']];
@@ -463,6 +475,7 @@ const BUDS_SVG=`<svg class="buds" viewBox="0 0 230 170">
  <g transform="translate(184 18) scale(-1 1) rotate(6 22 26)"><ellipse cx="22" cy="26" rx="26" ry="24" fill="url(#g1)"/><ellipse cx="13" cy="24" rx="9" ry="8" fill="#C9CDD6"/><circle cx="12" cy="24" r="4" fill="#9AA0AC"/><rect x="28" y="30" width="17" height="98" rx="8.5" fill="url(#g2)"/><rect x="31" y="112" width="11" height="12" rx="5" fill="#D3D6DD"/></g>
 </svg>`;
 let buds={status:'idle'};
+const MOVIE_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm6 3.5v7l6-3.5z"/></svg>';
 const BOLT='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>';
 function battItem(label,v,ch){
   const col=v<0?'#C7C7CC':v<=20?'var(--red)':v<=40?'var(--orange)':'var(--green)';
@@ -792,6 +805,60 @@ function renderFeed(scroll){
   f.querySelectorAll('[data-flip]').forEach(b=>b.onclick=()=>flip(b.dataset.flip));
   if(scroll||atBottom)requestAnimationFrame(()=>p.scrollTop=p.scrollHeight);
 }
+
+/* ================= 视频同传 ================= */
+const mcfg=Object.assign({from:'en',out:'both',duck:true},store.get('eb.movie',{}));
+let movie={on:false,lines:0};
+function renderMovie(){
+  const t=movie.on?`进行中 · 已翻译 ${movie.lines} 句 · 点此停止`:'手机看美剧、电影，耳机里同步听中文';
+  $('#movieSub').textContent=t;$('#movieSub2').textContent=movie.on?t:'看美剧、电影时，耳机里同步听中文、屏幕上出中文字幕';
+}
+window.onMovie=o=>{
+  if(!o)return;
+  if(o.t==='movie'){movie=o;renderMovie();return}
+  if(o.t==='movie_line'){movie.lines++;renderMovie();return}
+  if(o.t==='movie_error'){
+    toast({denied:'没有允许录制，视频同传没开始',capture:'无法获取视频声音，请重试',record:'这个视频 App 不允许读取声音（如 Netflix），换个 App 试试'}[o.what]||'视频同传出错了',4200);
+  }
+};
+try{movie=JSON.parse(A.movieState())}catch(e){}
+function openMovie(){
+  if(movie.on){A.movieStop();movie.on=false;renderMovie();toast('视频同传已停止');return}
+  const draw=()=>{
+    const fl=L(mcfg.from);
+    openSheet('视频同传',`<div class="info" style="padding-top:0"><div class="big" style="background:linear-gradient(135deg,#FF375F,#FF9F0A)">${MOVIE_ICON}</div>
+     <h2>边看视频边翻译</h2><p>用这台手机看视频时，App 直接读取视频的声音（不经过麦克风），把对白翻译成${esc(L(cfg.me).n)}。</p></div>
+     <div class="group"><button class="row noicon" id="mvFrom"><span class="lbl">视频里说的语言</span><span class="val">${esc(fl.n)}</span><span class="chev">›</span></button>
+     <div class="row static noicon"><span class="lbl">翻译成</span><span class="val">${esc(L(cfg.me).n)}</span></div></div>
+     <div class="group-h">怎么听</div><div class="seg" id="mvOut">${[['both','字幕＋耳机配音'],['subs','只要字幕'],['dub','只要配音']].map(([v,t])=>`<button data-o="${v}" class="${mcfg.out===v?'on':''}">${t}</button>`).join('')}</div>
+     <div class="group" style="margin-top:12px"><label class="row static noicon"><span class="lbl">配音时压低原声<small>中文配音的时候把电影声音调小</small></span><span class="sw"><input type="checkbox" id="mvDuck" ${mcfg.duck?'checked':''}><i></i></span></label></div>
+     <ol class="steps" style="margin-top:16px"><li>点「开始」，弹出录屏提示时选<b>「整个屏幕」</b>再点<b>「开始」</b>（只读取声音，不录画面）</li><li>打开 YouTube、浏览器等看视频，中文字幕会浮在画面上，可以上下拖动</li><li>点字幕右上角 ✕ 或通知栏「关闭」就停</li></ol>
+     <div class="foot" style="margin:0 4px 14px">Netflix 等有版权保护的 App 不允许读取声音，用不了。需要联网。</div>
+     <button class="btn wide" id="mvGo">开始</button>`);
+    $('#mvFrom').onclick=()=>{
+      openSheet('视频里说的语言',`<div class="group">${LANGS.filter(x=>x.c!==cfg.me).map(x=>`<button class="row noicon" data-l="${x.c}"><span class="lbl">${esc(x.n)}<small>${esc(x.o)}</small></span>${x.c===mcfg.from?'<span class="check">✓</span>':''}</button>`).join('')}</div>`);
+      $('#shB').querySelectorAll('[data-l]').forEach(r=>r.onclick=()=>{mcfg.from=r.dataset.l;store.set('eb.movie',mcfg);draw()});
+    };
+    $('#mvOut').querySelectorAll('button').forEach(b=>b.onclick=()=>{mcfg.out=b.dataset.o;store.set('eb.movie',mcfg);$('#mvOut').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+    $('#mvDuck').onchange=e=>{mcfg.duck=e.target.checked;store.set('eb.movie',mcfg)};
+    $('#mvGo').onclick=startMovie;
+  };
+  draw();
+}
+function startMovie(){
+  const subs=mcfg.out!=='dub',dub=mcfg.out!=='subs';
+  if(subs&&!A.overlayOk()){
+    openSheet('允许显示字幕',`<div class="info"><div class="big" style="background:var(--blue)">${MOVIE_ICON}</div><h2>允许浮在其他应用上面</h2><p>中文字幕要浮在视频画面上，需要「显示在其他应用上层」权限。打开后返回这里再点开始。</p></div><button class="btn wide" id="ovGo">去开启</button>`);
+    $('#ovGo').onclick=()=>{closeSheet();A.openOverlaySettings()};return;
+  }
+  const c={from:mcfg.from,to:cfg.me,fromAsr:L(mcfg.from).asr,toTts:L(cfg.me).tts,subs,dub,duck:mcfg.duck,rate:1.15};
+  const r=A.movieStart(JSON.stringify(c));
+  if(r==='old'){toast('需要 Android 10 或以上才能读取视频声音',4000);return}
+  if(r==='mic'){toast('请先允许麦克风权限（读取视频声音也需要它）',4000);return}
+  closeSheet();
+}
+$('#movieCard').onclick=openMovie;$('#movieRow').onclick=openMovie;
+renderMovie();
 
 /* ================= face to face ================= */
 function updateF2F(){

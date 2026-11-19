@@ -2,7 +2,11 @@ package com.zlc.earbuds;
 
 import android.media.AudioFormat;
 import android.media.AudioRecord;
+import android.media.AudioPlaybackCaptureConfiguration;
 import android.media.MediaRecorder;
+import android.media.projection.MediaProjection;
+import android.os.Build;
+import android.os.Process;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -43,6 +47,8 @@ final class CloudAsr {
     private Thread thread;
     private volatile int gen;
     private volatile boolean paused;
+    private MediaProjection projection; // set: listen to what other apps play instead of the microphone
+    private int maxSeconds = 10;
 
     private volatile int segId;           // sentence being recorded
     private volatile int doneSeg;         // last sentence whose final result was sent
@@ -68,6 +74,9 @@ final class CloudAsr {
 
     synchronized void stop() { running = false; }
 
+    /** Listen to the sound other apps are playing (a film) instead of the microphone. Android 10+. */
+    void useCapture(MediaProjection p) { projection = p; maxSeconds = 7; }
+
     /** While paused the microphone keeps running but everything heard is thrown away (e.g. while the phone speaks). */
     void setPaused(boolean p) { paused = p; }
 
@@ -77,9 +86,10 @@ final class CloudAsr {
         int min = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         AudioRecord rec;
         try {
-            rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO,
+            if (projection != null && Build.VERSION.SDK_INT >= 29) rec = captureRecord(min);
+            else rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO,
                     AudioFormat.ENCODING_PCM_16BIT, Math.max(min, RATE));
-            if (rec.getState() != AudioRecord.STATE_INITIALIZED) {
+            if (rec.getState() != AudioRecord.STATE_INITIALIZED && projection == null) {
                 rec.release();
                 rec = new AudioRecord(MediaRecorder.AudioSource.MIC, RATE, AudioFormat.CHANNEL_IN_MONO,
                         AudioFormat.ENCODING_PCM_16BIT, Math.max(min, RATE));
@@ -93,7 +103,7 @@ final class CloudAsr {
         cb.event("ready", "", tag);
 
         short[] frame = new short[FRAME];
-        int maxLen = RATE * 10;
+        int maxLen = RATE * maxSeconds;
         short[] seg = new short[maxLen + RATE];
         int preFrames = 15; // 300 ms kept from before speech starts
         short[] pre = new short[FRAME * preFrames];
@@ -153,7 +163,7 @@ final class CloudAsr {
                 if (rms < endTh) quietRun++; else { quietRun = 0; voiced++; }
                 // a sentence ends after 600 ms of quiet; long speech is cut at a short pause (or at 10 s)
                 // so the listener hears the translation in pieces, like an interpreter
-                boolean end = quietRun >= 30 || segLen >= maxLen || (segLen > RATE * 6 && quietRun >= 12);
+                boolean end = quietRun >= 30 || segLen >= maxLen || (segLen > RATE * (maxSeconds - 4) && quietRun >= 12);
                 if (end) {
                     speaking = false;
                     loudRun = 0;
@@ -167,6 +177,22 @@ final class CloudAsr {
         }
         try { rec.stop(); } catch (Throwable ignored) { }
         rec.release();
+    }
+
+    @android.annotation.TargetApi(29)
+    private AudioRecord captureRecord(int min) {
+        AudioPlaybackCaptureConfiguration cfg = new AudioPlaybackCaptureConfiguration.Builder(projection)
+                .addMatchingUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .addMatchingUsage(android.media.AudioAttributes.USAGE_GAME)
+                .addMatchingUsage(android.media.AudioAttributes.USAGE_UNKNOWN)
+                .excludeUid(Process.myUid()) // not our own Chinese voice
+                .build();
+        return new AudioRecord.Builder()
+                .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(RATE).setChannelMask(AudioFormat.CHANNEL_IN_MONO).build())
+                .setBufferSizeInBytes(Math.max(min, RATE * 2))
+                .setAudioPlaybackCaptureConfig(cfg)
+                .build();
     }
 
     private static final class Result {
@@ -185,7 +211,11 @@ final class CloudAsr {
                 byte[] flac = Flac.encode(copy, len, RATE);
                 String side;
                 Result r;
-                if (!isFinal && known != null) {
+                if (lm == null || lm.isEmpty()) {
+                    // one language only (a film): no need to work out who is talking
+                    r = request(flac, lt);
+                    side = "them";
+                } else if (!isFinal && known != null) {
                     r = request(flac, "me".equals(known) ? lm : lt);
                     side = known;
                 } else {

@@ -89,10 +89,14 @@ final class Voice {
 
     /** Speaks text; done is called once with "done", "error" or "stopped". Call on the main thread. */
     void speak(String id, String text, String lang, String route, float rate, Done done) {
+        speak(id, text, lang, route, rate, true, done);
+    }
+
+    void speak(String id, String text, String lang, String route, float rate, boolean lowerOthers, Done done) {
         stop(true);
         speakingId = id;
         doneCb = done;
-        duck(true);
+        if (lowerOthers) duck(true);
         boolean speaker = "speaker".equals(route) && routeToSpeaker();
         Locale loc = Locale.forLanguageTag(lang);
         if (has(lang)) {

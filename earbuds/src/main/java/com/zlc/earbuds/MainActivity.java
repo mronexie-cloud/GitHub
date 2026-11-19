@@ -44,7 +44,7 @@ import java.util.Map;
  * working in the background and can start by itself when the earbuds are put in.
  */
 public class MainActivity extends Activity {
-    private static final int PERMS = 7;
+    private static final int PERMS = 7, CAPTURE = 9;
 
     private WebView web;
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -85,6 +85,7 @@ public class MainActivity extends Activity {
 
         LiveService.sink = json -> js("window.onLive&&window.onLive(" + json + ")");
         SoundService.sink = json -> js("window.onSound&&window.onSound(" + json + ")");
+        MovieService.sink = json -> js("window.onMovie&&window.onMovie(" + json + ")");
         // keep the chosen sound effect on
         if (SoundService.needsService(SoundService.saved(this)) && SoundService.instance == null) {
             try { SoundService.set(this, SoundService.saved(this)); } catch (Exception ignored) { }
@@ -294,6 +295,25 @@ public class MainActivity extends Activity {
         js("window.onLive&&window.onLive(" + LiveService.state() + ");window.onHistory&&window.onHistory()");
     }
 
+    /** The user answered the screen-recording prompt for 视频同传. */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != CAPTURE) return;
+        if (resultCode != RESULT_OK || data == null) {
+            js("window.onMovie&&window.onMovie({t:'movie_error',what:'denied'})");
+            return;
+        }
+        Intent i = new Intent(this, MovieService.class)
+                .putExtra(MovieService.EXTRA_CODE, resultCode)
+                .putExtra(MovieService.EXTRA_DATA, data);
+        try {
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+        } catch (Exception e) {
+            js("window.onMovie&&window.onMovie({t:'movie_error',what:'capture'})");
+        }
+    }
+
     @Override
     public void onBackPressed() {
         web.evaluateJavascript("window.onAndroidBack ? window.onAndroidBack() : false", v -> {
@@ -306,6 +326,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         LiveService.sink = null;
         SoundService.sink = null;
+        MovieService.sink = null;
         ui.removeCallbacks(budsPoll);
         if (buds != null) buds.close();
         if (receiver != null) { try { unregisterReceiver(receiver); } catch (Exception ignored) { } }
@@ -340,6 +361,34 @@ public class MainActivity extends Activity {
                 try { SoundService.set(MainActivity.this, preset); } catch (Exception ignored) { }
                 ui.postDelayed(() -> js("window.onSound&&window.onSound(" + SoundService.state(MainActivity.this) + ")"), 400);
             });
+        }
+
+        // 视频同传 (runs in MovieService)
+        @JavascriptInterface public String movieState() { return MovieService.state(); }
+        @JavascriptInterface public boolean overlayOk() { return MovieService.overlayAllowed(MainActivity.this); }
+        @JavascriptInterface public void openOverlaySettings() {
+            ui.post(() -> {
+                try { startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); }
+                catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) { } }
+            });
+        }
+        /** Returns "ok" (prompt shown), "old" (Android below 10), "mic" (no microphone permission). */
+        @JavascriptInterface public String movieStart(String cfgJson) {
+            getSharedPreferences(MovieService.PREFS, MODE_PRIVATE).edit().putString("cfg", cfgJson).apply();
+            if (Build.VERSION.SDK_INT < 29) return "old";
+            if (!micAllowed()) { ui.post(MainActivity.this::askPermissions); return "mic"; }
+            ui.post(() -> {
+                android.media.projection.MediaProjectionManager mpm =
+                        (android.media.projection.MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+                Intent ask = Build.VERSION.SDK_INT >= 34
+                        ? mpm.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
+                        : mpm.createScreenCaptureIntent();
+                try { startActivityForResult(ask, CAPTURE); } catch (Exception ignored) { }
+            });
+            return "ok";
+        }
+        @JavascriptInterface public void movieStop() {
+            ui.post(() -> { try { startService(new Intent(MainActivity.this, MovieService.class).setAction(MovieService.ACT_STOP)); } catch (Exception ignored) { } });
         }
 
         // live translation (runs in LiveService)
