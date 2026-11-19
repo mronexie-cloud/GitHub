@@ -255,6 +255,12 @@ final class CloudAsr {
         }, "cloud-asr-send").start();
     }
 
+    /** One-off recognition of a short recording (FLAC). Returns null when the service couldn't be reached. */
+    static String recognizeOnce(byte[] flac, String lang) {
+        Result r = request(flac, lang);
+        return r.failed && r.text.isEmpty() ? null : r.text;
+    }
+
     private static Result request(byte[] flac, String lang) {
         Result res = new Result();
         HttpURLConnection c = null;

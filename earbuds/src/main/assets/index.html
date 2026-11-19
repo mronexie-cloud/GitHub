@@ -289,6 +289,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;heigh
       <span class="lbl">游戏模式<small>降低声音延迟，打游戏声画同步</small></span>
       <span class="sw"><input type="checkbox" id="gameSw"><i></i></span>
     </label>
+    <button class="row" id="voiceRow">
+      <span class="ic" style="background:linear-gradient(135deg,#0A84FF,#BF5AF2)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <span class="lbl">语音控制<span class="badge">新</span><small>长按耳机说「下一首」「暂停」「降噪」…</small></span><span class="chev">›</span>
+    </button>
     <button class="row" id="findBtn">
       <span class="ic" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7zm0 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>
       <span class="lbl">查找耳机<small id="findSub">让耳机发出提示音</small></span><span class="chev">›</span>
@@ -399,7 +403,7 @@ if(!window.Android){
     _state(){this._ev(Object.assign({t:'state'},this._st))},
     liveState(){return JSON.stringify(Object.assign({t:'state'},this._st))},liveConfig(){},autoEnabled(){return this._st.auto},
     history(){return localStorage.getItem('demo.hist')||'[]'},saveHistory(j){localStorage.setItem('demo.hist',j)},
-    batteryOk(){return false},askBattery(){},movieState(){return JSON.stringify({t:'movie',on:false,lines:0})},overlayOk(){return true},openOverlaySettings(){},movieStart(){setTimeout(()=>{window.onMovie({t:'movie',on:true,lines:0});window.onMovie({t:'movie_line'})},500);return 'ok'},movieStop(){},_fx:{t:'sound',preset:'off',running:false,genre:null,ok:true},soundState(){return JSON.stringify(this._fx)},soundSet(p){const f=this._fx;f.preset=p;f.running=p!=='off'&&p!=='lossless';f.genre=null;if(p==='smart')setTimeout(()=>{f.genre='pop';window.onSound(Object.assign({},f))},2500);setTimeout(()=>window.onSound(Object.assign({},f)),300)},
+    batteryOk(){return false},askBattery(){},voiceTry(){},openDefaultApps(){},movieState(){return JSON.stringify({t:'movie',on:false,lines:0})},overlayOk(){return true},openOverlaySettings(){},movieStart(){setTimeout(()=>{window.onMovie({t:'movie',on:true,lines:0});window.onMovie({t:'movie_line'})},500);return 'ok'},movieStop(){},_fx:{t:'sound',preset:'off',running:false,genre:null,ok:true},soundState(){return JSON.stringify(this._fx)},soundSet(p){const f=this._fx;f.preset=p;f.running=p!=='off'&&p!=='lossless';f.genre=null;if(p==='smart')setTimeout(()=>{f.genre='pop';window.onSound(Object.assign({},f))},2500);setTimeout(()=>window.onSound(Object.assign({},f)),300)},
     live(a){const st=this._st;if(a==='manual_on')st.manual=true;if(a==='manual_off')st.manual=false;if(a==='auto_on')st.auto=true;if(a==='auto_off')st.auto=false;
       const want=st.manual||(st.auto&&st.earbuds);if(want&&!st.listening){st.listening=true;this._run()}if(!want){st.listening=false;clearTimeout(lt)}this._state();return true},
     _run(){const self=this,script=[['them','Hi! Is this seat taken?','你好！这个位子有人坐吗？'],['me','没有人，请坐。','No one, please sit.'],['them','The train to KL Sentral leaves from platform two.','去吉隆坡中央车站的火车从二号站台出发。'],['me','谢谢你！','Thank you!']];
@@ -535,6 +539,19 @@ function setNoise(mode){
 document.querySelectorAll('[data-anc]').forEach(b=>b.onclick=()=>setNoise(b.dataset.anc));
 $('#gameSw').onchange=e=>{if(!A.budsGame(e.target.checked)){e.target.checked=!e.target.checked;toast('切换失败')}};
 $('#dualRow').onclick=()=>A.openBluetooth();
+$('#voiceRow').onclick=()=>{
+  const cmds=[['播放','下一首 · 上一首 · 暂停 · 继续播放'],['音量','大声点 · 小声点'],['耳机','打开降噪 · 通透模式 · 关闭降噪 · 还剩多少电'],['翻译','开始翻译 · 停止翻译'],['音效','全景声 · 录音室 · 智能音效 · 关闭音效'],['其他','现在几点了']];
+  openSheet('语音控制',`<div class="info" style="padding-top:0"><div class="big" style="background:linear-gradient(135deg,#0A84FF,#BF5AF2)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+   <h2>长按耳机，说出指令</h2><p>像 AirPods 的 Siri：长按耳机，听到「叮」后对着耳机麦克风说话，说完音乐马上接着放。</p></div>
+   <div class="group">${cmds.map(([k,v])=>`<div class="row static noicon"><span class="lbl" style="flex:none;width:44px;color:var(--sub);font-size:15px">${k}</span><span class="lbl" style="font-size:15px">${v}</span></div>`).join('')}</div>
+   <div class="group-h">第一次设置</div>
+   <ol class="steps"><li>打开系统耳机页 →「耳机操控」，把左耳或右耳的<b>长按</b>设成<b>「语音助手」</b></li><li>长按一次耳机，手机问用哪个应用时，选<b>「耳机语音控制」</b>，再点<b>「始终」</b></li><li>以后长按耳机就能用了。如果打开的是别的助手，在「默认应用 → 数字助理」里改成耳机翻译</li></ol>
+   <button class="btn wide" id="vcTry">试一试</button><div style="height:10px"></div>
+   <button class="btn gray wide" id="vcSet">打开系统耳机页</button><div style="height:10px"></div>
+   <button class="btn gray wide" id="vcDef">默认应用设置</button>
+   <div class="foot" style="margin:12px 4px 0">耳机麦克风只有在通话模式下能用，所以听指令的那 2～3 秒音乐会暂停，说完就恢复。识别需要联网。</div>`);
+  $('#vcTry').onclick=()=>{closeSheet();A.voiceTry()};$('#vcSet').onclick=()=>{closeSheet();A.openBluetooth()};$('#vcDef').onclick=()=>{closeSheet();A.openDefaultApps()};
+};
 $('#goLive').onclick=()=>{setTab('tr');if(!S.running)start()};
 $('#goF2F').onclick=()=>{setTab('tr');openF2F()};
 

@@ -45,6 +45,30 @@
             </intent-filter>
         </activity>
 
+        <!-- 语音控制: opened by the earbud's "voice assistant" long-press (Bluetooth voice command) -->
+        <activity
+            android:name=".VoiceCommandActivity"
+            android:exported="true"
+            android:label="耳机语音控制"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:taskAffinity="com.zlc.earbuds.voice"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.speech.action.VOICE_SEARCH_HANDS_FREE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".LiveService"
             android:exported="false"

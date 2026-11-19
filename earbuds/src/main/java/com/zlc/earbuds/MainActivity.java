@@ -90,7 +90,9 @@ public class MainActivity extends Activity {
         if (SoundService.needsService(SoundService.saved(this)) && SoundService.instance == null) {
             try { SoundService.set(this, SoundService.saved(this)); } catch (Exception ignored) { }
         }
-        buds = new OppoBuds(json -> js("window.onBuds&&window.onBuds(" + json + ")"));
+        OppoBuds.Listener bl = json -> js("window.onBuds&&window.onBuds(" + json + ")");
+        if (OppoBuds.shared != null) { buds = OppoBuds.shared; buds.setListener(bl); }
+        else { buds = new OppoBuds(bl); OppoBuds.shared = buds; }
 
         askPermissions();
         setupBluetooth();
@@ -328,7 +330,7 @@ public class MainActivity extends Activity {
         SoundService.sink = null;
         MovieService.sink = null;
         ui.removeCallbacks(budsPoll);
-        if (buds != null) buds.close();
+        if (buds != null) { buds.close(); if (OppoBuds.shared == buds) OppoBuds.shared = null; }
         if (receiver != null) { try { unregisterReceiver(receiver); } catch (Exception ignored) { } }
         if (adapter != null) {
             if (a2dp != null) adapter.closeProfileProxy(BluetoothProfile.A2DP, a2dp);
@@ -389,6 +391,17 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void movieStop() {
             ui.post(() -> { try { startService(new Intent(MainActivity.this, MovieService.class).setAction(MovieService.ACT_STOP)); } catch (Exception ignored) { } });
+        }
+
+        // 语音控制
+        @JavascriptInterface public void voiceTry() {
+            ui.post(() -> { try { startActivity(new Intent(MainActivity.this, VoiceCommandActivity.class)); } catch (Exception ignored) { } });
+        }
+        @JavascriptInterface public void openDefaultApps() {
+            ui.post(() -> {
+                try { startActivity(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)); }
+                catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)); } catch (Exception ignored) { } }
+            });
         }
 
         // live translation (runs in LiveService)

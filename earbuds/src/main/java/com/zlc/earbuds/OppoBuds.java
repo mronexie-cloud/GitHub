@@ -74,7 +74,10 @@ final class OppoBuds {
         NAMES.put("06EC10", "OPPO Enco X4");
     }
 
-    private final Listener listener;
+    /** The app's one connection to the earbuds, shared by the earbud page and voice control. */
+    static volatile OppoBuds shared;
+
+    private volatile Listener listener;
     private volatile BluetoothSocket socket;
     private volatile OutputStream out;
     private volatile String address;
@@ -92,6 +95,8 @@ final class OppoBuds {
     private volatile boolean finding;
 
     OppoBuds(Listener l) { this.listener = l; }
+
+    void setListener(Listener l) { listener = l; }
 
     String address() { return address; }
 
