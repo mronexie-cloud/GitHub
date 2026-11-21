@@ -14,6 +14,7 @@
 | 环球收款（跨境收款演示版） | `crosspay/` | [crosspay.apk](https://github.com/mronexie-cloud/GitHub/releases/download/crosspay/crosspay.apk) |
 | AI成片（免费生成知识短视频） | `video/` | [video.apk](https://github.com/mronexie-cloud/GitHub/releases/download/video/video.apk) |
 | 单词勇者（打怪背英语单词） | `english/` | [english.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/english.apk) |
+| 全屏翻译（屏幕实时翻译） | `translator/` | [translator.apk](https://github.com/mronexie-cloud/GitHub/releases/download/translator/translator.apk) |
 
 **苹果手机版：** 用 Safari 打开 https://mronexie-cloud.github.io/GitHub/ ，选游戏后通过"分享 → 添加到主屏幕"安装。苹果版文件在 `ios/` 目录，和安卓版互不影响。
 
