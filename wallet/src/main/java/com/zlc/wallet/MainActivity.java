@@ -6,7 +6,10 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.view.autofill.AutofillManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -58,6 +61,12 @@ public class MainActivity extends Activity {
         setContentView(web);
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (web != null) web.evaluateJavascript("window.onAndroidResume&&onAndroidResume()", null);
     }
 
     @Override
@@ -121,6 +130,41 @@ public class MainActivity extends Activity {
                 }
             }
             return "none";
+        }
+
+        /** Latest accounts + passwords for the autofill service (encrypted with the Keystore). */
+        @JavascriptInterface
+        public void syncVault(String json) {
+            try {
+                Vault.save(MainActivity.this, json);
+            } catch (Exception ignored) {
+            }
+        }
+
+        /** "on", "off" or "unsupported" (Android 7 and older have no autofill). */
+        @JavascriptInterface
+        public String autofillStatus() {
+            if (Build.VERSION.SDK_INT < 26) return "unsupported";
+            AutofillManager am = getSystemService(AutofillManager.class);
+            if (am == null || !am.isAutofillSupported()) return "unsupported";
+            return am.hasEnabledAutofillServices() ? "on" : "off";
+        }
+
+        @JavascriptInterface
+        public void openAutofillSettings() {
+            if (Build.VERSION.SDK_INT < 26) return;
+            runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE);
+                    i.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(i);
+                } catch (Exception e) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_SETTINGS));
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
         }
 
         @JavascriptInterface

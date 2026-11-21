@@ -62,7 +62,7 @@ body.light .top.sc{background:rgba(242,242,247,.75)}
 #lock .kp button:active{background:rgba(255,255,255,.35)}
 #lock .kp button.t{background:none;font-size:16px}
 #lock .lx{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:20px;color:#fff;font-size:16px}
-.toast{width:30px;height:30px;display:grid;place-items:center;color:var(--accent);font-size:22px;transition:transform .2s}
+.top button{width:30px;height:30px;display:grid;place-items:center;color:var(--accent);font-size:22px;transition:transform .2s}
 .top button:active{transform:scale(.85)}
 .view{display:none;padding:0 20px;animation:fadeIn .45s ease}
 .view.on{display:block}
@@ -212,9 +212,9 @@ body:not(.light) .menu{background:rgba(40,40,42,.95)}
 body:not(.light) .dlg .box{background:rgba(44,44,46,.96)}.dlg.on .box{transform:none}
 .dlg p{padding:20px 16px;font-size:15px;font-weight:600}.dlg .btns{display:flex;border-top:.5px solid var(--sep)}
 .dlg .btns button{flex:1;height:44px;font-size:17px;color:var(--accent)}.dlg .btns .yes{color:#ff453a;font-weight:600;border-left:.5px solid var(--sep)}
-.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);z-index:60;transform:translate(-50%,-80px);background:var(--panel2);
+.toast{white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;opacity:0;pointer-events:none;position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);z-index:60;transform:translate(-50%,-80px);background:var(--panel2);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:10px 18px;border-radius:20px;font-size:14px;font-weight:600;transition:transform .4s cubic-bezier(.3,1.4,.5,1);box-shadow:0 8px 20px rgba(0,0,0,.3)}
-.toast.on{transform:translate(-50%,0)}
+.toast.on{transform:translate(-50%,0);opacity:1}
 </style>
 </head>
 <body>
@@ -319,6 +319,9 @@ const LINKS={
  '美团':['com.sankuai.meituan','imeituan://','https://www.meituan.com'],'Discord':['com.discord','discord://','https://discord.com/app'],
  'PayPal':['com.paypal.android.p2pmobile','','https://www.paypal.com'],'Grab':['com.grabtaxi.passenger','grab://','https://www.grab.com'],
  'Shopee':['com.shopee.my','','https://shopee.com.my']};
+const EXTRA_DOM={'淘宝':['taobao.com','tmall.com'],'京东':['jd.com'],'支付宝':['alipay.com'],'Apple ID':['apple.com','icloud.com'],
+ 'Google':['google.com'],'X':['x.com','twitter.com'],'微信':['weixin.qq.com','wx.qq.com'],'哔哩哔哩':['bilibili.com'],'网易云音乐':['163.com'],
+ 'ChatGPT':['openai.com','chatgpt.com'],'Claude':['claude.ai','anthropic.com'],'Binance':['binance.com'],'Bybit':['bybit.com'],'拼多多':['yangkeduo.com','pinduoduo.com']};
 const PMAP=Object.fromEntries(PRESETS.map(p=>[p[0],p]));
 const CATS=['全部','账号','AI','购物','金融','开发','社交','娱乐','效率','游戏','生活','其他'];
 const KEY='acct-wallet-v1';
@@ -353,7 +356,24 @@ async function unseal(key,box){const pt=await crypto.subtle.decrypt({name:'AES-G
 const hasCrypto=!!(window.crypto&&crypto.subtle);
 let light=false;try{light=localStorage.getItem(KEY+'-light')==='1'}catch(e){}
 let saving=Promise.resolve();
-function save(){
+function regDom(u){try{const h=new URL(u).hostname.split('.');if(h.length<2)return'';const n=(h.length>2&&/^(com|co|net|org|gov|edu|ac)$/.test(h[h.length-2]))?3:2;return h.slice(-n).join('.')}catch(e){return''}}
+function loginName(a){const t=(a.addr||'').trim();if(a.type==='email')return t;const m=t.match(/^\+\d{1,4}[\s-]+(.+)$/);return (m?m[1]:t).replace(/[\s-]/g,'')}
+function vaultSync(){
+  if(!(window.Android&&Android.syncVault))return;
+  if(BOX&&!KEYC)return; /* locked: S is empty, keep the last copy */
+  let lock=null;if(KEYC){try{lock=JSON.parse(localStorage.getItem(KEY+'-pv'))}catch(e){}}
+  const apps=S.apps.map(x=>{const L=LINKS[x.name]||['','',''];const doms=new Set(EXTRA_DOM[x.name]||[]);
+    [L[2],x.link].forEach(u=>{const d=u&&regDom(u);if(d)doms.add(d)});
+    let ids=[...x.accts];if(x.last&&ids.includes(x.last))ids=[x.last,...ids.filter(i=>i!==x.last)];
+    const creds=ids.map(id=>{const a=acc(id);return a?{label:a.name,user:loginName(a),pass:(x.pw||{})[id]||''}:null}).filter(Boolean);
+    return{name:x.name,pkgs:[L[0],x.pkg].filter(Boolean),domains:[...doms],creds}}).filter(a=>a.creds.length);
+  try{Android.syncVault(JSON.stringify({lock,apps}))}catch(e){}
+}
+async function pinVerifier(pin){const salt=crypto.getRandomValues(new Uint8Array(16));
+  const k=await crypto.subtle.importKey('raw',TE.encode(pin),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},k,256);
+  try{localStorage.setItem(KEY+'-pv',JSON.stringify({salt:b64(salt),iter:100000,hash:[...new Uint8Array(bits)].map(b=>b.toString(16).padStart(2,'0')).join('')}))}catch(e){}}
+function save(){setTimeout(vaultSync,0);
   if(KEYC){const snap=JSON.parse(JSON.stringify(S));saving=saving.then(async()=>{try{BOX=await seal(KEYC,SALT,snap);localStorage.setItem(KEY,JSON.stringify(BOX))}catch(e){}});}
   else{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
   return saving;
@@ -366,10 +386,33 @@ const appsOf=id=>S.apps.filter(x=>x.accts.includes(id));
 function icon(x,cls=''){return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph)}</div>`}
 function linkOf(x){const L=LINKS[x.name]||['','',''];return{pkg:L[0],sch:x.link||L[1],web:(x.link&&/^https?:/i.test(x.link))?x.link:L[2]}}
 function openWeb(u){const a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
+let afAsked=false;
 function launch(x){
+  const L=x.accts.map(acc).filter(Boolean);
+  if(L.length<2){go2(x,L[0]);return}
+  openSheet(`<div class="shead"><span></span><h3>用哪个账号登录「${esc(x.name)}」？</h3><button id="cx">取消</button></div>
+   <div class="form checks">${L.map(a=>`<div class="opt" data-a="${a.id}"><i class="dot" style="background:${GRADS[a.grad%GRADS.length].c}"></i>
+     <div><div style="font-size:16px">${esc(a.name)}${(x.pw||{})[a.id]?'<span class="keyico">🔑 有密码</span>':''}${x.last===a.id?'<span class="keyico">上次用</span>':''}</div><div style="font-size:12px;color:var(--sub)">${esc(a.addr)}</div></div><span class="chev">›</span></div>`).join('')}</div>
+   <p style="font-size:12px;color:var(--sub);margin:-6px 6px 0">${afHint()}</p>`);
+  $('#cx').onclick=closeSheet;
+  $('#sheet').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{closeSheet();go2(x,acc(o.dataset.a))});
+}
+function afState(){try{return window.Android&&Android.autofillStatus?Android.autofillStatus():'web'}catch(e){return'web'}}
+function afHint(){const st=afState();return st==='on'?'打开后点账号框，选「账号卡包」就会自动填上账号和密码':st==='off'?'在右上角 ··· 开启「自动填充」后，可以一键填上账号和密码':'选好后会自动复制密码，登录时长按粘贴'}
+async function go2(x,a){
+  const pw=a?(x.pw||{})[a.id]:'';
+  if(a&&x.last!==a.id){const y=S.apps.find(z=>z.id===x.id);if(y){y.last=a.id;x.last=a.id;save()}}else vaultSync();
+  const st=afState();
+  if(st==='off'&&pw&&!afAsked){afAsked=true;
+    if(await ask('开启「自动填充」后，打开 App 能一键填上账号和密码。现在去开启？','去开启')){Android.openAutofillSettings();return}}
+  if(st!=='on'&&a){if(pw){copyText(pw,'密码已复制，登录时长按粘贴')}else copyText(loginName(a),'账号已复制')}
+  openTarget(x);
+  if(st==='on'&&a)setTimeout(()=>toast('点账号框，选「账号卡包 · '+a.name+'」'),900);
+}
+function openTarget(x){
   const {pkg,sch,web}=linkOf(x);
   if(!pkg&&!sch&&!web){toast('还没有打开链接，长按图标去添加');return}
-  haptic();toast('正在打开 '+x.name);
+  haptic();
   if(window.Android&&Android.openApp){const r=Android.openApp(pkg,sch&&!/^https?:/i.test(sch)?sch:'',web);if(r==='none')toast('手机上没装，也没有网址');return}
   if(sch&&!/^https?:/i.test(sch)){let gone=false;const h=()=>{if(document.hidden)gone=true};document.addEventListener('visibilitychange',h);
     try{location.href=sch}catch(e){}
@@ -678,8 +721,9 @@ $('#menu').onclick=async e=>{const b=e.target.closest('button');if(!b)return;$('
     $('#cx').onclick=closeSheet;$('#pf').onclick=()=>$('#file').click();$('#ok').onclick=()=>importText($('#bk').value)}
   if(m==='lockon')setupPin();
   if(m==='lockchg')setupPin(true);
-  if(m==='lockoff'&&await ask('关闭密码锁？数据会改为不加密保存。','关闭')){KEYC=null;SALT=null;BOX=null;save();renderLockItems();toast('已关闭密码锁')}
+  if(m==='lockoff'&&await ask('关闭密码锁？数据会改为不加密保存。','关闭')){KEYC=null;SALT=null;BOX=null;try{localStorage.removeItem(KEY+'-pv')}catch(e){}save();renderLockItems();toast('已关闭密码锁')}
   if(m==='locknow')lockNow();
+  if(m==='af'){if(afState()==='on'){toast('已开启：在登录框选「账号卡包」即可填充')}else{vaultSync();Android.openAutofillSettings()}}
   if(m==='demo'&&await ask('用示例数据替换当前数据？','替换')){S=demo();cur={email:0,phone:0};refresh();toast('已恢复示例')}
   if(m==='clear'&&await ask('清空全部账号和 App？','清空')){S={accounts:[],apps:[]};refresh();toast('已清空')}
 };
@@ -689,7 +733,9 @@ $('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileR
 
 function copyText(t,msg){if(!t){toast('没有内容');return}
   if(window.Android&&Android.copy){Android.copy(t);toast(msg);return}
-  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast(msg),()=>toast('复制失败，请手动选择'))}
+  const legacy=()=>{try{const ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:-100px;opacity:0';document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,t.length);const ok=document.execCommand('copy');ta.remove();return ok}catch(e){return false}};
+  if(legacy()){toast(msg);return}
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast(msg),()=>toast('复制失败，请长按密码框手动复制'))}
 function importText(txt){let d;try{d=JSON.parse(String(txt).trim())}catch(e){toast('备份内容不对');return}
   const done=data=>{if(!Array.isArray(data.accounts)||!Array.isArray(data.apps)){toast('备份内容不对');return false}
     S=data;cur={email:0,phone:0};closeSheet();refresh();toast('导入成功');return true};
@@ -721,7 +767,7 @@ function setupPin(change){
   if(!hasCrypto){toast('当前环境不支持加密');return}
   const step2=first=>pinPad({title:'再输入一次',sub:'确认新密码',cancel:true,check:async p=>{
     if(p!==first)return'两次不一样，重新设置';
-    SALT=crypto.getRandomValues(new Uint8Array(16));KEYC=await derive(p,SALT);await save();renderLockItems();
+    SALT=crypto.getRandomValues(new Uint8Array(16));KEYC=await derive(p,SALT);await pinVerifier(p);await save();renderLockItems();
     setTimeout(()=>toast(change?'密码已修改':'密码锁已开启，数据已加密'),300);return true}});
   const step1=()=>pinPad({title:change?'设置新密码':'设置 6 位密码',sub:'打开 App 时需要输入，忘了就无法找回',cancel:true,check:async p=>{setTimeout(()=>step2(p),10);return true}});
   if(change)pinPad({title:'输入当前密码',cancel:true,check:async p=>{try{const k=await derive(p,ub64(BOX.salt));await unseal(k,BOX);setTimeout(step1,10);return true}catch(e){return false}}});
@@ -733,10 +779,12 @@ async function lockNow(){
 function showUnlock(){
   pinPad({title:'账号卡包已锁定',sub:'输入 6 位密码解锁',forgot:async()=>{
       if(await ask('忘记密码只能清空全部数据重新开始，确定？','清空')){BOX=null;KEYC=null;SALT=null;S={accounts:[],apps:[]};save();$('#lock').classList.remove('on');renderAll();renderLockItems();toast('已清空')}},
-    check:async p=>{try{const salt=ub64(BOX.salt),k=await derive(p,salt);S=await unseal(k,BOX);KEYC=k;SALT=salt;renderAll();renderLockItems();return true}catch(e){return false}}});
+    check:async p=>{try{const salt=ub64(BOX.salt),k=await derive(p,salt);S=await unseal(k,BOX);KEYC=k;SALT=salt;renderAll();renderLockItems();if(window.Android&&!localStorage.getItem(KEY+'-pv'))pinVerifier(p).then(vaultSync);else vaultSync();return true}catch(e){return false}}});
 }
 function renderLockItems(){
-  $('#lockItems').innerHTML=KEYC?'<button data-m="locknow">立即锁定 <span>🔒</span></button><button data-m="lockchg">修改密码锁 <span>✎</span></button><button data-m="lockoff">关闭密码锁 <span>🔓</span></button>'
+  const st=afState();
+  const af=st==='on'?'<button data-m="af">自动填充 <span style="color:#30d158">已开启</span></button>':st==='off'?'<button data-m="af">开启自动填充 <span>⌨︎</span></button>':'';
+  $('#lockItems').innerHTML=af+KEYC?'<button data-m="locknow">立即锁定 <span>🔒</span></button><button data-m="lockchg">修改密码锁 <span>✎</span></button><button data-m="lockoff">关闭密码锁 <span>🔓</span></button>'
     :'<button data-m="lockon">开启密码锁 <span>🔒</span></button>';
 }
 function renderAll(){renderSummary();renderRecent();if(view==='vWallet')renderCards();if(view==='vApps')renderApps();if(view==='vGraph')renderGraph();}
@@ -745,6 +793,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Da
 addEventListener('scroll',()=>{$('#topbar').classList.toggle('sc',scrollY>40)},{passive:true});
 function setTitle(){$('#tt').textContent={vWallet:'账号',vApps:'全部 App',vGraph:'关系图'}[view]}
 
+window.onAndroidResume=()=>{renderLockItems();if(!(BOX&&!KEYC))vaultSync()};
 /* ---------- boot ---------- */
 window.onAndroidBack=()=>{if($('#lock').classList.contains('on')){const x=$('#lx');if(x){x.click();return true}return false}
   const d=document.querySelector('.dlg');if(d){d.querySelector('.no').click();return true}
@@ -752,7 +801,7 @@ window.onAndroidBack=()=>{if($('#lock').classList.contains('on')){const x=$('#lx
   if(view!=='vWallet'){go('vWallet');return true}return false};
 document.body.classList.toggle('light',light);
 renderLockItems();renderSummary();renderCards();renderRecent();
-if(BOX)showUnlock();
+if(BOX)showUnlock();else vaultSync();
 }
 </script>
 </body>
