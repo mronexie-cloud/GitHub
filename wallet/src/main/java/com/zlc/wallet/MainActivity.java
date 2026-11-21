@@ -17,7 +17,7 @@ import android.webkit.WebViewClient;
 /**
  * 账号卡包: the whole app is assets/index.html (cards, all apps, relationship graph).
  * Data lives in the WebView's localStorage; this activity adds the system share sheet
- * for backups, the file picker for restoring them, and the back button.
+ * for backups, the file picker for restoring them, launching other apps, and the back button.
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 7;
@@ -94,6 +94,33 @@ public class MainActivity extends Activity {
                 i.putExtra(Intent.EXTRA_TEXT, text);
                 startActivity(Intent.createChooser(i, "保存或发送备份"));
             });
+        }
+
+        /** Opens the installed app by package; otherwise its app link, otherwise its website. */
+        @JavascriptInterface
+        public String openApp(String pkg, String scheme, String web) {
+            try {
+                if (pkg != null && !pkg.isEmpty()) {
+                    Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+                    if (i != null) {
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                        return "app";
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+            for (String u : new String[]{scheme, web}) {
+                if (u == null || u.isEmpty()) continue;
+                try {
+                    Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(u));
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                    return "link";
+                } catch (Exception ignored) {
+                }
+            }
+            return "none";
         }
 
         @JavascriptInterface

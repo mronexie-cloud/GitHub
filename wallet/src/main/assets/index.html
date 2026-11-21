@@ -31,7 +31,38 @@ input,select,textarea{font:inherit;color:var(--fg)}
 #app{position:relative;z-index:1;max-width:520px;margin:0 auto;min-height:100%;padding-bottom:110px}
 .top{position:sticky;top:0;z-index:20;display:flex;justify-content:flex-end;gap:22px;
   padding:calc(env(safe-area-inset-top) + 12px) 22px 6px}
-.top button{width:30px;height:30px;display:grid;place-items:center;color:var(--accent);font-size:22px;transition:transform .2s}
+.top{transition:background .3s}
+.top.sc{background:rgba(0,0,0,.55);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6)}
+body.light .top.sc{background:rgba(242,242,247,.75)}
+.top .tt{margin-right:auto;font-size:17px;font-weight:700;align-self:center;opacity:0;transition:opacity .3s}
+.top.sc .tt{opacity:1}
+.openb{margin-left:auto;flex:none;height:30px;padding:0 14px;border-radius:15px;background:var(--accent);color:#fff;font-size:14px;font-weight:600}
+.cell .lk{position:absolute;margin:40px 0 0 44px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:grid;place-items:center;box-shadow:0 0 0 2px var(--bg)}
+.cell{position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.cell:active .ic{transform:scale(.9)}.cell .ic{transition:transform .15s}
+.ghint{text-align:center;color:var(--sub);font-size:12px;margin-top:8px}
+.pwrow{display:none;align-items:center;gap:6px;padding:0 14px 12px 36px}
+.opt.on+.pwrow{display:flex}
+.pwrow input{flex:1;min-width:0;height:38px;border-radius:9px;border:0;outline:0;background:var(--seg);padding:0 10px;font-size:16px}
+.pwrow button{width:38px;height:38px;border-radius:9px;background:var(--seg);font-size:15px;flex:none}
+.keyico{font-size:11px;color:var(--sub);margin-left:6px}
+/* lock screen */
+#lock{position:fixed;inset:0;z-index:90;background:#000;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px}
+#lock.on{display:flex;animation:fadeIn .3s}
+#lock::before{content:"";position:absolute;inset:0;background:radial-gradient(70% 45% at 50% 25%,#2a4dff88,transparent 70%),radial-gradient(60% 40% at 80% 100%,#b84dff55,transparent 70%);pointer-events:none}
+#lock>*{position:relative}
+#lock .lt{font-size:22px;font-weight:700;margin-top:6px}#lock .ls{font-size:14px;color:rgba(255,255,255,.65);min-height:20px;text-align:center}
+#lock .pd{display:flex;gap:16px;margin:18px 0 26px}
+#lock .pd i{width:14px;height:14px;border-radius:50%;border:1.6px solid #fff;transition:background .15s}
+#lock .pd i.f{background:#fff}
+#lock .pd.bad{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-12px)}40%,80%{transform:translateX(12px)}}
+#lock .kp{display:grid;grid-template-columns:repeat(3,76px);gap:16px 26px}
+#lock .kp button{width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.13);color:#fff;font-size:30px;font-weight:400;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:background .1s}
+#lock .kp button:active{background:rgba(255,255,255,.35)}
+#lock .kp button.t{background:none;font-size:16px}
+#lock .lx{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:20px;color:#fff;font-size:16px}
+.toast{width:30px;height:30px;display:grid;place-items:center;color:var(--accent);font-size:22px;transition:transform .2s}
 .top button:active{transform:scale(.85)}
 .view{display:none;padding:0 20px;animation:fadeIn .45s ease}
 .view.on{display:block}
@@ -172,6 +203,7 @@ body:not(.light) .sheet{background:#1c1c1e}
   backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);transform-origin:top right;transform:scale(.6);opacity:0;pointer-events:none;transition:all .25s cubic-bezier(.3,1.4,.5,1);box-shadow:0 20px 40px rgba(0,0,0,.4)}
 body:not(.light) .menu{background:rgba(40,40,42,.95)}
 .menu.on{transform:none;opacity:1;pointer-events:auto}
+.menu #lockItems button{border-bottom:.5px solid var(--sep)}
 .menu button{display:flex;justify-content:space-between;width:100%;padding:13px 16px;font-size:16px;text-align:left}
 .menu button+button{border-top:.5px solid var(--sep)}
 .menu .red{color:#ff453a}
@@ -188,7 +220,8 @@ body:not(.light) .dlg .box{background:rgba(44,44,46,.96)}.dlg.on .box{transform:
 <body>
 <div id="glow"></div>
 <div id="app">
-  <div class="top">
+  <div class="top" id="topbar">
+    <span class="tt" id="tt">账号</span>
     <button id="bTheme" title="主题"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg></button>
     <button id="bAdd" title="添加"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>
     <button id="bMore" title="更多"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
@@ -233,6 +266,7 @@ body:not(.light) .dlg .box{background:rgba(44,44,46,.96)}.dlg.on .box{transform:
 <div class="mask" id="mask"></div>
 <div class="sheet" id="sheet"></div>
 <div class="menu" id="menu">
+  <div id="lockItems"></div>
   <button data-m="acc">新建邮箱 / 手机号 <span>✉︎</span></button>
   <button data-m="app">添加网站或 App <span>＋</span></button>
   <button data-m="export">导出备份 <span>↑</span></button>
@@ -242,6 +276,7 @@ body:not(.light) .dlg .box{background:rgba(44,44,46,.96)}.dlg.on .box{transform:
 </div>
 <input type="file" id="file" accept=".json,application/json" hidden>
 <div class="toast" id="toast"></div>
+<div id="lock"></div>
 
 <script>
 {
@@ -268,6 +303,22 @@ const PRESETS=[
  ['Bybit','By','#17181e','#f7a600','金融'],['拼多多','拼','#e02e24','#fff','购物'],['美团','美','#ffc300','#222','生活'],
  ['Discord','D','#5865f2','#fff','社交'],['PayPal','P','#003087','#fff','金融'],['Grab','G','#00b14f','#fff','生活'],['Shopee','S','#ee4d2d','#fff','购物']
 ];
+/* name -> [android package, app scheme, website] used for 点击跳转 */
+const LINKS={
+ 'Apple ID':['','','https://account.apple.com'],'ChatGPT':['com.openai.chatgpt','','https://chatgpt.com'],'Claude':['com.anthropic.claude','','https://claude.ai'],
+ 'Notion':['notion.id','notion://','https://www.notion.so'],'Steam':['com.valvesoftware.android.steam.community','steam://','https://store.steampowered.com'],
+ '京东':['com.jingdong.app.mall','openapp.jdmobile://','https://m.jd.com'],'淘宝':['com.taobao.taobao','taobao://','https://m.taobao.com'],
+ 'Binance':['com.binance.dev','','https://www.binance.com'],'Cloudflare':['com.cloudflare.onedotonedotonedotone','','https://dash.cloudflare.com'],
+ 'GitHub':['com.github.android','','https://github.com'],'微信':['com.tencent.mm','weixin://','https://weixin.qq.com'],
+ '支付宝':['com.eg.android.AlipayGphone','alipays://','https://www.alipay.com'],'哔哩哔哩':['tv.danmaku.bili','bilibili://','https://m.bilibili.com'],
+ '小红书':['com.xingin.xhs','xhsdiscover://','https://www.xiaohongshu.com'],'网易云音乐':['com.netease.cloudmusic','orpheus://','https://music.163.com'],
+ '抖音':['com.ss.android.ugc.aweme','snssdk1128://','https://www.douyin.com'],'Google':['com.google.android.gm','','https://myaccount.google.com'],
+ 'Telegram':['org.telegram.messenger','tg://','https://web.telegram.org'],'X':['com.twitter.android','twitter://','https://x.com'],
+ 'Netflix':['com.netflix.mediaclient','nflx://','https://www.netflix.com'],'Spotify':['com.spotify.music','spotify://','https://open.spotify.com'],
+ 'Bybit':['com.bybit.app','','https://www.bybit.com'],'拼多多':['com.xunmeng.pinduoduo','pinduoduo://','https://mobile.yangkeduo.com'],
+ '美团':['com.sankuai.meituan','imeituan://','https://www.meituan.com'],'Discord':['com.discord','discord://','https://discord.com/app'],
+ 'PayPal':['com.paypal.android.p2pmobile','','https://www.paypal.com'],'Grab':['com.grabtaxi.passenger','grab://','https://www.grab.com'],
+ 'Shopee':['com.shopee.my','','https://shopee.com.my']};
 const PMAP=Object.fromEntries(PRESETS.map(p=>[p[0],p]));
 const CATS=['全部','账号','AI','购物','金融','开发','社交','娱乐','效率','游戏','生活','其他'];
 const KEY='acct-wallet-v1';
@@ -288,17 +339,50 @@ function demo(){
   const apps=names.map((n,i)=>{const p=PMAP[n];return{id:'x'+i,name:n,glyph:p[1],bg:p[2],fg:p[3],cat:p[4],accts:bind[n],added:now-(names.length-1-i)*DAY*0.6}});
   return{accounts:A,apps};
 }
-let S;
-try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
-if(!S||!S.accounts)S=demo();
+let S,BOX=null,KEYC=null,SALT=null;
+{let raw=null;try{raw=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+ if(raw&&raw.enc){BOX=raw;S={accounts:[],apps:[]}}else S=raw&&raw.accounts?raw:demo();}
+const TE=new TextEncoder(),TD=new TextDecoder();
+const b64=u=>{u=new Uint8Array(u);let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)};
+const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function derive(pin,salt){const k=await crypto.subtle.importKey('raw',TE.encode(pin),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function seal(key,salt,obj){const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,TE.encode(JSON.stringify(obj)));return{enc:1,v:1,salt:b64(salt),iv:b64(iv),ct:b64(ct)}}
+async function unseal(key,box){const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(box.iv)},key,ub64(box.ct));return JSON.parse(TD.decode(pt))}
+const hasCrypto=!!(window.crypto&&crypto.subtle);
 let light=false;try{light=localStorage.getItem(KEY+'-light')==='1'}catch(e){}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let saving=Promise.resolve();
+function save(){
+  if(KEYC){const snap=JSON.parse(JSON.stringify(S));saving=saving.then(async()=>{try{BOX=await seal(KEYC,SALT,snap);localStorage.setItem(KEY,JSON.stringify(BOX))}catch(e){}});}
+  else{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+  return saving;
+}
 const uid=()=>Math.random().toString(36).slice(2,9);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const acc=id=>S.accounts.find(a=>a.id===id);
 const appsOf=id=>S.apps.filter(x=>x.accts.includes(id));
 function icon(x,cls=''){return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph)}</div>`}
+function linkOf(x){const L=LINKS[x.name]||['','',''];return{pkg:L[0],sch:x.link||L[1],web:(x.link&&/^https?:/i.test(x.link))?x.link:L[2]}}
+function openWeb(u){const a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
+function launch(x){
+  const {pkg,sch,web}=linkOf(x);
+  if(!pkg&&!sch&&!web){toast('还没有打开链接，长按图标去添加');return}
+  haptic();toast('正在打开 '+x.name);
+  if(window.Android&&Android.openApp){const r=Android.openApp(pkg,sch&&!/^https?:/i.test(sch)?sch:'',web);if(r==='none')toast('手机上没装，也没有网址');return}
+  if(sch&&!/^https?:/i.test(sch)){let gone=false;const h=()=>{if(document.hidden)gone=true};document.addEventListener('visibilitychange',h);
+    try{location.href=sch}catch(e){}
+    setTimeout(()=>{document.removeEventListener('visibilitychange',h);if(!gone&&web)openWeb(web)},1600);}
+  else openWeb(web||sch);
+}
+function press(el,tap,long){let t,fired=false,sx,sy;
+  el.addEventListener('pointerdown',e=>{fired=false;sx=e.clientX;sy=e.clientY;t=setTimeout(()=>{fired=true;haptic();long()},480)});
+  el.addEventListener('pointermove',e=>{if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>10)clearTimeout(t)});
+  ['pointerup','pointercancel','pointerleave'].forEach(n=>el.addEventListener(n,()=>clearTimeout(t)));
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('click',e=>{if(fired){e.preventDefault();return}tap()});}
+const hasPw=x=>x.pw&&Object.values(x.pw).some(Boolean);
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1600)}
 function ask(msg,ok='删除'){return new Promise(res=>{const d=document.createElement('div');d.className='dlg';
   d.innerHTML=`<div class="box"><p>${esc(msg)}</p><div class="btns"><button class="no">取消</button><button class="yes">${ok}</button></div></div>`;
@@ -368,10 +452,11 @@ function renderDetail(){
   const ap=appsOf(a.id),G=GRADS[a.grad%GRADS.length];
   d.innerHTML=`<div class="sec"><div><h2>${esc(a.name)}</h2><p>用它注册或绑定的 ${ap.length} 个网站与 App</p></div>
     <button class="tint" id="addTo" style="color:${G.c};background:${G.c}2e">＋ 添加</button></div>
-    <div class="grid">${ap.map((x,i)=>`<div class="cell" data-id="${x.id}" style="animation-delay:${i*35}ms">${icon(x)}<span>${esc(x.name)}</span></div>`).join('')}
-    <div class="cell" id="addCell" style="animation-delay:${ap.length*35}ms"><div class="ic plus">+</div><span style="color:var(--sub)">添加</span></div></div>`;
+    <div class="grid">${ap.map((x,i)=>`<div class="cell" data-id="${x.id}" style="animation-delay:${i*35}ms">${icon(x)}${x.pw&&x.pw[a.id]?'<i class="lk">🔑</i>':''}<span>${esc(x.name)}</span></div>`).join('')}
+    <div class="cell" id="addCell" style="animation-delay:${ap.length*35}ms"><div class="ic plus">+</div><span style="color:var(--sub)">添加</span></div></div>
+    <div class="ghint">点图标打开 App · 长按编辑或查看密码</div>`;
   $('#addTo').onclick=$('#addCell').onclick=()=>openPicker(a);
-  d.querySelectorAll('.cell[data-id]').forEach(c=>c.onclick=()=>openApp(S.apps.find(x=>x.id===c.dataset.id)));
+  d.querySelectorAll('.cell[data-id]').forEach(c=>{const x=S.apps.find(y=>y.id===c.dataset.id);press(c,()=>launch(x),()=>openApp(x))});
 }
 function fmtDay(t){
   const d0=new Date();d0.setHours(0,0,0,0);const diff=Math.floor((d0-t)/DAY)+1;
@@ -383,8 +468,8 @@ function renderRecent(){
   $('#recent').innerHTML=R.length?R.map(x=>{const day=fmtDay(x.added),show=day!==last;last=day;
     return `<div class="rrow"><div class="rday">${show?day:''}</div><div class="ritem" data-id="${x.id}">${icon(x,'sm')}
      <div><div class="t">${esc(x.name)}</div><div class="tags">${x.accts.map(id=>{const a=acc(id);return a?`<span class="tag"><i style="background:${GRADS[a.grad%GRADS.length].c}"></i>${esc(a.name)}</span>`:''}).join('')}</div></div>
-     <span class="cat">${esc(x.cat||'')}</span></div></div>`}).join(''):'<div class="empty">还没有添加任何网站或 App</div>';
-  $('#recent').querySelectorAll('.ritem').forEach(r=>r.onclick=()=>openApp(S.apps.find(x=>x.id===r.dataset.id)));
+     <button class="openb" data-o="${x.id}">打开</button></div></div>`}).join(''):'<div class="empty">还没有添加任何网站或 App</div>';
+  $('#recent').querySelectorAll('.ritem').forEach(r=>r.onclick=e=>{const x=S.apps.find(y=>y.id===r.dataset.id);e.target.closest('.openb')?launch(x):openApp(x)});
 }
 $('#seg').onclick=e=>{
   const b=e.target.closest('button');if(!b||b.dataset.t===segT)return;
@@ -404,10 +489,10 @@ function renderApps(){
   const L=S.apps.filter(x=>(filt==='全部'||x.cat===filt)&&(!q||x.name.toLowerCase().includes(q)||x.accts.some(id=>{const a=acc(id);return a&&(a.name+a.addr).toLowerCase().includes(q)})))
     .sort((a,b)=>a.name.localeCompare(b.name,'zh'));
   $('#appsSum').textContent=`共 ${S.apps.length} 个，绑定 ${S.apps.reduce((s,x)=>s+x.accts.length,0)} 条关系`;
-  $('#appList').innerHTML=L.length?L.map((x,i)=>`<div class="li" data-id="${x.id}" style="animation-delay:${Math.min(i,12)*25}ms">${icon(x,'sm')}<div><div class="t">${esc(x.name)}</div>
-    <div class="tags">${x.accts.map(id=>{const a=acc(id);return a?`<span class="tag"><i style="background:${GRADS[a.grad%GRADS.length].c}"></i>${esc(a.name)}</span>`:''}).join('')||'<span class="tag">未绑定</span>'}</div></div><span class="chev">›</span></div>`).join('')
+  $('#appList').innerHTML=L.length?L.map((x,i)=>`<div class="li" data-id="${x.id}" style="animation-delay:${Math.min(i,12)*25}ms">${icon(x,'sm')}<div><div class="t">${esc(x.name)}${hasPw(x)?'<span class="keyico">🔑</span>':''}</div>
+    <div class="tags">${x.accts.map(id=>{const a=acc(id);return a?`<span class="tag"><i style="background:${GRADS[a.grad%GRADS.length].c}"></i>${esc(a.name)}</span>`:''}).join('')||'<span class="tag">未绑定</span>'}</div></div><button class="openb">打开</button></div>`).join('')
     :'<div class="empty">没有找到</div>';
-  $('#appList').querySelectorAll('.li').forEach(r=>r.onclick=()=>openApp(S.apps.find(x=>x.id===r.dataset.id)));
+  $('#appList').querySelectorAll('.li').forEach(r=>r.onclick=e=>{const x=S.apps.find(y=>y.id===r.dataset.id);e.target.closest('.openb')?launch(x):openApp(x)});
 }
 $('#q').oninput=renderApps;
 
@@ -458,7 +543,7 @@ addEventListener('resize',()=>{if(view==='vGraph')drawLines()});
 $('#tabbar').onclick=e=>{const b=e.target.closest('button');if(!b)return;go(b.dataset.v)};
 function go(v){
   view=v;haptic();
-  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id===v));setTitle();
   document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   scrollTo(0,0);
   if(v==='vWallet'){renderCards();}
@@ -526,20 +611,26 @@ function openPicker(a){
 /* add / edit app */
 const TILE_COLORS=['#0a84ff','#30d158','#ff9f0a','#ff375f','#bf5af2','#64d2ff','#ffd60a','#1c1c1e','#f2f2f7','#ac8e68'];
 function openApp(x,pre){
-  const isNew=!x;x=x?{...x,accts:[...x.accts]}:{id:uid(),name:'',glyph:'',bg:'#0a84ff',fg:'#fff',cat:'其他',accts:pre||[],added:Date.now()};
+  const isNew=!x;x=x?{...x,accts:[...x.accts],pw:{...(x.pw||{})}}:{id:uid(),name:'',glyph:'',bg:'#0a84ff',fg:'#fff',cat:'其他',accts:pre||[],pw:{},link:'',added:Date.now()};
   const draw=()=>{
     openSheet(`<div class="shead"><button id="cx">取消</button><h3>${isNew?'添加网站或 App':esc(x.name)}</h3><button class="done" id="ok">完成</button></div>
-    <div style="display:flex;justify-content:center;margin-bottom:16px" id="prev">${icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})}</div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:16px"><div id="prev">${icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})}</div>${isNew?'':'<button class="openb" id="go" style="margin:0;height:36px;padding:0 20px;font-size:15px">打开 App ↗</button>'}</div>
     <div class="form"><label><span>名称</span><input id="an" placeholder="如：Steam / 小红书" value="${esc(x.name)}" list="pl"></label>
     <label><span>图标字</span><input id="ag" maxlength="4" placeholder="留空取首字" value="${esc(x.glyph)}"></label>
-    <label><span>分类</span><select id="ac">${CATS.slice(1).map(c=>`<option ${c===x.cat?'selected':''}>${c}</option>`).join('')}</select></label></div>
+    <label><span>分类</span><select id="ac">${CATS.slice(1).map(c=>`<option ${c===x.cat?'selected':''}>${c}</option>`).join('')}</select></label>
+    <label><span>打开链接</span><input id="al" placeholder="${esc((LINKS[x.name]||[])[2]||'网址或 App 链接，可留空')}" value="${esc(x.link||'')}" autocapitalize="off"></label></div>
     <datalist id="pl">${PRESETS.map(p=>`<option value="${p[0]}">`).join('')}</datalist>
     <div class="flabel">图标颜色</div><div class="swatches">${TILE_COLORS.map(c=>`<div class="sw ${c===x.bg?'on':''}" data-c="${c}" style="background:${c}"></div>`).join('')}</div>
-    <div class="flabel">用哪些账号注册 / 绑定</div>
+    <div class="flabel">用哪些账号注册 / 绑定 · 可填密码</div>
     <div class="form checks">${S.accounts.map(a=>`<div class="opt ${x.accts.includes(a.id)?'on':''}" data-a="${a.id}"><i class="dot" style="background:${GRADS[a.grad%GRADS.length].c}"></i>
-      <div><div style="font-size:16px">${esc(a.name)}</div><div style="font-size:12px;color:var(--sub)">${esc(a.addr)}</div></div><span class="ok">✓</span></div>`).join('')||'<div class="opt" style="color:var(--sub)">先新建一个邮箱或手机号</div>'}</div>
+      <div><div style="font-size:16px">${esc(a.name)}</div><div style="font-size:12px;color:var(--sub)">${esc(a.addr)}</div></div><span class="ok">✓</span></div>
+      <div class="pwrow" data-p="${a.id}"><input type="password" placeholder="这个账号的登录密码（选填）" value="${esc((x.pw||{})[a.id]||'')}" autocomplete="off"><button class="eye" title="显示">👁</button><button class="cpy" title="复制">⧉</button></div>`).join('')||'<div class="opt" style="color:var(--sub)">先新建一个邮箱或手机号</div>'}</div>
     ${isNew?'':'<button class="danger" id="del">删除这个 App</button>'}`);
-    const sync=()=>{x.name=$('#an').value.trim();x.glyph=$('#ag').value.trim();x.cat=$('#ac').value};
+    const sync=()=>{x.name=$('#an').value.trim();x.glyph=$('#ag').value.trim();x.cat=$('#ac').value;x.link=$('#al').value.trim();
+      $('#sheet').querySelectorAll('.pwrow').forEach(r=>{const v=r.querySelector('input').value;if(v)x.pw[r.dataset.p]=v;else delete x.pw[r.dataset.p]})};
+    $('#sheet').querySelectorAll('.pwrow .eye').forEach(b=>b.onclick=()=>{const i=b.parentNode.querySelector('input');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈'});
+    $('#sheet').querySelectorAll('.pwrow .cpy').forEach(b=>b.onclick=()=>copyText(b.parentNode.querySelector('input').value,'密码已复制'));
+    if(!isNew)$('#go').onclick=()=>{sync();launch(x)};
     const upd=()=>{sync();$('#prev').innerHTML=icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})};
     $('#an').oninput=()=>{const p=PMAP[$('#an').value.trim()];if(p&&isNew){x.glyph=p[1];x.bg=p[2];x.fg=p[3];x.cat=p[4];$('#ag').value=p[1];$('#ac').value=p[4]}upd()};
     $('#ag').oninput=upd;
@@ -550,7 +641,9 @@ function openApp(x,pre){
       if(!x.glyph)x.glyph=x.name.slice(0,1).toUpperCase();
       if(isNew){if(S.apps.some(y=>y.name===x.name)){const y=S.apps.find(z=>z.name===x.name);x.accts.forEach(i=>{if(!y.accts.includes(i))y.accts.push(i)});y.added=Date.now()}else S.apps.push(x)}
       else Object.assign(S.apps.find(y=>y.id===x.id),x);
-      closeSheet();refresh();toast(isNew?'已添加':'已保存')};
+      Object.keys(x.pw).forEach(k=>{if(!x.accts.includes(k))delete x.pw[k]});
+      closeSheet();refresh();toast(isNew?'已添加':'已保存');
+      if(hasPw(x)&&!KEYC)setTimeout(()=>toast('建议在右上角 ··· 开启密码锁，密码会加密保存'),1800)};
     if(!isNew)$('#del').onclick=async()=>{if(!await ask(`删除「${x.name}」？`))return;S.apps=S.apps.filter(y=>y.id!==x.id);closeSheet();refresh();toast('已删除')};
   };
   draw();
@@ -571,27 +664,95 @@ document.addEventListener('click',e=>{if(!e.target.closest('#menu')&&!e.target.c
 $('#menu').onclick=async e=>{const b=e.target.closest('button');if(!b)return;$('#menu').classList.remove('on');const m=b.dataset.m;
   if(m==='acc')openAccount(null,segT);
   if(m==='app')openApp(null);
-  if(m==='export'){const j=JSON.stringify(S);
+  if(m==='export'){const j=KEYC&&BOX?JSON.stringify(BOX):JSON.stringify(S);
     openSheet(`<div class="shead"><span></span><h3>导出备份</h3><button id="cx">关闭</button></div>
     <div class="form"><textarea id="bk" readonly style="width:100%;height:180px;background:none;border:0;padding:12px;font-size:12px;resize:none">${esc(j)}</textarea></div>
+    <p style="font-size:13px;color:var(--sub);margin:-8px 4px 14px">${KEYC?'已开启密码锁：备份是加密的，导入时要输入当时的密码。':'未开启密码锁：备份里的密码是明文，请妥善保管。'}</p>
     <button class="danger" id="cp" style="color:var(--accent)">复制备份内容</button>`);
     $('#cx').onclick=closeSheet;
     if(window.Android){$('#cp').insertAdjacentHTML('afterend','<button class="danger" id="sh" style="color:var(--accent);margin-top:10px">分享 / 保存到文件</button>');$('#sh').onclick=()=>Android.share(j)}
     $('#cp').onclick=async()=>{if(window.Android){Android.copy(j);toast('已复制');return}try{await navigator.clipboard.writeText(j);toast('已复制')}catch(e){$('#bk').select();toast('请长按全选复制')}};}
-  if(m==='import')$('#file').click();
+  if(m==='import'){openSheet(`<div class="shead"><button id="cx">取消</button><h3>导入备份</h3><button class="done" id="ok">导入</button></div>
+    <div class="form"><textarea id="bk" placeholder="把复制的备份内容粘贴到这里" style="width:100%;height:160px;background:none;border:0;outline:0;padding:12px;font-size:13px;resize:none"></textarea></div>
+    <button class="danger" id="pf" style="color:var(--accent)">从文件选择…</button>`);
+    $('#cx').onclick=closeSheet;$('#pf').onclick=()=>$('#file').click();$('#ok').onclick=()=>importText($('#bk').value)}
+  if(m==='lockon')setupPin();
+  if(m==='lockchg')setupPin(true);
+  if(m==='lockoff'&&await ask('关闭密码锁？数据会改为不加密保存。','关闭')){KEYC=null;SALT=null;BOX=null;save();renderLockItems();toast('已关闭密码锁')}
+  if(m==='locknow')lockNow();
   if(m==='demo'&&await ask('用示例数据替换当前数据？','替换')){S=demo();cur={email:0,phone:0};refresh();toast('已恢复示例')}
   if(m==='clear'&&await ask('清空全部账号和 App？','清空')){S={accounts:[],apps:[]};refresh();toast('已清空')}
 };
 $('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.accounts)||!Array.isArray(d.apps))throw 0;S=d;cur={email:0,phone:0};refresh();toast('导入成功')}catch(err){toast('文件格式不对')}};
+  r.onload=()=>importText(r.result);
   r.readAsText(f);e.target.value=''};
 
+function copyText(t,msg){if(!t){toast('没有内容');return}
+  if(window.Android&&Android.copy){Android.copy(t);toast(msg);return}
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast(msg),()=>toast('复制失败，请手动选择'))}
+function importText(txt){let d;try{d=JSON.parse(String(txt).trim())}catch(e){toast('备份内容不对');return}
+  const done=data=>{if(!Array.isArray(data.accounts)||!Array.isArray(data.apps)){toast('备份内容不对');return false}
+    S=data;cur={email:0,phone:0};closeSheet();refresh();toast('导入成功');return true};
+  if(d.enc){if(!hasCrypto){toast('此环境不支持解密');return}
+    pinPad({title:'输入备份的密码',sub:'这份备份是加密的',cancel:true,check:async pin=>{try{const k=await derive(pin,ub64(d.salt));return done(await unseal(k,d))}catch(e){return false}}});}
+  else done(d);}
+
+/* ---------- PIN lock ---------- */
+function pinPad({title,sub,cancel,forgot,check}){
+  const L=$('#lock');let pin='';
+  L.innerHTML=`${cancel?'<button class="lx" id="lx">取消</button>':''}<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+   <div class="lt">${title}</div><div class="ls" id="ls">${sub||''}</div><div class="pd" id="pd">${'<i></i>'.repeat(6)}</div>
+   <div class="kp">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join('')}<button class="t" data-k="f">${forgot?'忘记了':''}</button><button data-k="0">0</button><button class="t" data-k="d">删除</button></div>`;
+  L.classList.add('on');
+  const dots=()=>$('#pd').querySelectorAll('i').forEach((d,i)=>d.classList.toggle('f',i<pin.length));
+  let busy=false;
+  L.querySelector('.kp').onclick=async e=>{const b=e.target.closest('button');if(!b||busy)return;const k=b.dataset.k;
+    if(k==='d'){pin=pin.slice(0,-1);dots();return}
+    if(k==='f'){forgot&&forgot();return}
+    if(pin.length>=6)return;pin+=k;dots();haptic();
+    if(pin.length===6){busy=true;$('#ls').textContent='验证中…';const ok=await check(pin);busy=false;
+      if(ok===true){L.classList.remove('on');return}
+      if(typeof ok==='string'){pin='';dots();$('#ls').textContent=ok;return}
+      $('#pd').classList.remove('bad');void $('#pd').offsetWidth;$('#pd').classList.add('bad');try{navigator.vibrate&&navigator.vibrate([40,40,40])}catch(e){}
+      pin='';dots();$('#ls').textContent='密码不对，再试一次';}};
+  if(cancel)$('#lx').onclick=()=>L.classList.remove('on');
+}
+function setupPin(change){
+  if(!hasCrypto){toast('当前环境不支持加密');return}
+  const step2=first=>pinPad({title:'再输入一次',sub:'确认新密码',cancel:true,check:async p=>{
+    if(p!==first)return'两次不一样，重新设置';
+    SALT=crypto.getRandomValues(new Uint8Array(16));KEYC=await derive(p,SALT);await save();renderLockItems();
+    setTimeout(()=>toast(change?'密码已修改':'密码锁已开启，数据已加密'),300);return true}});
+  const step1=()=>pinPad({title:change?'设置新密码':'设置 6 位密码',sub:'打开 App 时需要输入，忘了就无法找回',cancel:true,check:async p=>{setTimeout(()=>step2(p),10);return true}});
+  if(change)pinPad({title:'输入当前密码',cancel:true,check:async p=>{try{const k=await derive(p,ub64(BOX.salt));await unseal(k,BOX);setTimeout(step1,10);return true}catch(e){return false}}});
+  else step1();
+}
+async function lockNow(){
+  if(!KEYC)return;await saving;KEYC=null;S={accounts:[],apps:[]};closeSheet();renderAll();showUnlock();
+}
+function showUnlock(){
+  pinPad({title:'账号卡包已锁定',sub:'输入 6 位密码解锁',forgot:async()=>{
+      if(await ask('忘记密码只能清空全部数据重新开始，确定？','清空')){BOX=null;KEYC=null;SALT=null;S={accounts:[],apps:[]};save();$('#lock').classList.remove('on');renderAll();renderLockItems();toast('已清空')}},
+    check:async p=>{try{const salt=ub64(BOX.salt),k=await derive(p,salt);S=await unseal(k,BOX);KEYC=k;SALT=salt;renderAll();renderLockItems();return true}catch(e){return false}}});
+}
+function renderLockItems(){
+  $('#lockItems').innerHTML=KEYC?'<button data-m="locknow">立即锁定 <span>🔒</span></button><button data-m="lockchg">修改密码锁 <span>✎</span></button><button data-m="lockoff">关闭密码锁 <span>🔓</span></button>'
+    :'<button data-m="lockon">开启密码锁 <span>🔒</span></button>';
+}
+function renderAll(){renderSummary();renderRecent();if(view==='vWallet')renderCards();if(view==='vApps')renderApps();if(view==='vGraph')renderGraph();}
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(KEYC&&Date.now()-hiddenAt>60000)lockNow()});
+addEventListener('scroll',()=>{$('#topbar').classList.toggle('sc',scrollY>40)},{passive:true});
+function setTitle(){$('#tt').textContent={vWallet:'账号',vApps:'全部 App',vGraph:'关系图'}[view]}
+
 /* ---------- boot ---------- */
-window.onAndroidBack=()=>{const d=document.querySelector('.dlg');if(d){d.querySelector('.no').click();return true}
+window.onAndroidBack=()=>{if($('#lock').classList.contains('on')){const x=$('#lx');if(x){x.click();return true}return false}
+  const d=document.querySelector('.dlg');if(d){d.querySelector('.no').click();return true}
   if($('#sheet').classList.contains('on')||$('#menu').classList.contains('on')){closeSheet();return true}
   if(view!=='vWallet'){go('vWallet');return true}return false};
 document.body.classList.toggle('light',light);
-renderSummary();renderCards();renderRecent();
+renderLockItems();renderSummary();renderCards();renderRecent();
+if(BOX)showUnlock();
 }
 </script>
 </body>
