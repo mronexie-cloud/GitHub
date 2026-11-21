@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="万能下载">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>万能下载</title>
+<style>
+:root{--bg:#0e0f13;--card:#1b1d24;--card2:#262933;--fg:#f4f5f7;--sub:#9aa0ad;--acc:#ff3b5c;--acc2:#7c5cff;--ok:#30d158}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(80% 40% at 20% 0%,#ff3b5c33,transparent 70%),radial-gradient(70% 40% at 100% 10%,#7c5cff33,transparent 70%);pointer-events:none}
+main{position:relative;max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 24px) 18px calc(env(safe-area-inset-bottom) + 40px)}
+h1{font-size:30px;font-weight:800;letter-spacing:.5px}
+.sub{color:var(--sub);font-size:14px;margin-top:2px}
+.plats{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 18px}
+.plats span{font-size:12px;padding:3px 10px;border-radius:12px;background:var(--card2);color:var(--sub)}
+.box{background:var(--card);border-radius:20px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+textarea{width:100%;height:96px;border:0;outline:0;resize:none;background:var(--card2);color:var(--fg);border-radius:14px;padding:12px;font-size:16px}
+.row{display:flex;gap:10px;margin-top:10px}
+button{font:inherit;border:0;cursor:pointer;color:inherit;background:none}
+.btn{flex:1;height:50px;border-radius:14px;font-size:17px;font-weight:700;background:var(--card2)}
+.btn.main{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}
+.btn:active{transform:scale(.97)}.btn[disabled]{opacity:.5}
+.st{margin:16px 4px 0;color:var(--sub);font-size:14px;display:flex;gap:10px;align-items:center}
+.st.err{color:#ff6b6b}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid #ffffff33;border-top-color:#fff;animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.res{margin-top:16px;background:var(--card);border-radius:20px;overflow:hidden;animation:in .35s ease}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+.cov{position:relative;aspect-ratio:16/9;background:#000 center/cover no-repeat}
+.cov .pf{position:absolute;left:12px;top:12px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;background:rgba(0,0,0,.6)}
+.cov .du{position:absolute;right:12px;bottom:12px;font-size:12px;padding:2px 8px;border-radius:8px;background:rgba(0,0,0,.6)}
+.meta{padding:14px 16px 4px}.meta b{font-size:17px;display:block}.meta small{color:var(--sub)}
+.ch{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px 16px 16px}
+.ch a{display:flex;align-items:center;justify-content:center;gap:6px;height:48px;border-radius:13px;background:var(--card2);color:var(--fg);text-decoration:none;font-weight:600}
+.ch a:first-child{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}
+.tip{margin:0 16px 16px;font-size:13px;color:var(--sub);background:var(--card2);border-radius:12px;padding:10px 12px}
+h2{font-size:18px;margin:28px 4px 10px}
+.hist a{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--card);border-radius:14px;margin-bottom:8px;color:var(--fg);text-decoration:none}
+.hist a span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.hist a small{color:var(--sub);font-size:12px;flex:none}
+.set{margin-top:28px;font-size:13px;color:var(--sub)}
+.set summary{cursor:pointer;padding:6px 4px}
+.set input{width:100%;margin-top:8px;height:42px;border-radius:12px;border:0;outline:0;background:var(--card2);color:var(--fg);padding:0 12px;font-size:15px}
+.setup{background:var(--card);border-radius:20px;padding:16px;margin-top:16px;font-size:14px;color:var(--sub)}
+.setup b{color:var(--fg)}
+.wm{text-align:center;color:#ffffff40;font-size:12px;margin-top:30px}
+</style>
+</head>
+<body>
+<main>
+  <h1>万能下载</h1>
+  <div class="sub">粘贴分享链接，一键下载无水印视频</div>
+  <div class="plats"><span>抖音</span><span>TikTok</span><span>小红书</span><span>哔哩哔哩</span><span>X</span><span>Instagram</span><span>YouTube</span><span>Facebook</span></div>
+  <div class="box">
+    <textarea id="t" placeholder="把分享链接或整段分享文字粘贴到这里"></textarea>
+    <div class="row"><button class="btn" id="paste">粘贴</button><button class="btn main" id="go">解析视频</button></div>
+  </div>
+  <div id="st" class="st" hidden></div>
+  <div id="setup" class="setup" hidden></div>
+  <div id="res"></div>
+  <div id="histWrap" hidden><h2>最近解析</h2><div class="hist" id="hist"></div></div>
+  <details class="set" id="set"><summary>⚙︎ 服务器地址</summary>
+    <input id="srv" placeholder="https://你的服务器.onrender.com" autocapitalize="off" autocomplete="off">
+  </details>
+  <div class="wm">zlc · 万能下载</div>
+</main>
+<script>
+{
+/* After the Render server is deployed, put its address here so nobody has to type it. */
+const DEFAULT_SERVER='';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store={get(k,d){try{const v=localStorage.getItem('vdl_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('vdl_'+k,JSON.stringify(v))}catch(e){}}};
+let server='';
+async function findServer(){
+  const saved=store.get('server','');
+  if(saved)return saved;
+  if(DEFAULT_SERVER)return DEFAULT_SERVER;
+  try{const r=await fetch('api/health',{cache:'no-store'});if(r.ok&&(await r.json()).ok)return location.origin+location.pathname.replace(/[^/]*$/,'').replace(/\/$/,'')}catch(e){}
+  return'';
+}
+function setStatus(html,cls){const s=$('#st');s.hidden=!html;s.className='st '+(cls||'');s.innerHTML=html||''}
+function showSetup(){
+  $('#setup').hidden=false;
+  $('#setup').innerHTML=`<b>第一次使用：还没设置下载服务器</b><br>网页没法直接读抖音、TikTok 这些网站，要靠一台下载服务器（免费）。部署好之后，把服务器地址填到页面最下面的「⚙︎ 服务器地址」里就行，只需要填一次。`;
+  $('#set').open=true;
+}
+const fmtDur=s=>s?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:'';
+function dlUrl(text,q){return `${server}/api/download?q=${encodeURIComponent(q)}&url=${encodeURIComponent(text)}`}
+function render(d,text){
+  const isApple=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  $('#res').innerHTML=`<div class="res">
+    <div class="cov" style="background-image:url('${esc(d.thumb)}')"><span class="pf">${esc(d.platformName)}</span>${d.duration?`<span class="du">${fmtDur(d.duration)}</span>`:''}</div>
+    <div class="meta"><b>${esc(d.title)}</b><small>${esc(d.uploader||'')}</small></div>
+    <div class="ch">${d.choices.map(c=>`<a href="${esc(dlUrl(text,c.q))}" target="_blank" rel="noopener" data-q="${esc(c.q)}">⬇︎ ${esc(c.label)}</a>`).join('')}</div>
+    <div class="tip">${isApple?'点下载后在 Safari 里点「下载」。下完在「文件」App 的「下载」文件夹里，打开视频点分享 →「存储视频」就进相册了。':'点下载后浏览器会开始下载，下完在下载列表里。'}视频较大时要等一会儿才开始。</div></div>`;
+  $('#res').querySelectorAll('.ch a').forEach(a=>a.addEventListener('click',()=>setStatus('已交给浏览器下载，稍等片刻就会弹出下载提示','')));
+}
+function addHist(d,text){
+  const h=store.get('hist',[]).filter(x=>x.text!==text);h.unshift({text,title:d.title,pf:d.platformName,t:Date.now()});store.set('hist',h.slice(0,12));drawHist();
+}
+function drawHist(){
+  const h=store.get('hist',[]);$('#histWrap').hidden=!h.length;
+  $('#hist').innerHTML=h.map((x,i)=>`<a href="#" data-i="${i}"><small>${esc(x.pf)}</small><span>${esc(x.title)}</span><small>›</small></a>`).join('');
+  $('#hist').querySelectorAll('a').forEach(a=>a.onclick=e=>{e.preventDefault();$('#t').value=h[+a.dataset.i].text;analyze()});
+}
+async function analyze(){
+  const text=$('#t').value.trim();
+  if(!text){setStatus('先粘贴分享链接','err');return}
+  if(!/https?:\/\//.test(text)){setStatus('没找到链接，请粘贴完整的分享链接','err');return}
+  if(!server){showSetup();setStatus('先设置下载服务器地址','err');return}
+  $('#res').innerHTML='';$('#go').disabled=true;
+  setStatus('<i class="spin"></i>正在解析…');
+  const slow=setTimeout(()=>setStatus('<i class="spin"></i>服务器在唤醒（免费服务器闲置会休眠），第一次大约要等 1 分钟…'),6000);
+  const ctl=new AbortController();const kill=setTimeout(()=>ctl.abort(),120000);
+  try{
+    const r=await fetch(`${server}/api/info?url=${encodeURIComponent(text)}`,{signal:ctl.signal});
+    const d=await r.json();
+    if(!d.ok){setStatus(esc(d.msg||'解析失败'),'err');return}
+    setStatus('');render(d,text);addHist(d,text);
+  }catch(e){setStatus(e.name==='AbortError'?'服务器太久没响应，再点一次试试':'连不上下载服务器，检查网络或服务器地址','err')}
+  finally{clearTimeout(slow);clearTimeout(kill);$('#go').disabled=false}
+}
+$('#go').onclick=analyze;
+$('#paste').onclick=async()=>{try{const t=await navigator.clipboard.readText();if(t){$('#t').value=t;analyze()}else setStatus('剪贴板是空的','err')}catch(e){$('#t').focus();setStatus('请长按输入框选「粘贴」','err')}};
+$('#srv').onchange=()=>{let v=$('#srv').value.trim().replace(/\/+$/,'');if(v&&!/^https?:\/\//.test(v))v='https://'+v;$('#srv').value=v;store.set('server',v);server=v||DEFAULT_SERVER;if(server){$('#setup').hidden=true;setStatus('已保存服务器地址','')}};
+(async()=>{server=await findServer();$('#srv').value=store.get('server','')||server;if(!server)showSetup();drawHist();
+  const q=new URLSearchParams(location.search).get('url');if(q){$('#t').value=q;analyze()}})();
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('onrender.com'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

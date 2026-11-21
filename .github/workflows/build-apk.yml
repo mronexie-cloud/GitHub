@@ -25,6 +25,7 @@ on:
       - ".github/workflows/chat-e2e.yml"
       - ".github/workflows/tts.yml"
       - "crosspay-server/**"
+      - "downloader-server/**"
       - "render.yaml"
       - ".github/workflows/crosspay.yml"
   workflow_dispatch:
