@@ -115,7 +115,19 @@ h1{font-size:34px;font-weight:700;letter-spacing:.3px;margin-top:4px}
 .ic.real{background:transparent!important;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .ic img{width:100%;height:100%;object-fit:cover;display:block}.ic img:not([src]),.ic img[src=""]{visibility:hidden}
 .pick .ic{background:var(--panel2)}
+.wf{margin:-8px 0 18px;background:var(--panel2);border-radius:12px;overflow:hidden;font-size:13px}
+.wf .st{padding:10px 14px;color:var(--sub);display:flex;align-items:center;gap:8px}
+.wf .st b{color:var(--fg);font-weight:600}
+.wf .r{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:.5px solid var(--sep);cursor:pointer}
+.wf .r img{width:28px;height:28px;border-radius:7px;background:#fff;flex:none;object-fit:contain}
+.wf .r .m{flex:1;min-width:0}.wf .r .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf .r .d{color:var(--sub);font-size:12px}.wf .r.on{background:rgba(10,132,255,.14)}
+.wf .r .u{color:var(--accent);font-size:12px}.wf .r .ck{color:var(--accent);font-weight:700;width:16px;flex:none}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--dim);border-top-color:var(--accent);animation:sp 0.8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
 .scanb{width:100%;height:46px;border-radius:12px;background:var(--panel2);color:var(--accent);font-size:16px;font-weight:600;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:8px}
+.ic{position:relative}.ic img.fav{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:16%;background:#fff;opacity:0;transition:opacity .2s}
+.ic.favok img.fav{opacity:1}
 .ic.plus{background:var(--panel2);color:var(--sub);font-weight:300;font-size:30px;box-shadow:none}
 .ic.sm{width:38px;height:38px;border-radius:9px;font-size:14px}
 .ic.xs{width:30px;height:30px;border-radius:7px;font-size:12px}
@@ -387,7 +399,8 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const acc=id=>S.accounts.find(a=>a.id===id);
 const appsOf=id=>S.apps.filter(x=>x.accts.includes(id));
-function icon(x,cls=''){if(x.icon)return `<div class="ic real ${cls}"><img src="${esc(x.icon)}" alt=""></div>`;return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph)}</div>`}
+function icon(x,cls=''){if(x.icon&&x.icon.startsWith('data:'))return `<div class="ic real ${cls}"><img src="${esc(x.icon)}" alt=""></div>`;
+  if(x.icon)return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph||'')}<img class="fav" src="${esc(x.icon)}" alt="" onload="if(this.naturalWidth>1)this.parentNode.classList.add('favok')" onerror="this.remove()"></div>`;return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph)}</div>`}
 function linkOf(x){const L=LINKS[x.name]||['','',''];return{pkg:x.pkg||L[0],sch:x.link||L[1],web:(x.link&&/^https?:/i.test(x.link))?x.link:L[2]}}
 function openWeb(u){const a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
 let afAsked=false;
@@ -430,6 +443,25 @@ function press(el,tap,long){let t,fired=false,sx,sy;
   el.addEventListener('contextmenu',e=>e.preventDefault());
   el.addEventListener('click',e=>{if(fired){e.preventDefault();return}tap()});}
 const hasPw=x=>x.pw&&Object.values(x.pw).some(Boolean);
+/* ---------- 联网查官网 (Wikidata: official website P856, Google Play id P3418) ---------- */
+const favicon=u=>{try{return 'https://www.google.com/s2/favicons?sz=128&domain='+new URL(u).hostname}catch(e){return''}};
+const wdVal=cl=>{if(!cl||!cl.length)return'';const c=cl.find(x=>x.rank==='preferred')||cl.find(x=>x.rank!=='deprecated')||cl[0];const v=c&&c.mainsnak&&c.mainsnak.datavalue;return v?v.value:''};
+const wdLab=o=>{o=o||{};return (o['zh-cn']||o['zh-hans']||o.zh||o['zh-tw']||o.en||{}).value||''};
+const WF_CACHE={};
+async function findSites(q){
+  q=String(q).replace(/\s*(官网|官方网站|网站|网页版|app|App|APP)$/,'').trim();if(!q)return[];
+  if(WF_CACHE[q])return WF_CACHE[q];
+  const api='https://www.wikidata.org/w/api.php?origin=*&format=json&';
+  const get=u=>fetch(api+u).then(r=>{if(!r.ok)throw 0;return r.json()});
+  const lists=await Promise.all(['zh','en'].map(l=>get(`action=wbsearchentities&type=item&limit=8&uselang=zh&language=${l}&search=${encodeURIComponent(q)}`).then(r=>r.search||[]).catch(()=>[])));
+  const ids=[...new Set(lists.flat().map(s=>s.id))].slice(0,16);if(!ids.length)return WF_CACHE[q]=[];
+  const e=await get(`action=wbgetentities&props=claims|labels|descriptions&languages=zh|zh-cn|zh-hans|zh-tw|en&ids=${ids.join('|')}`);
+  const out=[],seen=new Set();
+  ids.forEach(id=>{const it=(e.entities||{})[id];if(!it)return;const c=it.claims||{},url=wdVal(c.P856);if(!url||seen.has(url))return;seen.add(url);
+    out.push({label:wdLab(it.labels)||q,desc:wdLab(it.descriptions),url,pkg:wdVal(c.P3418)||''})});
+  return WF_CACHE[q]=out.slice(0,4);
+}
+
 /* ---------- installed apps (Android) ---------- */
 let INSTALLED=null;const ICONS={};
 const canScan=()=>!!(window.Android&&Android.listApps);
@@ -703,6 +735,7 @@ function openPicker(a){
 const TILE_COLORS=['#0a84ff','#30d158','#ff9f0a','#ff375f','#bf5af2','#64d2ff','#ffd60a','#1c1c1e','#f2f2f7','#ac8e68'];
 function openApp(x,pre){
   let isNew=!x;x=x?{...x,accts:[...x.accts],pw:{...(x.pw||{})}}:{id:uid(),name:'',glyph:'',bg:'#0a84ff',fg:'#fff',cat:'其他',accts:pre||[],pw:{},link:'',added:Date.now()};
+  const wf={state:'',q:'',list:[],pick:-1,auto:false};let wfT;
   const draw=()=>{
     openSheet(`<div class="shead"><button id="cx">取消</button><h3>${isNew?'添加网站或 App':esc(x.name)}</h3><button class="done" id="ok">完成</button></div>
     <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:16px"><div id="prev">${icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})}</div>${isNew?'':'<button class="openb" id="go" style="margin:0;height:36px;padding:0 20px;font-size:15px">打开 App ↗</button>'}</div>
@@ -710,7 +743,8 @@ function openApp(x,pre){
     <div class="form"><label><span>名称</span><input id="an" placeholder="如：Steam / 小红书" value="${esc(x.name)}" list="pl"></label>
     <label><span>图标字</span><input id="ag" maxlength="4" placeholder="留空取首字" value="${esc(x.glyph)}"></label>
     <label><span>分类</span><select id="ac">${CATS.slice(1).map(c=>`<option ${c===x.cat?'selected':''}>${c}</option>`).join('')}</select></label>
-    <label><span>打开链接</span><input id="al" placeholder="${esc((LINKS[x.name]||[])[2]||'网址或 App 链接，可留空')}" value="${esc(x.link||'')}" autocapitalize="off"></label></div>
+    <label><span>打开链接</span><button id="wfb" type="button" style="order:3;color:var(--accent);font-size:14px;flex:none;padding:0 2px">🔍查官网</button><input id="al" placeholder="${esc((LINKS[x.name]||[])[2]||'网址或 App 链接，可留空')}" value="${esc(x.link||'')}" autocapitalize="off"></label></div>
+    <div class="wf" id="wf" ${wf.state?'':'hidden'}></div>
     <datalist id="pl">${PRESETS.map(p=>`<option value="${p[0]}">`).join('')}</datalist>
     <div class="flabel">图标颜色</div><div class="swatches">${TILE_COLORS.map(c=>`<div class="sw ${c===x.bg?'on':''}" data-c="${c}" style="background:${c}"></div>`).join('')}</div>
     <div class="flabel">用哪些账号注册 / 绑定 · 可填密码</div>
@@ -729,7 +763,31 @@ function openApp(x,pre){
       else{x.pkg=f.pkg;x.icon=f.icon}
       draw()}})};
     const upd=()=>{sync();$('#prev').innerHTML=icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})};
-    $('#an').oninput=()=>{const p=PMAP[$('#an').value.trim()];if(p&&isNew){x.glyph=p[1];x.bg=p[2];x.fg=p[3];x.cat=p[4];$('#ag').value=p[1];$('#ac').value=p[4]}upd()};
+    const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return u}};
+    const wfRender=()=>{const b=$('#wf');if(!b)return;b.hidden=!wf.state;
+      if(wf.state==='busy')b.innerHTML=`<div class="st"><i class="spin"></i>正在联网查找「<b>${esc(wf.q)}</b>」的官网…</div>`;
+      else if(wf.state==='none')b.innerHTML=`<div class="st">没查到「${esc(wf.q)}」的官网，可以手动填网址</div>`;
+      else if(wf.state==='off')b.innerHTML=`<div class="st">联网查官网失败（没网，或当前页面不允许联网）</div>`;
+      else if(wf.state==='ok')b.innerHTML=`<div class="st">🔍 ${wf.pick>=0?'已自动填好官网，不对可以点下面换一个':'查到这些官网，点一个填进去'}</div>`+
+        wf.list.map((r,i)=>`<div class="r ${i===wf.pick?'on':''}" data-i="${i}"><img src="${esc(favicon(r.url))}" alt="" onerror="this.style.visibility='hidden'">
+          <div class="m"><div>${esc(r.label)}${r.desc?` <span class="d">· ${esc(r.desc)}</span>`:''}</div><div class="u">${esc(host(r.url))}${r.pkg?' · 含安卓包名':''}</div></div><span class="ck">${i===wf.pick?'✓':''}</span></div>`).join('');
+      b.querySelectorAll('.r').forEach(el=>el.onclick=()=>{applySite(+el.dataset.i);haptic()});};
+    const applySite=i=>{const r=wf.list[i];if(!r)return;sync();const prev=wf.pick>=0?wf.list[wf.pick]:null;
+      wf.pick=i;x.link=r.url;$('#al').value=r.url;
+      const nm=$('#an').value.trim(),st=nm.replace(/\s*(官网|官方网站|网站|网页版)$/,'').trim();if(st&&st!==nm){$('#an').value=st;x.name=st}
+      if(r.pkg&&(!x.pkg||(prev&&x.pkg===prev.pkg)))x.pkg=r.pkg;
+      if(!x.icon||(prev&&x.icon===favicon(prev.url)))x.icon=favicon(r.url);
+      upd();wfRender()};
+    const lookup=async(auto)=>{const q=$('#an').value.trim();if(!q){wf.state='';wfRender();return}
+      wf.q=q;wf.state='busy';wf.pick=-1;wfRender();
+      try{wf.list=await findSites(q)}catch(e){wf.list=null}
+      if($('#an')&&$('#an').value.trim()!==q)return;
+      if(wf.list===null){wf.state='off';wf.list=[]}else wf.state=wf.list.length?'ok':'none';
+      wfRender();if(wf.state==='ok'&&(!auto||!$('#al').value.trim()||wf.auto))applySite(0);wf.auto=wf.state==='ok';};
+    wfRender();
+    $('#wfb').onclick=()=>lookup(false);
+    $('#an').oninput=()=>{const n=$('#an').value.trim(),p=PMAP[n];if(p&&isNew){x.glyph=p[1];x.bg=p[2];x.fg=p[3];x.cat=p[4];$('#ag').value=p[1];$('#ac').value=p[4]}upd();
+      clearTimeout(wfT);if(isNew&&n&&!LINKS[n]&&!x.pkg)wfT=setTimeout(()=>lookup(true),700);else if(!n){wf.state='';wfRender()}};
     $('#ag').oninput=upd;
     $('#sheet').querySelectorAll('.sw').forEach(s=>s.onclick=()=>{sync();x.bg=s.dataset.c;x.fg=['#f2f2f7','#ffd60a','#64d2ff'].includes(x.bg)?'#111':'#fff';draw()});
     $('#sheet').querySelectorAll('.opt[data-a]').forEach(o=>o.onclick=()=>{const id=o.dataset.a;x.accts.includes(id)?x.accts=x.accts.filter(i=>i!==id):x.accts.push(id);o.classList.toggle('on');haptic()});
