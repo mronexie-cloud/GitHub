@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>耳机翻译</title>
+<style>
+:root{
+  --bg:#F2F2F7;--card:#fff;--text:#000;--sub:#6E6E73;--sep:rgba(60,60,67,.14);--fill:#E9E9EE;
+  --blue:#007AFF;--green:#34C759;--red:#FF3B30;--orange:#FF9500;--indigo:#5856D6;
+  --r:22px;
+  --font:-apple-system,"SF Pro Text","SF Pro Display","PingFang SC","Noto Sans SC","Noto Sans CJK SC",system-ui,Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.page{position:absolute;inset:0;overflow-y:auto;padding:12px 16px 120px;display:none;-webkit-overflow-scrolling:touch}
+.page.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.large{font-size:34px;font-weight:700;letter-spacing:-.6px;margin:14px 4px 4px}
+.subtitle{color:var(--sub);font-size:15px;margin:0 4px 14px}
+.group-h{font-size:13px;color:var(--sub);text-transform:uppercase;margin:24px 18px 7px;letter-spacing:.2px}
+.group{background:var(--card);border-radius:var(--r);overflow:hidden}
+.foot{font-size:13px;color:var(--sub);margin:7px 18px 0;line-height:1.45}
+.row{display:flex;align-items:center;gap:12px;min-height:50px;padding:10px 16px;position:relative;width:100%;text-align:left;font-size:17px}
+.row+.row::before{content:"";position:absolute;top:0;left:58px;right:0;height:.5px;background:var(--sep)}
+.row.noicon+.row.noicon::before,.row.noicon+.row::before{left:16px}
+.row .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;flex:none}
+.row .ic svg{width:19px;height:19px}
+.row .lbl{flex:1;min-width:0}
+.row .lbl small{display:block;font-size:13px;color:var(--sub);margin-top:2px;line-height:1.35}
+.row .val{color:var(--sub);font-size:16px;white-space:nowrap}
+.row .chev{color:#C4C4C7;font-size:20px;margin-left:2px}
+.row:active{background:#E5E5EA}
+.row.static:active{background:none}
+.row.danger{color:var(--red)}
+.row.link{color:var(--blue)}
+.badge{display:inline-block;font-size:11px;font-weight:600;background:var(--blue);color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+
+/* iOS switch */
+.sw{position:relative;width:51px;height:31px;flex:none}
+.sw input{display:none}
+.sw i{position:absolute;inset:0;background:#E9E9EA;border-radius:31px;transition:.25s}
+.sw i::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);transition:.25s cubic-bezier(.3,1.4,.5,1)}
+.sw input:checked+i{background:var(--green)}
+.sw input:checked+i::after{transform:translateX(20px)}
+
+/* hero */
+.hero{background:var(--card);border-radius:28px;padding:22px 18px 18px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:-40% -20% auto;height:300px;background:radial-gradient(closest-side,rgba(0,122,255,.10),transparent);pointer-events:none}
+.hero svg.buds{width:230px;height:170px;display:block;margin:0 auto;filter:drop-shadow(0 18px 22px rgba(0,0,0,.12))}
+.hero .name{font-size:24px;font-weight:700;margin-top:6px;letter-spacing:-.3px}
+.hero .state{font-size:14px;color:var(--sub);margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+.dot.off{background:#C7C7CC}
+.batt{display:flex;justify-content:center;gap:26px;margin-top:16px}
+.batt .b{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;color:var(--sub)}
+.ring{width:54px;height:54px;position:relative}
+.ring svg{width:54px;height:54px;transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:600;color:var(--text)}
+.hero .btn{margin-top:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:50px;padding:0 24px;border-radius:25px;background:var(--blue);color:#fff;font-size:17px;font-weight:600}
+.btn.gray{background:var(--fill);color:var(--blue)}
+.btn.wide{width:100%}
+.btn:active{opacity:.75;transform:scale(.98)}
+
+/* noise control */
+.anc{display:flex;justify-content:space-around;padding:18px 8px 14px}
+.anc button{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;color:var(--text)}
+.anc .c{width:62px;height:62px;border-radius:50%;background:var(--fill);display:grid;place-items:center;transition:.2s}
+.anc .c svg{width:30px;height:30px}
+.anc button:active .c{background:var(--blue);color:#fff}
+
+/* slider */
+.vol{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.vol svg{width:20px;height:20px;color:var(--sub);flex:none}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:6px;border-radius:3px;background:linear-gradient(var(--blue),var(--blue)) 0/var(--p,50%) 100% no-repeat,#E3E3E8;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.06)}
+
+/* tab bar (floating glass) */
+.tabbar{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:4px;padding:5px;border-radius:32px;background:rgba(255,255,255,.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);box-shadow:0 8px 30px rgba(0,0,0,.12),inset 0 0 0 .5px rgba(255,255,255,.7);z-index:20}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:2px;width:96px;height:54px;justify-content:center;border-radius:27px;font-size:11px;font-weight:600;color:#8E8E93;transition:.2s}
+.tabbar button svg{width:24px;height:24px}
+.tabbar button.on{color:var(--blue);background:rgba(0,122,255,.11)}
+
+/* translate page */
+.tbar{display:flex;align-items:center;justify-content:space-between;margin:2px 0 0}
+.tbar .large{margin:14px 4px 10px}
+.round{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center;color:var(--blue);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.round svg{width:21px;height:21px}
+.tbtns{display:flex;gap:8px}
+.langs{background:var(--card);border-radius:var(--r);position:relative}
+.lrow{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;text-align:left}
+.lrow+.lrow{border-top:.5px solid var(--sep)}
+.lrow .who{font-size:13px;color:var(--sub);width:50px}
+.lrow .ln{flex:1;font-size:19px;font-weight:600}
+.lrow .ln small{font-size:13px;color:var(--sub);font-weight:400;margin-left:6px}
+.swap{position:absolute;right:56px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:var(--fill);display:grid;place-items:center;color:var(--blue);transition:transform .35s}
+.swap svg{width:20px;height:20px}
+.swap.spin{transform:translateY(-50%) rotate(180deg)}
+
+.feed{margin-top:16px;display:flex;flex-direction:column;gap:10px;padding-bottom:210px}
+.empty{text-align:center;color:var(--sub);padding:34px 20px 0;font-size:15px;line-height:1.6}
+.empty svg{width:64px;height:64px;color:#C7C7CC;margin-bottom:10px}
+.msg{max-width:88%;border-radius:20px;padding:12px 15px;background:var(--card);align-self:flex-start;position:relative;animation:pop .28s cubic-bezier(.2,1.2,.4,1)}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+.msg.me{align-self:flex-end;background:var(--blue);color:#fff}
+.msg .tr{font-size:19px;line-height:1.38;font-weight:500;word-break:break-word}
+.msg .src{font-size:14px;line-height:1.35;color:var(--sub);margin-top:6px;word-break:break-word}
+.msg.me .src{color:rgba(255,255,255,.75)}
+.msg .meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);margin-bottom:5px}
+.msg.me .meta{color:rgba(255,255,255,.8)}
+.msg .play{margin-left:auto;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(120,120,128,.14)}
+.msg.me .play{background:rgba(255,255,255,.22)}
+.msg .flip{margin-left:auto;font-size:12px;padding:3px 9px;border-radius:11px;background:rgba(120,120,128,.14);color:var(--sub);white-space:nowrap}
+.msg.me .flip{background:rgba(255,255,255,.22);color:#fff}
+.msg .flip+.play{margin-left:0}
+.msg .play svg{width:15px;height:15px}
+.msg .fail{color:var(--red);font-size:15px}
+.msg.me .fail{color:#FFE1DE}
+.typing{display:inline-flex;gap:4px;padding:6px 0}
+.typing i{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.35;animation:bl 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes bl{50%{opacity:1}}
+
+/* dock */
+.dock{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:15;border-radius:30px;background:rgba(255,255,255,.78);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);box-shadow:0 10px 34px rgba(0,0,0,.13);padding:14px 16px 16px;display:none}
+.dock.on{display:block}
+.live{display:flex;align-items:center;gap:10px;min-height:28px}
+.wave{display:flex;align-items:center;gap:3px;height:26px;flex:none}
+.wave i{width:4px;border-radius:2px;background:var(--blue);height:5px;transition:height .09s}
+.wave.me i{background:var(--indigo)}
+.live .st{font-size:13px;color:var(--sub);font-weight:600;white-space:nowrap}
+.live .pt{font-size:16px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctrls{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.cbtn{width:54px;height:54px;border-radius:50%;background:var(--fill);display:grid;place-items:center;color:var(--text)}
+.cbtn svg{width:24px;height:24px}
+.cbtn.stop{color:var(--red)}
+.talk{flex:1;margin:0 14px;height:58px;border-radius:29px;background:var(--indigo);color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
+.talk svg{width:22px;height:22px}
+.talk.active{background:var(--red);box-shadow:0 0 0 6px rgba(255,59,48,.18)}
+.talk{cursor:default;font-size:15px;background:var(--fill);color:var(--sub);height:54px}
+.msg.draft{opacity:.78}
+.msg.draft .tr{font-weight:500}
+.msg .cursor{display:inline-block;width:2px;height:1em;background:currentColor;margin-left:2px;vertical-align:-2px;animation:bl 1s infinite}
+.startwrap{position:fixed;left:16px;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:15}
+.startwrap .btn{width:100%;height:58px;border-radius:29px;font-size:18px;box-shadow:0 10px 26px rgba(0,122,255,.35)}
+.startwrap .hint{text-align:center;color:var(--sub);font-size:13px;margin-bottom:10px}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:40;opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:88%;background:var(--bg);border-radius:30px 30px 0 0;z-index:41;transform:translateY(105%);transition:transform .38s cubic-bezier(.2,.9,.25,1);display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.sheet.on{transform:none}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:#C7C7CC;margin:8px auto 0;flex:none}
+.sheet .sh{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 6px;flex:none}
+.sheet .sh h3{font-size:17px;font-weight:600;flex:1;text-align:center}
+.sheet .sh .x{width:32px;height:32px;border-radius:50%;background:var(--fill);color:var(--sub);display:grid;place-items:center;font-size:17px}
+.sheet .sh .sp{width:32px}
+.sheet .sb{overflow-y:auto;padding:6px 16px 26px}
+.search{display:flex;align-items:center;gap:6px;background:var(--fill);border-radius:12px;padding:0 10px;height:38px;margin:4px 0 10px}
+.search input{border:0;background:none;outline:none;font:inherit;font-size:16px;flex:1}
+.check{color:var(--blue);font-weight:700}
+.tag{font-size:11px;border-radius:5px;padding:1px 5px;background:var(--fill);color:var(--sub);margin-left:6px;vertical-align:2px}
+.seg{display:flex;background:var(--fill);border-radius:10px;padding:2px;margin:4px 0}
+.seg button{flex:1;height:30px;border-radius:8px;font-size:14px;font-weight:500}
+.seg button.on{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.info{text-align:center;padding:10px 6px 4px}
+.info .big{width:72px;height:72px;border-radius:20px;margin:0 auto 12px;display:grid;place-items:center;color:#fff}
+.info .big svg{width:40px;height:40px}
+.info h2{font-size:22px;margin-bottom:8px}
+.info p{color:var(--sub);font-size:15px;line-height:1.55;margin-bottom:16px;text-align:left}
+.steps{counter-reset:s;text-align:left;margin:0 0 18px}
+.steps li{list-style:none;counter-increment:s;position:relative;padding:0 0 12px 36px;font-size:15px;line-height:1.5}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center}
+
+/* face to face */
+.f2f{position:fixed;inset:0;z-index:30;background:#000;display:none;flex-direction:column}
+.f2f.on{display:flex}
+.half{flex:1;display:flex;flex-direction:column;padding:22px 22px;position:relative;color:#fff}
+.half.top{transform:rotate(180deg);background:linear-gradient(160deg,#1C1C1E,#2C2C2E)}
+.half.bot{background:linear-gradient(160deg,#0A84FF,#5E5CE6)}
+.half .hl{font-size:13px;opacity:.7;font-weight:600;letter-spacing:.3px}
+.half .ht{font-size:30px;line-height:1.3;font-weight:700;margin-top:12px;flex:1;overflow:auto;word-break:break-word}
+.half .hs{font-size:15px;opacity:.6;margin-top:8px;max-height:3.2em;overflow:hidden}
+.half .hb{display:flex;align-items:center;gap:10px;margin-top:14px}
+.half .mic{height:48px;border-radius:24px;padding:0 20px;background:rgba(255,255,255,.18);color:#fff;font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px}
+.half .mic svg{width:20px;height:20px}
+.half .mic.active{background:#FF453A}
+.f2f .close{position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:2;width:44px;height:44px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.f2f .close svg{width:20px;height:20px}
+
+.toast{position:fixed;left:50%;top:calc(18px + env(safe-area-inset-top));transform:translate(-50%,-140%);background:rgba(30,30,32,.92);color:#fff;padding:11px 18px;border-radius:22px;font-size:14px;z-index:60;transition:transform .35s cubic-bezier(.2,1.2,.4,1);max-width:88%;text-align:center;line-height:1.4}
+.toast.on{transform:translate(-50%,0)}
+.banner{background:#FFF4E5;color:#8A5300;border-radius:16px;padding:12px 14px;font-size:14px;line-height:1.45;margin-top:12px;display:flex;gap:10px;align-items:center}
+.banner button{color:var(--blue);font-weight:600;white-space:nowrap}
+
+.batt3{display:flex;justify-content:center;gap:12px;margin-top:16px}
+.bi{flex:1;max-width:104px;background:var(--bg);border-radius:16px;padding:10px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bi .bl{font-size:12px;color:var(--sub)}
+.bi .bv{font-size:17px;font-weight:700;display:flex;align-items:center;gap:3px}
+.bi .bv svg{width:13px;height:13px;color:var(--green)}
+.bbar{width:46px;height:8px;border-radius:4px;background:#E3E3E8;overflow:hidden}
+.bbar i{display:block;height:100%;border-radius:4px}
+.anc button.on .c{background:var(--blue);color:#fff;box-shadow:0 6px 16px rgba(0,122,255,.3)}
+.anc button.on{color:var(--blue);font-weight:600}
+.anc button:disabled{opacity:.45}
+.levels{display:flex;gap:6px;padding:0 14px 14px}
+.levels button{flex:1;height:34px;border-radius:17px;background:var(--fill);font-size:14px;font-weight:500}
+.levels button.on{background:rgba(0,122,255,.13);color:var(--blue);font-weight:600}
+.autocard{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--r);padding:12px 16px;margin-top:12px}
+.autocard .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none}
+.autocard .ic svg{width:20px;height:20px}
+.autocard .lbl{flex:1;font-size:17px}
+.autocard small{display:block;font-size:13px;color:var(--sub);margin-top:2px}
+.fxgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fx{background:var(--card);border-radius:var(--r);padding:14px 13px 13px;text-align:left;display:flex;flex-direction:column;gap:3px;position:relative;border:2px solid transparent;transition:.2s}
+.fx:active{transform:scale(.98)}
+.fx .fi{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;margin-bottom:6px}
+.fx .fi svg{width:22px;height:22px}
+.fx b{font-size:15px;line-height:1.25}
+.fx small{font-size:12px;color:var(--sub);line-height:1.35}
+.fx .ck{position:absolute;right:10px;top:10px;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-style:normal;font-size:13px;font-weight:700;display:none;place-items:center}
+.fx.on{border-color:var(--blue);background:linear-gradient(180deg,rgba(0,122,255,.07),var(--card) 60%)}
+.fx.on .ck{display:grid}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border-radius:var(--r);padding:16px 14px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.tile:active{transform:scale(.98)}
+.tile .ti{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;margin-bottom:6px}
+.tile .ti svg{width:22px;height:22px}
+.tile b{font-size:17px}
+.tile small{font-size:12.5px;color:var(--sub);line-height:1.35}
+</style>
+</head>
+<body>
+
+<!-- ========== 耳机 ========== -->
+<section class="page on" id="pg-buds">
+  <div class="large">耳机</div>
+  <div id="permBanner"></div>
+  <div class="hero" id="hero" style="margin-top:12px"></div>
+  <div id="ctlBanner"></div>
+
+  <div class="group-h">噪声控制</div>
+  <div class="group">
+    <div class="anc">
+      <button data-anc="anc"><span class="c"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/><circle cx="12" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>降噪</button>
+      <button data-anc="off"><span class="c"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>关闭</button>
+      <button data-anc="transparency"><span class="c"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/><g><circle cx="12" cy="1.6" r="1"/><circle cx="16.6" cy="3.4" r="1"/><circle cx="7.4" cy="3.4" r="1"/><circle cx="18.6" cy="7.6" r="1"/><circle cx="5.4" cy="7.6" r="1"/></g></svg></span>通透</button>
+    </div>
+    <div id="ancLevels"></div>
+  </div>
+  <div class="foot" id="ancFoot">直接切换耳机的降噪模式。</div>
+
+  <div class="group-h">音效</div>
+  <div class="fxgrid" id="fxgrid">
+    <button class="fx" data-fx="spatial"><span class="fi" style="background:linear-gradient(135deg,#5E5CE6,#BF5AF2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8"/></svg></span><b>超清AUDIO 全景声</b><small>无损全面升级，沉浸式空间环绕音感</small><i class="ck">✓</i></button>
+    <button class="fx" data-fx="studio"><span class="fi" style="background:linear-gradient(135deg,#FF9F0A,#FF375F)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><b>超清录音室音质</b><small>还原录音室音质，更通透纯净</small><i class="ck">✓</i></button>
+    <button class="fx" data-fx="lossless"><span class="fi" style="background:linear-gradient(135deg,#FFD60A,#FF9F0A)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 12h2.5M5.5 8v8M8.5 5v14M11.5 9v6M14.5 6.5v11M17.5 9.5v5M20.5 11v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><b>超清AUDIO 无损音质</b><small>真无损，原汁原味</small><i class="ck">✓</i></button>
+    <button class="fx" data-fx="smart"><span class="fi" style="background:linear-gradient(135deg,#30D158,#0A84FF)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.1L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9zM18.5 14l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9zM5.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8L3 17.5l1.8-.7z"/></svg></span><b>超清智能音效</b><small id="smartSub">跟随曲风智能适配</small><i class="ck">✓</i></button>
+  </div>
+  <div class="foot" id="fxFoot">对手机播放的音乐、视频生效。再点一次已选的音效可关闭。</div>
+
+  <div class="group-h">翻译</div>
+  <div class="tiles">
+    <button class="tile" id="goLive"><span class="ti" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg></span><b>同声传译</b><small>戴上耳机，双方随便说，自动翻译</small></button>
+    <button class="tile" id="goF2F"><span class="ti" style="background:linear-gradient(135deg,#FF9F0A,#FF375F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M12 6v12"/><path d="M7 10.5h2M15 13.5h2"/></svg></span><b>面对面翻译</b><small>手机分上下两半，各看各的语言</small></button>
+  </div>
+
+  <div class="group" style="margin-top:10px">
+    <label class="row static">
+      <span class="ic" style="background:linear-gradient(135deg,#34C759,#30B0C7)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a4 4 0 0 1 4 4v1.5l-.8 10.3a1.7 1.7 0 0 1-1.7 1.6h-.1a1.7 1.7 0 0 1-1.7-1.6L6.2 11A4 4 0 0 1 7 3z"/><path d="M15 6.5a5 5 0 0 1 0 7M18 4a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+      <span class="lbl">自动翻译<small>戴上耳机就自动听，听到外语就翻译到耳机里</small></span>
+      <span class="sw"><input type="checkbox" data-auto><i></i></span>
+    </label>
+  </div>
+
+  <div class="group" style="margin-top:10px">
+    <button class="row" id="movieRow">
+      <span class="ic" style="background:linear-gradient(135deg,#FF375F,#FF9F0A)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm6 3.5v7l6-3.5z"/></svg></span>
+      <span class="lbl">视频同传<small id="movieSub2">看美剧、电影时，耳机里同步听中文、屏幕上出中文字幕</small></span><span class="chev">›</span>
+    </button>
+  </div>
+
+  <div class="group-h">更多功能</div>
+  <div class="group">
+    <label class="row static" id="gameRow" style="display:none">
+      <span class="ic" style="background:#FF2D55"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 4a2.6 2.6 0 0 1-4.5 1.2L14.4 16H9.6l-2.2 2.2A2.6 2.6 0 0 1 2.9 17l-.8-4A5 5 0 0 1 7 7zm1 3v1.5H6.5v1.5H8v1.5h1.5V13H11v-1.5H9.5V10zm8 .5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg></span>
+      <span class="lbl">游戏模式<small>降低声音延迟，打游戏声画同步</small></span>
+      <span class="sw"><input type="checkbox" id="gameSw"><i></i></span>
+    </label>
+    <button class="row" id="voiceRow">
+      <span class="ic" style="background:linear-gradient(135deg,#0A84FF,#BF5AF2)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <span class="lbl">语音控制<span class="badge">新</span><small>长按耳机说「下一首」「暂停」「降噪」…</small></span><span class="chev">›</span>
+    </button>
+    <button class="row" id="findBtn">
+      <span class="ic" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7zm0 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>
+      <span class="lbl">查找耳机<small id="findSub">让耳机发出提示音</small></span><span class="chev">›</span>
+    </button>
+    <button class="row" id="dualRow">
+      <span class="ic" style="background:#5AC8FA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="9" height="14" rx="2"/><rect x="13" y="8" width="9" height="11" rx="2"/></svg></span>
+      <span class="lbl">双设备连接<small>耳机可同时连两台设备，在系统耳机页设置</small></span><span class="chev">›</span>
+    </button>
+  </div>
+
+  <div class="group-h">媒体音量</div>
+  <div class="group">
+    <div class="vol">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9h4l5-4v14l-5-4H4z"/></svg>
+      <input type="range" id="vol" min="0" max="15" value="7">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9h4l5-4v14l-5-4H3z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <div class="group-h">耳机详情</div>
+  <div class="group">
+    <div class="row static noicon"><span class="lbl">型号</span><span class="val" id="mdlVal">—</span></div>
+    <div class="row static noicon"><span class="lbl">固件版本</span><span class="val" id="fwVal">—</span></div>
+    <button class="row noicon" id="btSet"><span class="lbl">蓝牙设置</span><span class="chev">›</span></button>
+    <button class="row noicon" id="asrRow"><span class="lbl">语音识别</span><span class="val" id="asrVal">—</span><span class="chev">›</span></button>
+    <button class="row noicon" id="ttsRow"><span class="lbl">朗读语音</span><span class="val">系统设置</span><span class="chev">›</span></button>
+  </div>
+  <div class="foot" style="margin-bottom:20px">耳机翻译 · by zlc</div>
+</section>
+
+<!-- ========== 翻译 ========== -->
+<section class="page" id="pg-tr">
+  <div class="tbar">
+    <div class="large">实时翻译</div>
+    <div class="tbtns">
+      <button class="round" id="f2fBtn" title="面对面"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M12 6v12"/><path d="M7 10.5h2M15 13.5h2"/></svg></button>
+      <button class="round" id="setBtn" title="设置"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+    </div>
+  </div>
+  <div class="langs">
+    <button class="lrow" data-pick="them"><span class="who">对方说</span><span class="ln" id="lnThem"></span><span class="chev" style="color:#C4C4C7">›</span></button>
+    <button class="lrow" data-pick="me"><span class="who">我说</span><span class="ln" id="lnMe"></span><span class="chev" style="color:#C4C4C7">›</span></button>
+    <button class="swap" id="swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 7.5 7 4l3.5 3.5M17 20V4M13.5 16.5 17 20l3.5-3.5"/></svg></button>
+  </div>
+  <label class="autocard">
+    <span class="ic" style="background:linear-gradient(135deg,#34C759,#30B0C7)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a4 4 0 0 1 4 4v1.5l-.8 10.3a1.7 1.7 0 0 1-1.7 1.6h-.1a1.7 1.7 0 0 1-1.7-1.6L6.2 11A4 4 0 0 1 7 3z"/><path d="M15 6.5a5 5 0 0 1 0 7M18 4a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+    <span class="lbl"><b>自动翻译</b><small>不用打开，戴上耳机就自动开始 · <span id="autoSt">关闭</span></small></span>
+    <span class="sw"><input type="checkbox" data-auto><i></i></span>
+  </label>
+  <button class="autocard" id="movieCard" style="width:100%;text-align:left;margin-top:10px">
+    <span class="ic" style="background:linear-gradient(135deg,#FF375F,#FF9F0A)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm6 3.5v7l6-3.5z"/></svg></span>
+    <span class="lbl"><b>视频同传</b><small id="movieSub">手机看美剧、电影，耳机里同步听中文</small></span>
+    <span class="chev" style="color:#C4C4C7;font-size:20px">›</span>
+  </button>
+  <div class="feed" id="feed"></div>
+</section>
+
+<div class="startwrap" id="startWrap" style="display:none">
+  <div class="hint" id="startHint">戴上耳机，对方说话时你会在耳机里听到翻译</div>
+  <button class="btn" id="startBtn"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>开始实时翻译</button>
+</div>
+
+<div class="dock" id="dock">
+  <div class="live"><div class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></div><span class="st" id="liveSt"></span><span class="pt" id="livePt"></span></div>
+  <div class="ctrls">
+    <button class="cbtn stop" id="stopBtn" title="停止"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg></button>
+    <div class="talk" id="talkBtn"><span id="talkTxt">自动识别双方</span></div>
+    <button class="cbtn" id="f2fBtn2" title="面对面"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M12 6v12"/></svg></button>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button data-tab="buds" class="on"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a4 4 0 0 1 4 4v1.5l-.8 10.3a1.7 1.7 0 0 1-1.7 1.6h-.1a1.7 1.7 0 0 1-1.7-1.6L6.2 11A4 4 0 0 1 7 3z"/><path d="M17 3a4 4 0 0 0-4 4v1.5l.8 10.3a1.7 1.7 0 0 0 1.7 1.6h.1a1.7 1.7 0 0 0 1.7-1.6l.5-7.8A4 4 0 0 0 17 3z" opacity=".55"/></svg>耳机</button>
+  <button data-tab="tr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg>翻译</button>
+</nav>
+
+<!-- face to face -->
+<div class="f2f" id="f2f">
+  <div class="half top">
+    <div class="hl" id="fTopL"></div>
+    <div class="ht" id="fTopT"></div>
+    <div class="hs" id="fTopS"></div>
+  </div>
+  <button class="close" id="f2fClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="half bot">
+    <div class="hl" id="fBotL"></div>
+    <div class="ht" id="fBotT"></div>
+    <div class="hs" id="fBotS"></div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div class="sh"><span class="sp"></span><h3 id="shT"></h3><button class="x" id="shX">✕</button></div><div class="sb" id="shB"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= demo bridge (only when opened outside the app, for previews) ================= */
+if(!window.Android){
+  const cb=(f,...a)=>setTimeout(()=>window[f]&&window[f](...a),0);
+  let vol=8,lt=null,said=0;
+  const demoThem=['Hi! Is this seat taken?','The train to KL Sentral leaves from platform two.','You can pay by card or Touch ’n Go.'];
+  const demoMe=['不好意思，请问去中央车站怎么走？','谢谢你！'];
+  window.Android={
+    devices:()=>JSON.stringify({perm:true,mic:true,bt:true,devices:[{name:'OnePlus Buds Ace 3',addr:'demo',battery:90,a2dp:true,hfp:true}]}),
+    refreshDevices(){cb('onDevices',JSON.parse(this.devices()))},asrStatus:()=>'ok',recognizers:()=>'demo',ttsHas:l=>!/^(ms|ta|tl|fil)/.test(l),earbuds:()=>true,
+    _st:{manual:false,auto:false,listening:false,muted:false,earbuds:true},
+    _ev(o){setTimeout(()=>window.onLive&&onLive(o),0)},
+    _state(){this._ev(Object.assign({t:'state'},this._st))},
+    liveState(){return JSON.stringify(Object.assign({t:'state'},this._st))},liveConfig(){},autoEnabled(){return this._st.auto},
+    history(){return localStorage.getItem('demo.hist')||'[]'},saveHistory(j){localStorage.setItem('demo.hist',j)},
+    batteryOk(){return false},askBattery(){},voiceTry(){},openDefaultApps(){},movieState(){return JSON.stringify({t:'movie',on:false,lines:0})},overlayOk(){return true},openOverlaySettings(){},movieStart(){setTimeout(()=>{window.onMovie({t:'movie',on:true,lines:0});window.onMovie({t:'movie_line'})},500);return 'ok'},movieStop(){},_fx:{t:'sound',preset:'off',running:false,genre:null,ok:true},soundState(){return JSON.stringify(this._fx)},soundSet(p){const f=this._fx;f.preset=p;f.running=p!=='off'&&p!=='lossless';f.genre=null;if(p==='smart')setTimeout(()=>{f.genre='pop';window.onSound(Object.assign({},f))},2500);setTimeout(()=>window.onSound(Object.assign({},f)),300)},
+    live(a){const st=this._st;if(a==='manual_on')st.manual=true;if(a==='manual_off')st.manual=false;if(a==='auto_on')st.auto=true;if(a==='auto_off')st.auto=false;
+      const want=st.manual||(st.auto&&st.earbuds);if(want&&!st.listening){st.listening=true;this._run()}if(!want){st.listening=false;clearTimeout(lt)}this._state();return true},
+    _run(){const self=this,script=[['them','Hi! Is this seat taken?','你好！这个位子有人坐吗？'],['me','没有人，请坐。','No one, please sit.'],['them','The train to KL Sentral leaves from platform two.','去吉隆坡中央车站的火车从二号站台出发。'],['me','谢谢你！','Thank you!']];
+      const next=()=>{if(!self._st.listening)return;const [who,txt,tr]=script[said%4];const words=txt.split(/(?<=\s)|(?=[一-鿿])/);let i=0;const lv=setInterval(()=>self._ev({t:'level',v:Math.random()*9}),90);
+        const tick=()=>{if(!self._st.listening){clearInterval(lv);return}i+=2;if(i<words.length){self._ev({t:'draft',who,src:words.slice(0,i).join(''),tr:i>3?tr.slice(0,Math.ceil(tr.length*i/words.length)):''});lt=setTimeout(tick,500)}
+          else{clearInterval(lv);said++;self._ev({t:'draft_clear'});const e={id:'u'+Date.now(),who,src:txt,alt:'',from:who==='me'?'zh-CN':'en',to:who==='me'?'en':'zh-CN',tr,st:'ok',t:Date.now()};self._ev({t:'entry',e});lt=setTimeout(next,2500)}};
+        lt=setTimeout(tick,600)};lt=setTimeout(next,1200)},
+    stopListen(){clearTimeout(lt)},finishListen(){},
+    speak(id){setTimeout(()=>window.onSpeak&&onSpeak('done',id),1400)},stopSpeak(){},session(){},earMic:()=>true,
+    volume:()=>JSON.stringify({v:vol,max:15}),setVolume(v){vol=v},vibrate(){},openBluetooth(){},openAppSettings(){},openTtsSettings(){},openUrl(){},askPermissions(){},
+    httpGet(id,url){const q=decodeURIComponent((url.match(/[?&]q=([^&]*)/)||[])[1]||'');const map={'没有人，请坐。':'No one, please sit.','没有':'No','没有人，':'No one,','Hi! Is ':'Hi! Is ','The train to ':'Go to ','The train to KL Sentral ':'Go to KL Sentral ','The train to KL Sentral leaves from ':'The train to KL Sentral departs from ','Hi! Is this seat taken?':'你好！这个位子有人坐吗？','The train to KL Sentral leaves from platform two.':'去吉隆坡中央车站的火车从二号站台出发。','You can pay by card or Touch ’n Go.':'你可以刷卡或用 Touch ’n Go 付款。','不好意思，请问去中央车站怎么走？':'Excuse me, how do I get to KL Sentral?','谢谢你！':'Thank you!'};
+      setTimeout(()=>window.__httpCb(id,JSON.stringify([[[map[q]||q,q]],null,'en'])),500)}
+  };
+  window.__demo=true;
+}
+const A=window.Android;
+
+/* ================= languages ================= */
+// code: translation code · asr: speech recognition locale · tts: voice locale
+const LANGS=[
+ {c:'zh-CN',n:'中文（普通话）',o:'普通话',asr:'zh-CN',tts:'zh-CN',ui:'请说'},
+ {c:'zh-TW',n:'中文（繁體）',o:'國語',asr:'zh-TW',tts:'zh-TW',ui:'請說'},
+ {c:'yue',n:'粤语',o:'廣東話',asr:'yue-Hant-HK',tts:'zh-HK',ui:'請講'},
+ {c:'en',n:'英语',o:'English',asr:'en-US',tts:'en-US',ui:'Speak'},
+ {c:'ms',n:'马来语',o:'Bahasa Melayu',asr:'ms-MY',tts:'ms-MY',ui:'Cakap'},
+ {c:'id',n:'印尼语',o:'Bahasa Indonesia',asr:'id-ID',tts:'id-ID',ui:'Bicara'},
+ {c:'th',n:'泰语',o:'ไทย',asr:'th-TH',tts:'th-TH',ui:'พูด'},
+ {c:'vi',n:'越南语',o:'Tiếng Việt',asr:'vi-VN',tts:'vi-VN',ui:'Nói'},
+ {c:'ta',n:'泰米尔语',o:'தமிழ்',asr:'ta-MY',tts:'ta-IN',ui:'பேசுங்கள்'},
+ {c:'tl',n:'菲律宾语',o:'Filipino',asr:'fil-PH',tts:'fil-PH',ui:'Magsalita'},
+ {c:'ja',n:'日语',o:'日本語',asr:'ja-JP',tts:'ja-JP',ui:'話す'},
+ {c:'ko',n:'韩语',o:'한국어',asr:'ko-KR',tts:'ko-KR',ui:'말하기'},
+ {c:'ne',n:'尼泊尔语',o:'नेपाली',asr:'ne-NP',tts:'ne-NP',ui:'बोल्नुहोस्'},
+ {c:'hi',n:'印地语',o:'हिन्दी',asr:'hi-IN',tts:'hi-IN',ui:'बोलिए'},
+ {c:'ar',n:'阿拉伯语',o:'العربية',asr:'ar-SA',tts:'ar-SA',ui:'تحدث'},
+ {c:'fr',n:'法语',o:'Français',asr:'fr-FR',tts:'fr-FR',ui:'Parler'},
+ {c:'de',n:'德语',o:'Deutsch',asr:'de-DE',tts:'de-DE',ui:'Sprechen'},
+ {c:'es',n:'西班牙语',o:'Español',asr:'es-ES',tts:'es-ES',ui:'Hablar'},
+ {c:'pt',n:'葡萄牙语',o:'Português',asr:'pt-BR',tts:'pt-BR',ui:'Falar'},
+ {c:'it',n:'意大利语',o:'Italiano',asr:'it-IT',tts:'it-IT',ui:'Parla'},
+ {c:'ru',n:'俄语',o:'Русский',asr:'ru-RU',tts:'ru-RU',ui:'Говорите'},
+ {c:'tr',n:'土耳其语',o:'Türkçe',asr:'tr-TR',tts:'tr-TR',ui:'Konuşun'},
+];
+const L=c=>LANGS.find(x=>x.c===c)||LANGS[0];
+
+/* ================= storage ================= */
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const cfg=Object.assign({them:'en',me:'zh-CN',spkThem:true,spkMe:true,duck:true,earMic:false,rate:1,trNoise:'anc'},store.get('eb.cfg',{}));
+const saveCfg=()=>store.set('eb.cfg',cfg);
+let hist=[];try{hist=JSON.parse(A.history())||[]}catch(e){}
+const saveHist=()=>{try{A.saveHistory(JSON.stringify(hist.slice(-150)))}catch(e){}};
+window.onHistory=()=>{try{hist=JSON.parse(A.history())||[];renderFeed()}catch(e){}};
+
+/* ================= helpers ================= */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT;function toast(t,ms=2600){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('on'),ms)}
+const buzz=ms=>{try{A.vibrate(ms)}catch(e){}};
+const ICON_SPK='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9h4l5-4v14l-5-4H3z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+/* ================= tabs ================= */
+let tab='buds';
+function setTab(t){tab=t;document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='pg-'+t));
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));renderDock()}
+document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+/* ================= earbuds page ================= */
+let dev={perm:true,mic:true,bt:true,devices:[]};
+const BUDS_SVG=`<svg class="buds" viewBox="0 0 230 170">
+ <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#DADDE3"/></linearGradient>
+ <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FAFAFC"/><stop offset="1" stop-color="#E1E3E8"/></linearGradient></defs>
+ <g transform="translate(46 18) rotate(6 22 26)"><ellipse cx="22" cy="26" rx="26" ry="24" fill="url(#g1)"/><ellipse cx="13" cy="24" rx="9" ry="8" fill="#C9CDD6"/><circle cx="12" cy="24" r="4" fill="#9AA0AC"/><rect x="28" y="30" width="17" height="98" rx="8.5" fill="url(#g2)"/><rect x="31" y="112" width="11" height="12" rx="5" fill="#D3D6DD"/></g>
+ <g transform="translate(184 18) scale(-1 1) rotate(6 22 26)"><ellipse cx="22" cy="26" rx="26" ry="24" fill="url(#g1)"/><ellipse cx="13" cy="24" rx="9" ry="8" fill="#C9CDD6"/><circle cx="12" cy="24" r="4" fill="#9AA0AC"/><rect x="28" y="30" width="17" height="98" rx="8.5" fill="url(#g2)"/><rect x="31" y="112" width="11" height="12" rx="5" fill="#D3D6DD"/></g>
+</svg>`;
+let buds={status:'idle'};
+const MOVIE_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm6 3.5v7l6-3.5z"/></svg>';
+const BOLT='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>';
+function battItem(label,v,ch){
+  const col=v<0?'#C7C7CC':v<=20?'var(--red)':v<=40?'var(--orange)':'var(--green)';
+  return `<div class="bi"><span class="bl">${label}</span><span class="bv">${ch?BOLT:''}${v<0?'—':v+'%'}</span><span class="bbar"><i style="width:${v<0?0:v}%;background:${col}"></i></span></div>`}
+function renderBuds(){
+  const d=dev.devices[0];
+  const pb=$('#permBanner');
+  if(!dev.perm||!dev.mic){pb.innerHTML=`<div class="banner"><span style="flex:1">${!dev.perm?'需要“附近设备/蓝牙”权限才能控制耳机、读取电量。':'需要麦克风权限才能翻译。'}</span><button id="permFix">去允许</button></div>`;
+    $('#permFix').onclick=()=>{A.askPermissions();setTimeout(()=>A.openAppSettings(),900)}}else pb.innerHTML='';
+  const h=$('#hero');
+  if(!d){h.innerHTML=`${BUDS_SVG.replace('class="buds"','class="buds" style="opacity:.45"')}<div class="name">${dev.bt?'未连接耳机':'蓝牙已关闭'}</div><div class="state"><span class="dot off"></span>打开耳机盒，在蓝牙里连接耳机</div><button class="btn gray" id="heroBt" style="margin-top:16px">打开蓝牙设置</button>`;
+    $('#heroBt').onclick=()=>A.openBluetooth();renderCtl();return}
+  const ok=buds.status==='ok'&&(buds.left>=0||buds.right>=0);
+  const name=buds.model||d.name;
+  const st=buds.status==='ok'?'已连接 · 可控制':buds.status==='connecting'?'已连接 · 正在连接控制…':'已连接';
+  const batt=ok?`<div class="batt3">${battItem('左耳',buds.left,buds.chL)}${battItem('右耳',buds.right,buds.chR)}${battItem('充电盒',buds.case,buds.chCase)}</div>`
+    :`<div class="batt3">${battItem('耳机',d.battery,false)}</div>`;
+  h.innerHTML=`${BUDS_SVG}<div class="name">${esc(name)}</div><div class="state"><span class="dot"></span>${st}</div>${batt}`;
+  renderCtl();
+}
+const LV={smart:'智能',mild:'轻度',moderate:'中度',max:'深度'};
+function renderCtl(){
+  const d=dev.devices[0],can=!!d&&buds.status==='ok';
+  document.querySelectorAll('[data-anc]').forEach(b=>{b.classList.toggle('on',can&&buds.noise===b.dataset.anc)});
+  const lv=$('#ancLevels');
+  if(can&&buds.noise==='anc'&&buds.levels&&buds.levels.length){lv.innerHTML=`<div class="levels">${buds.levels.map(l=>`<button data-lv="${l}" class="${buds.level===l?'on':''}">${LV[l]}</button>`).join('')}</div>`;
+    lv.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>setNoise(b.dataset.lv))}else lv.innerHTML='';
+  $('#ancFoot').textContent=can?(buds.noise==='anc'&&buds.levels&&buds.levels.length?'「智能」会根据环境自动调节降噪强度。':'直接切换耳机的降噪模式。'):d?'正在连接耳机控制…连不上时，轻点会打开系统耳机页。':'连接耳机后可切换。';
+  const cb=$('#ctlBanner');
+  cb.innerHTML=d&&buds.status==='failed'?`<div class="banner"><span style="flex:1">连不上耳机的控制通道（可能被系统耳机页占用）。降噪、左右耳电量、游戏模式暂时用不了。</span><button id="ctlRetry">重试</button></div>`:'';
+  if($('#ctlRetry'))$('#ctlRetry').onclick=()=>{A.budsReconnect();toast('正在重新连接…')};
+  $('#gameRow').style.display=can&&buds.game!==undefined?'flex':'none';
+  $('#gameSw').checked=!!buds.game;
+  $('#mdlVal').textContent=buds.model||(d?d.name:'—');
+  $('#fwVal').textContent=buds.fw||'—';
+  $('#findSub').textContent=buds.finding?'正在响…点一下停止':can?'让耳机发出提示音':'在耳机里播放渐强的提示音';
+  $('#findBtn').classList.toggle('danger',!!buds.finding);
+}
+window.onDevices=d=>{dev=d||dev;renderBuds();renderStartHint()};
+window.onPerms=()=>{try{dev=JSON.parse(A.devices())}catch(e){}renderBuds();checkAsr()};
+let lastNoiseShown=null;
+window.onBuds=b=>{const prev=buds;buds=b||{status:'idle'};if(buds.game===null)delete buds.game;
+  renderBuds();
+  if(prev.noise&&buds.noise&&prev.noise!==buds.noise&&lastNoiseShown!==buds.noise&&tab==='buds'){}};
+try{buds=JSON.parse(A.buds());if(buds.game===null)delete buds.game}catch(e){}
+
+function setNoise(mode){
+  if(buds.status!=='ok'){
+    openSheet('噪声控制',`<div class="info"><div class="big" style="background:linear-gradient(135deg,#0A84FF,#5E5CE6)"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></div>
+     <h2>暂时连不上耳机控制</h2><p>可能是手机自带的耳机页正在使用耳机的控制通道。可以先在系统耳机页切换，或者点「重试」。</p></div>
+     <button class="btn wide" id="ancGo">打开系统耳机页</button><div style="height:10px"></div><button class="btn gray wide" id="ancRe">重试连接</button>`);
+    $('#ancGo').onclick=()=>{closeSheet();A.openBluetooth()};$('#ancRe').onclick=()=>{closeSheet();A.budsReconnect()};return false}
+  const ok=A.budsNoise(mode);buzz(12);
+  if(!ok)toast('这副耳机不支持这个模式');
+  return ok;
+}
+document.querySelectorAll('[data-anc]').forEach(b=>b.onclick=()=>setNoise(b.dataset.anc));
+$('#gameSw').onchange=e=>{if(!A.budsGame(e.target.checked)){e.target.checked=!e.target.checked;toast('切换失败')}};
+$('#dualRow').onclick=()=>A.openBluetooth();
+$('#voiceRow').onclick=()=>{
+  const cmds=[['播放','下一首 · 上一首 · 暂停 · 继续播放'],['音量','大声点 · 小声点'],['耳机','打开降噪 · 通透模式 · 关闭降噪 · 还剩多少电'],['翻译','开始翻译 · 停止翻译'],['音效','全景声 · 录音室 · 智能音效 · 关闭音效'],['其他','现在几点了']];
+  openSheet('语音控制',`<div class="info" style="padding-top:0"><div class="big" style="background:linear-gradient(135deg,#0A84FF,#BF5AF2)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+   <h2>长按耳机，说出指令</h2><p>像 AirPods 的 Siri：长按耳机，听到「叮」后对着耳机麦克风说话，说完音乐马上接着放。</p></div>
+   <div class="group">${cmds.map(([k,v])=>`<div class="row static noicon"><span class="lbl" style="flex:none;width:44px;color:var(--sub);font-size:15px">${k}</span><span class="lbl" style="font-size:15px">${v}</span></div>`).join('')}</div>
+   <div class="group-h">第一次设置</div>
+   <ol class="steps"><li>打开系统耳机页 →「耳机操控」，把左耳或右耳的<b>长按</b>设成<b>「语音助手」</b></li><li>长按一次耳机，手机问用哪个应用时，选<b>「耳机语音控制」</b>，再点<b>「始终」</b></li><li>以后长按耳机就能用了。如果打开的是别的助手，在「默认应用 → 数字助理」里改成耳机翻译</li></ol>
+   <button class="btn wide" id="vcTry">试一试</button><div style="height:10px"></div>
+   <button class="btn gray wide" id="vcSet">打开系统耳机页</button><div style="height:10px"></div>
+   <button class="btn gray wide" id="vcDef">默认应用设置</button>
+   <div class="foot" style="margin:12px 4px 0">耳机麦克风只有在通话模式下能用，所以听指令的那 2～3 秒音乐会暂停，说完就恢复。识别需要联网。</div>`);
+  $('#vcTry').onclick=()=>{closeSheet();A.voiceTry()};$('#vcSet').onclick=()=>{closeSheet();A.openBluetooth()};$('#vcDef').onclick=()=>{closeSheet();A.openDefaultApps()};
+};
+$('#goLive').onclick=()=>{setTab('tr');if(!S.running)start()};
+$('#goF2F').onclick=()=>{setTab('tr');openF2F()};
+
+// sound effects
+let fx={preset:'off',genre:null};
+const GENRE={vocal:'人声 / 播客',bass:'电子 / 嘻哈',acoustic:'古典 / 原声',pop:'流行'};
+function renderFx(){
+  document.querySelectorAll('[data-fx]').forEach(b=>b.classList.toggle('on',fx.preset===b.dataset.fx));
+  $('#smartSub').textContent=fx.preset==='smart'?(fx.genre?'已适配：'+GENRE[fx.genre]:'正在听，识别曲风中…'):'跟随曲风智能适配';
+  $('#fxFoot').textContent=fx.preset==='lossless'?'无损：关闭所有音效处理，声音原样输出。'
+    :fx.preset!=='off'&&fx.running&&!fx.ok?'这台手机不允许给全部声音加音效，只对会发出音效信号的播放器（如 Spotify、YouTube Music）生效。'
+    :'对手机播放的音乐、视频生效。再点一次已选的音效可关闭。';
+}
+window.onSound=o=>{if(o&&o.t==='sound'){fx=o;renderFx()}};
+try{fx=JSON.parse(A.soundState())}catch(e){}
+document.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{
+  const p=fx.preset===b.dataset.fx?'off':b.dataset.fx;
+  fx.preset=p;fx.genre=null;renderFx();buzz(12);A.soundSet(p);
+  if(p!=='off')toast({spatial:'已开启全景声',studio:'已开启录音室音质',lossless:'已切换到无损：关闭所有音效处理',smart:'已开启智能音效，播放音乐后自动识别曲风'}[p],2600);
+});
+renderFx();
+
+// volume
+const volEl=$('#vol');
+function paintVol(){volEl.style.setProperty('--p',(volEl.value/volEl.max*100)+'%')}
+function loadVol(o){if(!o)return;volEl.max=o.max;volEl.value=o.v;paintVol()}
+try{loadVol(JSON.parse(A.volume()))}catch(e){}
+volEl.oninput=()=>{paintVol();A.setVolume(+volEl.value)};
+window.onVolume=o=>{if(document.activeElement!==volEl)loadVol(o)};
+
+// find my earbuds: the earbuds' own beep when we can talk to them, else a sound played into them
+let findCtx=null;
+$('#findBtn').onclick=()=>{
+  if(buds.finding){A.budsFind(false);return}
+  if(findCtx){stopFind();return}
+  openSheet('查找耳机',`<div class="info"><div class="big" style="background:var(--green)">${ICON_SPK.replace('<svg','<svg style="color:#fff"')}</div><h2>让耳机响起来</h2><p>耳机会发出较大的提示音。如果耳机还戴在耳朵上，请先取下。</p></div><button class="btn wide" id="findGo">播放声音</button>`);
+  $('#findGo').onclick=()=>{closeSheet();if(buds.status==='ok'&&A.budsFind(true))return;startFind()};
+};
+function startFind(){
+  try{const ctx=new (window.AudioContext||window.webkitAudioContext)();findCtx=ctx;const t0=ctx.currentTime;
+    const g=ctx.createGain();g.connect(ctx.destination);g.gain.setValueAtTime(.05,t0);g.gain.linearRampToValueAtTime(.9,t0+10);
+    for(let i=0;i<30;i++){const o=ctx.createOscillator(),e=ctx.createGain();o.type='triangle';o.frequency.setValueAtTime(1760,t0+i*.5);o.frequency.exponentialRampToValueAtTime(2637,t0+i*.5+.18);
+      e.gain.setValueAtTime(0,t0+i*.5);e.gain.linearRampToValueAtTime(1,t0+i*.5+.02);e.gain.exponentialRampToValueAtTime(.001,t0+i*.5+.32);o.connect(e);e.connect(g);o.start(t0+i*.5);o.stop(t0+i*.5+.35)}
+    $('#findSub').textContent='正在响…点一下停止';$('#findBtn').classList.add('danger');
+    setTimeout(stopFind,15200);}catch(e){toast('无法播放声音')}
+}
+function stopFind(){if(findCtx){try{findCtx.close()}catch(e){}findCtx=null}renderCtl()}
+
+$('#btSet').onclick=()=>A.openBluetooth();
+$('#ttsRow').onclick=()=>A.openTtsSettings();
+let asrState='ok';
+function checkAsr(){try{asrState=A.asrStatus()}catch(e){asrState='none'}
+  $('#asrVal').textContent='在线 · 自动分辨双方';$('#asrVal').style.color=''}
+$('#asrRow').onclick=()=>toast('用在线语音识别，不需要安装 Google App；要联网',3500);
+function showAsrHelp(){
+  openSheet('需要语音识别',`<div class="info"><div class="big" style="background:var(--orange)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+   <h2>手机没有语音识别服务</h2><p>听懂说话要用手机的语音识别。一加手机装上 Google App 就有：</p>
+   <ol class="steps"><li>在 Play 商店安装或更新 <b>Google</b> App</li><li>再安装 <b>Speech Recognition &amp; Synthesis from Google</b>（语音服务）</li><li>回到这里重新打开 App</li></ol></div>
+   <button class="btn wide" id="getG">安装 Google App</button><div style="height:10px"></div><button class="btn gray wide" id="getS">安装 Google 语音服务</button>`);
+  $('#getG').onclick=()=>A.openUrl('https://play.google.com/store/apps/details?id=com.google.android.googlequicksearchbox');
+  $('#getS').onclick=()=>A.openUrl('https://play.google.com/store/apps/details?id=com.google.android.tts');
+}
+
+/* ================= sheets ================= */
+let sheetClose=null;
+function openSheet(title,html,onClose){$('#shT').textContent=title;$('#shB').innerHTML=html;$('#shB').scrollTop=0;$('#scrim').classList.add('on');$('#sheet').classList.add('on');sheetClose=onClose||null}
+function closeSheet(){$('#scrim').classList.remove('on');$('#sheet').classList.remove('on');const f=sheetClose;sheetClose=null;f&&f()}
+$('#scrim').onclick=closeSheet;$('#shX').onclick=closeSheet;
+// swipe down to close
+(()=>{let y0=null;const s=$('#sheet');s.addEventListener('touchstart',e=>{if($('#shB').scrollTop<=0)y0=e.touches[0].clientY},{passive:true});
+ s.addEventListener('touchmove',e=>{if(y0==null)return;const dy=e.touches[0].clientY-y0;if(dy>0){s.style.transition='none';s.style.transform=`translateY(${dy}px)`}},{passive:true});
+ s.addEventListener('touchend',e=>{if(y0==null)return;const dy=e.changedTouches[0].clientY-y0;s.style.transition='';s.style.transform='';y0=null;if(dy>110)closeSheet()});})();
+
+/* ================= settings toggles ================= */
+function bindToggles(root){root.querySelectorAll('[data-cfg]').forEach(i=>{i.checked=!!cfg[i.dataset.cfg];i.onchange=()=>{cfg[i.dataset.cfg]=i.checked;saveCfg();onCfg(i.dataset.cfg);
+  document.querySelectorAll(`[data-cfg="${i.dataset.cfg}"]`).forEach(o=>o.checked=i.checked)}})}
+bindToggles(document);
+function onCfg(k){
+  if(k==='spkThem'||k==='spkMe')pushConfig();
+}
+$('#setBtn').onclick=()=>{
+  const ICON_MIC='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  const sw=(k,t,s,c,ic)=>`<label class="row static"><span class="ic" style="background:${c}">${ic||ICON_SPK}</span><span class="lbl">${t}${s?`<small>${s}</small>`:''}</span><span class="sw"><input type="checkbox" data-cfg="${k}"><i></i></span></label>`;
+  openSheet('翻译设置',`
+   <div class="group-h" style="margin-top:6px">朗读</div><div class="group">
+    ${sw('spkThem','翻译读到耳机里','对方说的话翻译后在耳机里读出来','var(--blue)')}
+    ${sw('spkMe','我的话用手机外放','你说的话翻译后用手机喇叭读给对方（读的时候暂停收音，免得听到自己）','var(--indigo)')}
+   </div>
+   <div class="group-h">翻译时耳机模式</div><div class="seg" id="trnSeg">${[['anc','降噪'],['transparency','通透'],['keep','不变']].map(([v,t])=>`<button data-n="${v}" class="${cfg.trNoise===v?'on':''}">${t}</button>`).join('')}</div>
+   <div class="foot" style="margin-bottom:4px">降噪：像 AirPods 一样压低对方原声，只听翻译。通透：原声和翻译都能听到。结束后自动恢复原来的模式。</div>
+   <div class="group-h">朗读速度</div><div class="seg" id="rateSeg">${[[.8,'慢'],[1,'正常'],[1.2,'快']].map(([v,t])=>`<button data-r="${v}" class="${cfg.rate==v?'on':''}">${t}</button>`).join('')}</div>
+   <div class="group-h">记录</div><div class="group"><button class="row danger noicon" id="clr"><span class="lbl">清空翻译记录</span></button></div>
+   <div class="foot">翻译需要联网。手机没有某种语言的离线朗读语音时，会自动改用在线语音。</div>`);
+  bindToggles($('#shB'));
+  $('#rateSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.rate=+b.dataset.r;saveCfg();pushConfig();$('#rateSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+  $('#trnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{cfg.trNoise=b.dataset.n;saveCfg();$('#trnSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+  $('#clr').onclick=()=>{hist=[];saveHist();renderFeed();closeSheet();toast('已清空')};
+};
+
+/* ================= language picker ================= */
+function renderLangs(){
+  const t=L(cfg.them),m=L(cfg.me);
+  $('#lnThem').innerHTML=`${esc(t.n)}<small>${esc(t.o)}</small>`;$('#lnMe').innerHTML=`${esc(m.n)}<small>${esc(m.o)}</small>`;
+}
+document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>pickLang(b.dataset.pick));
+function pickLang(who){
+  const cur=cfg[who];
+  const draw=q=>LANGS.filter(x=>!q||(x.n+x.o+x.c).toLowerCase().includes(q.toLowerCase())).map(x=>{
+    let has=true;try{has=A.ttsHas(x.tts)}catch(e){}
+    return `<button class="row noicon" data-l="${x.c}"><span class="lbl">${esc(x.n)}<small>${esc(x.o)}${has?'':'<span class="tag">在线朗读</span>'}</small></span>${x.c===cur?'<span class="check">✓</span>':''}</button>`}).join('');
+  openSheet(who==='them'?'对方说的语言':'我说的语言',`<div class="search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="lq" placeholder="搜索语言"></div><div class="group" id="ll">${draw('')}</div>`);
+  const bind=()=>$('#ll').querySelectorAll('[data-l]').forEach(r=>r.onclick=()=>{
+    const v=r.dataset.l,other=who==='them'?'me':'them';if(cfg[other]===v)cfg[other]=cfg[who];cfg[who]=v;saveCfg();renderLangs();renderStartHint();closeSheet();pushConfig()});
+  bind();$('#lq').oninput=e=>{$('#ll').innerHTML=draw(e.target.value);bind()};
+}
+$('#swap').onclick=()=>{[cfg.them,cfg.me]=[cfg.me,cfg.them];saveCfg();renderLangs();const s=$('#swap');s.classList.toggle('spin');buzz(10);pushConfig()};
+
+/* ================= translation ================= */
+const nativeWait={};let nativeSeq=0;
+window.__httpCb=(id,body)=>{const p=nativeWait[id];if(!p)return;delete nativeWait[id];body==null?p.rej(new Error('native http failed')):p.res(body)};
+function nativeGet(url){return new Promise((res,rej)=>{const id='h'+(++nativeSeq);nativeWait[id]={res,rej};
+  try{A.httpGet(id,url)}catch(e){delete nativeWait[id];rej(e);return}
+  setTimeout(()=>{if(nativeWait[id]){delete nativeWait[id];rej(new Error('timeout'))}},15000)})}
+async function getText(url){
+  if(window.__demo)return nativeGet(url);
+  try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),10000);const r=await fetch(url,{signal:ctl.signal});clearTimeout(to);
+    if(!r.ok)throw new Error('HTTP '+r.status);return await r.text()}
+  catch(e){return nativeGet(url)}
+}
+async function trGoogle(text,sl,tl){
+  const u='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+encodeURIComponent(sl)+'&tl='+encodeURIComponent(tl)+'&dt=t&q='+encodeURIComponent(text);
+  const d=JSON.parse(await getText(u));return(d[0]||[]).map(x=>x&&x[0]||'').join('');
+}
+async function trGoogleAlt(text,sl,tl){
+  const u='https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl='+encodeURIComponent(sl)+'&tl='+encodeURIComponent(tl)+'&q='+encodeURIComponent(text);
+  const d=JSON.parse(await getText(u));
+  if(Array.isArray(d)){const f=d[0];if(Array.isArray(f)&&typeof f[0]==='string')return f[0];if(typeof f==='string')return f}
+  if(d&&Array.isArray(d.sentences))return d.sentences.map(x=>x.trans||'').join('');
+  throw new Error('unexpected');
+}
+async function trMyMemory(text,sl,tl){
+  const m=c=>c==='yue'?'zh-HK':c;
+  const d=JSON.parse(await getText('https://api.mymemory.translated.net/get?mt=1&q='+encodeURIComponent(text)+'&langpair='+encodeURIComponent(m(sl)+'|'+m(tl))));
+  if(String(d.responseStatus)!=='200')throw new Error('mm');
+  const mt=(d.matches||[]).find(x=>x&&(x['created-by']==='MT!'||/machine translation/i.test(x.reference||'')));
+  if(!mt||!mt.translation||/MYMEMORY WARNING/i.test(mt.translation))throw new Error('mm');return mt.translation;
+}
+async function translate(text,sl,tl){
+  let last;for(const f of[()=>trGoogle(text,sl,tl),()=>trGoogleAlt(text,sl,tl),()=>trMyMemory(text,sl,tl)]){
+    try{const r=await f();if(r&&r.trim())return r.trim()}catch(e){last=e}}
+  throw last||new Error('fail');
+}
+
+/* ================= live session ================= */
+// The listening/translating engine runs in the app's background service (LiveService); this page
+// shows what it hears. Manual: 开始实时翻译. Auto (自动翻译): earbuds in = translating, no button.
+const S={running:false,manual:false,auto:false,listening:false,muted:false,earbuds:false,draft:null,prevNoise:null,errs:[]};
+function now(){return Date.now()}
+function pushConfig(){
+  try{A.liveConfig(JSON.stringify({them:cfg.them,me:cfg.me,themAsr:L(cfg.them).asr,meAsr:L(cfg.me).asr,themTts:L(cfg.them).tts,meTts:L(cfg.me).tts,spkThem:cfg.spkThem,spkMe:cfg.spkMe,rate:cfg.rate}))}catch(e){}
+}
+function renderStartHint(){
+  const has=dev.devices&&dev.devices.length;
+  $('#startHint').textContent=S.auto?(has?'自动翻译已开启，正在准备…':'自动翻译已开启：戴上耳机就自动开始，不用按按钮')
+    :has?`对方说${L(cfg.them).n}，你在耳机里听到翻译；你说${L(cfg.me).n}，手机读给对方`:'没检测到耳机：翻译会用手机喇叭读出来';
+}
+function renderDock(){
+  const onTr=tab==='tr';
+  $('#startWrap').style.display=onTr&&!S.running?'block':'none';
+  $('#dock').classList.toggle('on',onTr&&S.running);
+  const who=S.draft&&S.draft.who;
+  $('#wave').classList.toggle('me',who==='me');
+  $('#liveSt').textContent=!S.running?'':S.muted?'正在朗读…':who==='me'?'你在说':who==='them'?'对方在说':'正在听';
+  $('#talkTxt').textContent=S.manual?'免按键 · 自动识别双方':'自动翻译 · 听到外语就翻译';
+  renderStartHint();
+}
+function renderAuto(){
+  document.querySelectorAll('[data-auto]').forEach(i=>i.checked=S.auto);
+  const st=$('#autoSt');if(st)st.textContent=!S.auto?'关闭':S.listening?'正在听':'待命 · 戴上耳机自动开始';
+}
+function setLive(t){$('#livePt').textContent=t||''}
+window.onAsrLevel=db=>{if(S.muted)db=-2;const v=Math.max(0,Math.min(1,(db+2)/11));document.querySelectorAll('#wave i').forEach((b,i)=>{const k=[.55,.85,1,.8,.6][i];b.style.height=(5+v*21*k*(0.75+Math.random()*.5))+'px'})};
+
+window.onLive=ev=>{
+  if(!ev)return;
+  switch(ev.t){
+    case 'state':
+      Object.assign(S,{manual:!!ev.manual,auto:!!ev.auto,listening:!!ev.listening,muted:!!ev.muted,earbuds:!!ev.earbuds});
+      S.running=S.manual||S.listening;
+      if(!S.running){S.draft=null;setLive('')}
+      renderDock();renderAuto();break;
+    case 'level':onAsrLevel(ev.v);break;
+    case 'draft':S.errs=[];S.draft={who:ev.who,src:ev.src,tr:ev.tr};setLive(ev.src);renderDraft();renderDock();break;
+    case 'draft_clear':S.draft=null;setLive('');renderFeed();renderDock();break;
+    case 'entry':{S.errs=[];const e=ev.e,k=hist.findIndex(x=>x.id===e.id);if(k>=0)hist[k]=e;else hist.push(e);
+      if(hist.length>150)hist.splice(0,hist.length-150);renderFeed(true);updateF2F();break}
+    case 'error':
+      if(ev.code==='3'){toast('麦克风被别的 App 占用了，稍后会自动重试');break}
+      S.errs=S.errs.filter(x=>now()-x<20000);S.errs.push(now());setLive('网络不稳定，继续在听…');
+      if(S.errs.length===6)toast('语音识别连不上，请检查网络',4000);
+      break;
+  }
+};
+
+function start(){
+  if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');return}
+  pushConfig();
+  if(!A.live('manual_on')){toast('请允许使用麦克风');return}
+  // like AirPods: switch the earbuds' noise mode for the conversation, put it back afterwards
+  S.prevNoise=null;
+  if(cfg.trNoise!=='keep'&&buds.status==='ok'&&buds.noise){S.prevNoise=buds.level||buds.noise;if(S.prevNoise!==cfg.trNoise&&buds.noise!==cfg.trNoise)A.budsNoise(cfg.trNoise);else S.prevNoise=null}
+  buzz(25);
+}
+function stop(){
+  if(S.manual)A.live('manual_off');else setAuto(false);
+  if(S.prevNoise&&buds.status==='ok'){A.budsNoise(S.prevNoise);S.prevNoise=null}
+  buzz(15);
+}
+function setAuto(on){
+  if(on){
+    if(!dev.mic){A.askPermissions();toast('请允许使用麦克风');renderAuto();return}
+    pushConfig();
+    if(!A.live('auto_on')){renderAuto();return}
+    S.auto=true;renderAuto();
+    if(!A.batteryOk())openSheet('保持自动翻译',`<div class="info"><div class="big" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h10v3h2v14H5V7h2zm3 6v4H8l4 5v-4h2z"/></svg></div>
+      <h2>允许在后台运行</h2><p>自动翻译要在后台一直等你戴上耳机。一加手机会自动关掉后台 App，请点下面按钮，选「允许」。</p>
+      <p>开着时通知栏会一直有一条「自动翻译」，点「关闭」就停。只有听到有人说话时才会联网识别。</p></div>
+      <button class="btn wide" id="batGo">允许后台运行</button>`),$('#batGo').onclick=()=>{closeSheet();A.askBattery()};
+    else toast('已开启：戴上耳机就自动翻译',3000);
+  }else{A.live('auto_off');S.auto=false;renderAuto();toast('自动翻译已关闭')}
+}
+
+function draftHTML(){const d=S.draft;if(!d)return'';
+  return `<div class="msg draft ${d.who==='me'?'me':''}" id="draft"><div class="meta">${d.who==='me'?'我':'对方'} · 正在说…</div><div class="tr">${d.tr?esc(d.tr):'<div class="typing"><i></i><i></i><i></i></div>'}</div><div class="src">${esc(d.src)}<span class="cursor"></span></div></div>`}
+function renderDraft(){const el=$('#draft');if(el&&S.draft&&el.classList.contains('me')===(S.draft.who==='me')){el.outerHTML=draftHTML();const p=$('#pg-tr');p.scrollTop=p.scrollHeight}else renderFeed(true)}
+function sayEntry(e){A.speak(e.id+'#'+now(),e.tr,L(e.to).tts,e.who==='me'?'speaker':'ear',cfg.rate)}
+window.onSpeak=()=>{};
+
+/* the phone guessed the wrong speaker: switch the sentence to the other side, using what the other
+   language's recognizer heard, and translate it again */
+async function flip(id){
+  const e=hist.find(x=>x.id===id);if(!e)return;
+  const who=e.who==='me'?'them':'me';
+  const src=(e.alt||'').trim()||e.src;
+  Object.assign(e,{who,alt:e.src,src,from:who==='them'?cfg.them:cfg.me,to:who==='them'?cfg.me:cfg.them,tr:'',st:'busy'});
+  renderFeed();buzz(10);
+  try{e.tr=await translate(e.src,e.from,e.to);e.st='ok'}catch(err){e.st='fail'}
+  saveHist();renderFeed();updateF2F();
+  if(e.st==='ok')sayEntry(e);
+}
+function replay(id){const e=hist.find(x=>x.id===id);if(!e||!e.tr)return;
+  sayEntry(e)}
+async function retry(id){const e=hist.find(x=>x.id===id);if(!e)return;e.st='busy';renderFeed();try{e.tr=await translate(e.src,e.from,e.to);e.st='ok'}catch(err){e.st='fail'}saveHist();renderFeed();updateF2F()}
+
+function draftHTML(){const d=S.draft;if(!d)return'';
+  return `<div class="msg draft ${d.who==='me'?'me':''}" id="draft"><div class="meta">${d.who==='me'?'我':'对方'} · 正在说…</div><div class="tr">${d.tr?esc(d.tr):'<div class="typing"><i></i><i></i><i></i></div>'}</div><div class="src">${esc(d.src)}<span class="cursor"></span></div></div>`}
+function renderDraft(){const el=$('#draft');if(el&&S.draft&&el.classList.contains('me')===(S.draft.who==='me')){el.outerHTML=draftHTML();const p=$('#pg-tr');p.scrollTop=p.scrollHeight}else renderFeed(true)}
+function renderFeed(scroll){
+  const f=$('#feed');
+  if(!hist.length&&!S.draft){f.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M10 5c-.6 3.5-3 6-6 7.5M6 8.5c1.2 1.8 3 3.2 5 4"/><path d="M13 21l4-10 4 10M14.5 17.5h5"/></svg><br>点下面的按钮开始。<br>你和对方直接轮流说话，<br>App 会自动听出谁在说，边说边翻译。</div>`;return}
+  const p=$('#pg-tr'),atBottom=p.scrollHeight-p.scrollTop-p.clientHeight<140;
+  f.innerHTML=hist.slice(-80).map(e=>{
+    const who=e.who==='me'?'我':'对方';
+    const body=e.st==='busy'?(e.tr?`<div class="tr">${esc(e.tr)}</div>`:`<div class="typing"><i></i><i></i><i></i></div>`):e.st==='fail'?`<div class="fail" data-retry="${e.id}">翻译失败 · 点此重试</div>`:`<div class="tr">${esc(e.tr)}</div>`;
+    return `<div class="msg ${e.who==='me'?'me':''}"><div class="meta">${who} · ${esc(L(e.from).n)} → ${esc(L(e.to).n)}<button class="flip" data-flip="${e.id}">${e.who==='me'?'其实是对方':'其实是我'}</button>${e.st==='ok'?`<button class="play" data-play="${e.id}">${ICON_SPK}</button>`:''}</div>${body}<div class="src">${esc(e.src)}</div></div>`}).join('')+draftHTML();
+  f.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>replay(b.dataset.play));
+  f.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>retry(b.dataset.retry));
+  f.querySelectorAll('[data-flip]').forEach(b=>b.onclick=()=>flip(b.dataset.flip));
+  if(scroll||atBottom)requestAnimationFrame(()=>p.scrollTop=p.scrollHeight);
+}
+
+/* ================= 视频同传 ================= */
+const mcfg=Object.assign({from:'en',out:'both',duck:true},store.get('eb.movie',{}));
+let movie={on:false,lines:0};
+function renderMovie(){
+  const t=movie.on?`进行中 · 已翻译 ${movie.lines} 句 · 点此停止`:'手机看美剧、电影，耳机里同步听中文';
+  $('#movieSub').textContent=t;$('#movieSub2').textContent=movie.on?t:'看美剧、电影时，耳机里同步听中文、屏幕上出中文字幕';
+}
+window.onMovie=o=>{
+  if(!o)return;
+  if(o.t==='movie'){movie=o;renderMovie();return}
+  if(o.t==='movie_line'){movie.lines++;renderMovie();return}
+  if(o.t==='movie_error'){
+    toast({denied:'没有允许录制，视频同传没开始',capture:'无法获取视频声音，请重试',record:'这个视频 App 不允许读取声音（如 Netflix），换个 App 试试'}[o.what]||'视频同传出错了',4200);
+  }
+};
+try{movie=JSON.parse(A.movieState())}catch(e){}
+function openMovie(){
+  if(movie.on){A.movieStop();movie.on=false;renderMovie();toast('视频同传已停止');return}
+  const draw=()=>{
+    const fl=L(mcfg.from);
+    openSheet('视频同传',`<div class="info" style="padding-top:0"><div class="big" style="background:linear-gradient(135deg,#FF375F,#FF9F0A)">${MOVIE_ICON}</div>
+     <h2>边看视频边翻译</h2><p>用这台手机看视频时，App 直接读取视频的声音（不经过麦克风），把对白翻译成${esc(L(cfg.me).n)}。</p></div>
+     <div class="group"><button class="row noicon" id="mvFrom"><span class="lbl">视频里说的语言</span><span class="val">${esc(fl.n)}</span><span class="chev">›</span></button>
+     <div class="row static noicon"><span class="lbl">翻译成</span><span class="val">${esc(L(cfg.me).n)}</span></div></div>
+     <div class="group-h">怎么听</div><div class="seg" id="mvOut">${[['both','字幕＋耳机配音'],['subs','只要字幕'],['dub','只要配音']].map(([v,t])=>`<button data-o="${v}" class="${mcfg.out===v?'on':''}">${t}</button>`).join('')}</div>
+     <div class="group" style="margin-top:12px"><label class="row static noicon"><span class="lbl">配音时压低原声<small>中文配音的时候把电影声音调小</small></span><span class="sw"><input type="checkbox" id="mvDuck" ${mcfg.duck?'checked':''}><i></i></span></label></div>
+     <ol class="steps" style="margin-top:16px"><li>点「开始」，弹出录屏提示时选<b>「整个屏幕」</b>再点<b>「开始」</b>（只读取声音，不录画面）</li><li>打开 YouTube、浏览器等看视频，中文字幕会浮在画面上，可以上下拖动</li><li>点字幕右上角 ✕ 或通知栏「关闭」就停</li></ol>
+     <div class="foot" style="margin:0 4px 14px">Netflix 等有版权保护的 App 不允许读取声音，用不了。需要联网。</div>
+     <button class="btn wide" id="mvGo">开始</button>`);
+    $('#mvFrom').onclick=()=>{
+      openSheet('视频里说的语言',`<div class="group">${LANGS.filter(x=>x.c!==cfg.me).map(x=>`<button class="row noicon" data-l="${x.c}"><span class="lbl">${esc(x.n)}<small>${esc(x.o)}</small></span>${x.c===mcfg.from?'<span class="check">✓</span>':''}</button>`).join('')}</div>`);
+      $('#shB').querySelectorAll('[data-l]').forEach(r=>r.onclick=()=>{mcfg.from=r.dataset.l;store.set('eb.movie',mcfg);draw()});
+    };
+    $('#mvOut').querySelectorAll('button').forEach(b=>b.onclick=()=>{mcfg.out=b.dataset.o;store.set('eb.movie',mcfg);$('#mvOut').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+    $('#mvDuck').onchange=e=>{mcfg.duck=e.target.checked;store.set('eb.movie',mcfg)};
+    $('#mvGo').onclick=startMovie;
+  };
+  draw();
+}
+function startMovie(){
+  const subs=mcfg.out!=='dub',dub=mcfg.out!=='subs';
+  if(subs&&!A.overlayOk()){
+    openSheet('允许显示字幕',`<div class="info"><div class="big" style="background:var(--blue)">${MOVIE_ICON}</div><h2>允许浮在其他应用上面</h2><p>中文字幕要浮在视频画面上，需要「显示在其他应用上层」权限。打开后返回这里再点开始。</p></div><button class="btn wide" id="ovGo">去开启</button>`);
+    $('#ovGo').onclick=()=>{closeSheet();A.openOverlaySettings()};return;
+  }
+  const c={from:mcfg.from,to:cfg.me,fromAsr:L(mcfg.from).asr,toTts:L(cfg.me).tts,subs,dub,duck:mcfg.duck,rate:1.25};
+  const r=A.movieStart(JSON.stringify(c));
+  if(r==='old'){toast('需要 Android 10 或以上才能读取视频声音',4000);return}
+  if(r==='mic'){toast('请先允许麦克风权限（读取视频声音也需要它）',4000);return}
+  closeSheet();
+}
+$('#movieCard').onclick=openMovie;$('#movieRow').onclick=openMovie;
+renderMovie();
+
+/* ================= face to face ================= */
+function updateF2F(){
+  const t=L(cfg.them),m=L(cfg.me);
+  const lastMe=[...hist].reverse().find(e=>e.who==='me'&&e.st==='ok'),lastThem=[...hist].reverse().find(e=>e.who==='them'&&e.st==='ok');
+  $('#fTopL').textContent=t.o;
+  $('#fTopT').textContent=lastMe?lastMe.tr:'👋';$('#fTopS').textContent=lastMe?lastMe.src:'';
+  $('#fBotL').textContent=m.n;
+  $('#fBotT').textContent=lastThem?lastThem.tr:'对方说的话会显示在这里';$('#fBotS').textContent=lastThem?lastThem.src:'';
+}
+function openF2F(){updateF2F();$('#f2f').classList.add('on');if(!S.running)start()}
+$('#f2fBtn').onclick=openF2F;$('#f2fBtn2').onclick=openF2F;
+$('#f2fClose').onclick=()=>$('#f2f').classList.remove('on');
+
+document.querySelectorAll('[data-auto]').forEach(i=>i.onchange=()=>setAuto(i.checked));
+$('#startBtn').onclick=start;$('#stopBtn').onclick=stop;
+
+window.onAndroidBack=()=>{
+  if($('#sheet').classList.contains('on')){closeSheet();return true}
+  if($('#f2f').classList.contains('on')){$('#f2f').classList.remove('on');return true}
+  if(tab!=='buds'&&!S.running){setTab('buds');return true}
+  return false;
+};
+
+/* ================= init ================= */
+try{dev=JSON.parse(A.devices())}catch(e){}
+renderBuds();renderLangs();renderFeed();renderStartHint();checkAsr();renderDock();pushConfig();
+try{onLive(JSON.parse(A.liveState()))}catch(e){}
+if(location.hash==='#tr')setTab('tr');
+</script>
+</body>
+</html>
