@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="账号卡包">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<title>账号卡包</title>
+<style>
+:root{
+  --bg:#000;--fg:#fff;--sub:rgba(235,235,245,.6);--dim:rgba(235,235,245,.3);
+  --panel:rgba(44,44,46,.72);--panel2:rgba(58,58,60,.6);--seg:rgba(118,118,128,.24);
+  --segOn:#000;--accent:#0a84ff;--sep:rgba(84,84,88,.5);--tab:rgba(22,22,24,.86);
+}
+body.light{
+  --bg:#f2f2f7;--fg:#000;--sub:rgba(60,60,67,.6);--dim:rgba(60,60,67,.3);
+  --panel:rgba(255,255,255,.85);--panel2:rgba(255,255,255,.9);--seg:rgba(118,118,128,.12);
+  --segOn:#fff;--accent:#007aff;--sep:rgba(60,60,67,.2);--tab:rgba(249,249,249,.9);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;
+  overscroll-behavior:none;transition:background .4s}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--fg)}
+#glow{position:fixed;inset:0;pointer-events:none;z-index:0;transition:background .7s ease, opacity .5s}
+#app{position:relative;z-index:1;max-width:520px;margin:0 auto;min-height:100%;padding-bottom:110px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:flex-end;gap:22px;
+  padding:calc(env(safe-area-inset-top) + 12px) 22px 6px}
+.top button{width:30px;height:30px;display:grid;place-items:center;color:var(--accent);font-size:22px;transition:transform .2s}
+.top button:active{transform:scale(.85)}
+.view{display:none;padding:0 20px;animation:fadeIn .45s ease}
+.view.on{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+h1{font-size:34px;font-weight:700;letter-spacing:.3px;margin-top:4px}
+.subt{color:var(--sub);font-size:15px;margin-top:4px}
+/* segmented */
+.seg{position:relative;display:flex;background:var(--seg);border-radius:14px;padding:3px;margin:20px 0 6px}
+.seg .pill{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:11px;background:var(--segOn);
+  box-shadow:0 3px 8px rgba(0,0,0,.25);transition:transform .38s cubic-bezier(.3,1.3,.5,1)}
+.seg button{position:relative;flex:1;height:38px;font-size:15px;font-weight:600;color:var(--sub);display:flex;align-items:center;justify-content:center;gap:6px;transition:color .3s}
+.seg button.on{color:var(--fg)}
+.seg small{font-weight:500;opacity:.6}
+/* carousel */
+.car{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -20px;padding:22px 20px 14px;scrollbar-width:none}
+.car::-webkit-scrollbar{display:none}
+.card{flex:0 0 calc(100% - 30px);scroll-snap-align:center;aspect-ratio:1.6;border-radius:22px;padding:18px 20px;color:#fff;
+  position:relative;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 50px -12px var(--sh,rgba(0,0,0,.5));
+  transition:transform .45s cubic-bezier(.2,.9,.3,1.1),opacity .45s;cursor:pointer}
+.card::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 10% 0%,rgba(255,255,255,.35),transparent 55%);pointer-events:none}
+.card.sim{clip-path:polygon(0 0,calc(100% - 34px) 0,100% 34px,100% 100%,0 100%)}
+.card.side{transform:scale(.92);opacity:.55}
+.card .row{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1}
+.card .nm{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;opacity:.95}
+.card .cnt{text-align:right;font-size:12px;opacity:.85}
+.card .cnt b{display:block;font-size:34px;line-height:1;font-weight:700}
+.card .addr{margin-top:auto;font-size:21px;font-weight:600;letter-spacing:.3px;position:relative;z-index:1;word-break:break-all}
+.card .foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px;font-size:13px;opacity:.9;position:relative;z-index:1}
+.chip{width:30px;height:23px;border-radius:5px;background:linear-gradient(135deg,#f6dc8b,#c89a3c);position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.chip::before{content:"";position:absolute;inset:6px 4px;border:1px solid rgba(110,70,10,.45);border-radius:2px}
+.stack{display:flex;align-items:center}
+.stack .ic{width:28px;height:28px;border-radius:7px;font-size:12px;margin-left:-7px;box-shadow:0 0 0 2px rgba(255,255,255,.85)}
+.stack .more{margin-left:6px;height:26px;padding:0 8px;border-radius:13px;background:rgba(0,0,0,.3);display:grid;place-items:center;font-size:12px;font-weight:600}
+.dots{display:flex;justify-content:center;gap:6px;height:8px}
+.dots i{width:6px;height:6px;border-radius:3px;background:var(--dim);transition:all .35s}
+.dots i.on{width:18px;background:var(--fg)}
+.addcard{flex:0 0 calc(100% - 30px);scroll-snap-align:center;aspect-ratio:1.6;border-radius:22px;border:2px dashed var(--dim);display:grid;place-items:center;color:var(--sub);font-size:16px}
+/* section */
+.sec{display:flex;justify-content:space-between;align-items:center;margin-top:26px}
+.sec h2{font-size:22px;font-weight:700}
+.sec p{color:var(--sub);font-size:13px;margin-top:3px}
+.tint{height:34px;padding:0 15px;border-radius:17px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:5px}
+.grid{margin-top:12px;background:var(--panel);border-radius:22px;padding:16px 8px;display:grid;grid-template-columns:repeat(4,1fr);row-gap:16px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.cell{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;animation:pop .4s cubic-bezier(.3,1.5,.5,1) both}
+.cell span{max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.ic{width:58px;height:58px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none;
+  box-shadow:0 4px 12px rgba(0,0,0,.25);overflow:hidden;letter-spacing:-.5px}
+.ic.plus{background:var(--panel2);color:var(--sub);font-weight:300;font-size:30px;box-shadow:none}
+.ic.sm{width:38px;height:38px;border-radius:9px;font-size:14px}
+.ic.xs{width:30px;height:30px;border-radius:7px;font-size:12px}
+/* recent */
+.recent{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.rrow{display:flex;gap:10px;align-items:center}
+.rday{width:44px;font-size:14px;color:var(--accent);font-weight:600;flex:none}
+.ritem{flex:1;background:var(--panel);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.ritem .t{font-size:17px;font-weight:600}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:12px;padding:2px 8px;border-radius:9px;background:var(--panel2);display:flex;align-items:center;gap:5px}
+.tag i{width:7px;height:7px;border-radius:50%}
+.cat{margin-left:auto;color:var(--sub);font-size:13px}
+/* all apps */
+.search{margin-top:16px;display:flex;align-items:center;gap:8px;background:var(--seg);border-radius:12px;padding:0 12px;height:40px;color:var(--sub)}
+.search input{flex:1;background:none;border:0;outline:0;font-size:16px}
+.filters{display:flex;gap:8px;overflow-x:auto;margin:12px -20px 0;padding:0 20px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filters button{flex:none;height:32px;padding:0 14px;border-radius:16px;background:var(--panel2);font-size:14px;color:var(--sub);transition:all .25s}
+.filters button.on{background:var(--fg);color:var(--bg)}
+.list{margin-top:14px;background:var(--panel);border-radius:18px;overflow:hidden;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.li{display:flex;align-items:center;gap:12px;padding:10px 14px;position:relative;animation:fadeIn .35s both;cursor:pointer}
+.li+.li::before{content:"";position:absolute;top:0;left:64px;right:0;height:.5px;background:var(--sep)}
+.li .t{font-size:16px;font-weight:600}
+.chev{margin-left:auto;color:var(--dim);font-size:20px}
+.empty{text-align:center;color:var(--sub);padding:40px 0;font-size:15px}
+/* graph */
+.gwrap{position:relative;margin-top:16px;display:flex;justify-content:space-between;gap:12px}
+.gwrap svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.gcol{display:flex;flex-direction:column;gap:12px;position:relative;z-index:1}
+.gcol.l{width:47%}.gcol.r{width:42%;gap:10px}
+.glabel{font-size:13px;color:var(--sub);margin:4px 0 -4px}
+.gacc{border-radius:13px;padding:9px 12px;color:#fff;font-size:12px;position:relative;cursor:pointer;
+  box-shadow:0 8px 24px -8px var(--sh);transition:opacity .3s,transform .3s}
+.gacc.sim{clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+.gacc b{display:block;font-size:15px;margin:2px 0 1px}
+.gacc span{opacity:.85;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gapp{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:13px;padding:7px 10px;font-size:15px;font-weight:500;cursor:pointer;
+  transition:opacity .3s,transform .3s;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.gapp .ic{width:32px;height:32px;border-radius:8px;font-size:12px}
+.fade{opacity:.18!important}.hl{transform:scale(1.04)}
+path.ln{fill:none;stroke-width:1.6;stroke-linecap:round;transition:opacity .3s,stroke-width .3s;stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.1s ease forwards}
+path.ln.fade{opacity:.06!important}path.ln.hl{stroke-width:2.6}
+@keyframes draw{to{stroke-dashoffset:0}}
+.hint{text-align:center;color:var(--sub);font-size:13px;margin-top:18px}
+/* tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-around;
+  padding:8px 0 calc(env(safe-area-inset-bottom) + 8px);background:var(--tab);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:.5px solid var(--sep)}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--sub);width:90px;transition:color .25s}
+.tabbar button.on{color:var(--accent)}
+.tabbar svg{width:28px;height:26px;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.tabbar button.on svg{transform:scale(1.1)}
+/* sheet */
+.mask{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .3s}
+.mask.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;max-width:520px;margin:0 auto;max-height:90%;overflow-y:auto;
+  background:var(--bg);border-radius:22px 22px 0 0;padding:10px 20px calc(env(safe-area-inset-bottom) + 24px);
+  transform:translateY(105%);transition:transform .42s cubic-bezier(.2,.9,.25,1)}
+body.light .sheet{background:#f2f2f7}
+body:not(.light) .sheet{background:#1c1c1e}
+.sheet.on{transform:none}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--dim);margin:0 auto 10px}
+.shead{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.shead h3{font-size:17px}
+.shead button{color:var(--accent);font-size:17px}
+.shead .done{font-weight:600}
+.form{background:var(--panel2);border-radius:12px;overflow:hidden;margin-bottom:18px}
+.form label{display:flex;align-items:center;padding:0 14px;min-height:46px;gap:10px;position:relative}
+.form label+label::before{content:"";position:absolute;top:0;left:14px;right:0;height:.5px;background:var(--sep)}
+.form label>span{width:64px;flex:none;font-size:15px}
+.form input,.form select{flex:1;background:none;border:0;outline:0;font-size:16px;height:44px;min-width:0}
+.form select option{color:#000}
+.flabel{font-size:13px;color:var(--sub);margin:0 0 8px 14px;text-transform:uppercase}
+.swatches{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding-left:4px}
+.sw{width:38px;height:38px;border-radius:50%;cursor:pointer;transition:transform .2s;box-shadow:0 0 0 0 var(--fg)}
+.sw.on{transform:scale(1.12);box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--fg)}
+.picks{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 6px;margin-bottom:18px}
+.pick{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:12px;cursor:pointer;position:relative}
+.pick .ic{width:50px;height:50px;border-radius:12px;font-size:17px;transition:transform .2s}
+.pick.on .ic{transform:scale(.9);box-shadow:0 0 0 3px var(--accent)}
+.pick.on::after{content:"✓";position:absolute;top:-4px;right:8px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;display:grid;place-items:center}
+.checks .opt{display:flex;align-items:center;gap:10px;padding:0 14px;min-height:50px;cursor:pointer;position:relative}
+.checks .opt+.opt::before{content:"";position:absolute;top:0;left:14px;right:0;height:.5px;background:var(--sep)}
+.checks .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.checks .ok{margin-left:auto;width:22px;height:22px;border-radius:50%;border:2px solid var(--dim);display:grid;place-items:center;font-size:12px;color:#fff;transition:all .2s}
+.checks .opt.on .ok{background:var(--accent);border-color:var(--accent)}
+.danger{width:100%;height:48px;border-radius:12px;background:var(--panel2);color:#ff453a;font-size:17px;margin-top:4px}
+.menu{position:fixed;top:calc(env(safe-area-inset-top) + 50px);right:14px;z-index:52;width:230px;background:var(--panel2);border-radius:14px;overflow:hidden;
+  backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);transform-origin:top right;transform:scale(.6);opacity:0;pointer-events:none;transition:all .25s cubic-bezier(.3,1.4,.5,1);box-shadow:0 20px 40px rgba(0,0,0,.4)}
+body:not(.light) .menu{background:rgba(40,40,42,.95)}
+.menu.on{transform:none;opacity:1;pointer-events:auto}
+.menu button{display:flex;justify-content:space-between;width:100%;padding:13px 16px;font-size:16px;text-align:left}
+.menu button+button{border-top:.5px solid var(--sep)}
+.menu .red{color:#ff453a}
+.dlg{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.4);display:grid;place-items:center;opacity:0;transition:opacity .25s}
+.dlg.on{opacity:1}.dlg .box{width:270px;border-radius:14px;overflow:hidden;background:var(--panel2);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);text-align:center;transform:scale(1.1);transition:transform .25s}
+body:not(.light) .dlg .box{background:rgba(44,44,46,.96)}.dlg.on .box{transform:none}
+.dlg p{padding:20px 16px;font-size:15px;font-weight:600}.dlg .btns{display:flex;border-top:.5px solid var(--sep)}
+.dlg .btns button{flex:1;height:44px;font-size:17px;color:var(--accent)}.dlg .btns .yes{color:#ff453a;font-weight:600;border-left:.5px solid var(--sep)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);z-index:60;transform:translate(-50%,-80px);background:var(--panel2);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:10px 18px;border-radius:20px;font-size:14px;font-weight:600;transition:transform .4s cubic-bezier(.3,1.4,.5,1);box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.toast.on{transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="glow"></div>
+<div id="app">
+  <div class="top">
+    <button id="bTheme" title="主题"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg></button>
+    <button id="bAdd" title="添加"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>
+    <button id="bMore" title="更多"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+  </div>
+
+  <section class="view on" id="vWallet">
+    <h1>账号</h1>
+    <div class="subt" id="summary"></div>
+    <div class="seg" id="seg">
+      <div class="pill"></div>
+      <button data-t="email" class="on"><svg width="18" height="14" viewBox="0 0 20 15" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="18" height="13" rx="2"/><path d="M1.5 2l8.5 6.5L18.5 2"/></svg>邮箱 <small id="nE"></small></button>
+      <button data-t="phone"><svg width="13" height="16" viewBox="0 0 13 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 2.5A1.5 1.5 0 012.5 1H9l3 3v9.5a1.5 1.5 0 01-1.5 1.5h-8A1.5 1.5 0 011 13.5z"/><rect x="4" y="8" width="5" height="4.5" rx=".8"/></svg>手机号 <small id="nP"></small></button>
+    </div>
+    <div class="car" id="car"></div>
+    <div class="dots" id="dots"></div>
+    <div id="detail"></div>
+    <div class="sec"><div><h2>最近添加</h2></div></div>
+    <div class="recent" id="recent"></div>
+  </section>
+
+  <section class="view" id="vApps">
+    <h1>全部 App</h1>
+    <div class="subt" id="appsSum"></div>
+    <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" placeholder="搜索网站或 App"></div>
+    <div class="filters" id="filters"></div>
+    <div class="list" id="appList"></div>
+  </section>
+
+  <section class="view" id="vGraph">
+    <h1>关系图</h1>
+    <div class="gwrap" id="gwrap"></div>
+    <div class="hint">点卡片或 App 高亮它的关联，再点一次取消</div>
+  </section>
+</div>
+
+<nav class="tabbar" id="tabbar">
+  <button data-v="vWallet" class="on"><svg viewBox="0 0 28 26" fill="currentColor"><rect x="5" y="2" width="18" height="3" rx="1.5" opacity=".45"/><rect x="3" y="5.5" width="22" height="3" rx="1.5" opacity=".7"/><rect x="1" y="9" width="26" height="16" rx="4"/></svg>卡包</button>
+  <button data-v="vApps"><svg viewBox="0 0 28 26" fill="currentColor"><rect x="3" y="2" width="10" height="10" rx="2.5"/><rect x="15" y="2" width="10" height="10" rx="2.5"/><rect x="3" y="14" width="10" height="10" rx="2.5"/><rect x="15" y="14" width="10" height="10" rx="2.5"/></svg>全部 App</button>
+  <button data-v="vGraph"><svg viewBox="0 0 28 26" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l8 14M22 6l-8 14M6 6h16"/><circle cx="6" cy="6" r="3.2" fill="currentColor"/><circle cx="22" cy="6" r="3.2" fill="currentColor"/><circle cx="14" cy="20" r="3.2" fill="currentColor"/></svg>关系图</button>
+</nav>
+
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet"></div>
+<div class="menu" id="menu">
+  <button data-m="acc">新建邮箱 / 手机号 <span>✉︎</span></button>
+  <button data-m="app">添加网站或 App <span>＋</span></button>
+  <button data-m="export">导出备份 <span>↑</span></button>
+  <button data-m="import">导入备份 <span>↓</span></button>
+  <button data-m="demo">恢复示例数据 <span>↺</span></button>
+  <button data-m="clear" class="red">清空全部数据 <span>⌫</span></button>
+</div>
+<input type="file" id="file" accept=".json,application/json" hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+{
+/* ---------- constants ---------- */
+const GRADS=[
+ {g:'linear-gradient(135deg,#46b4ff 0%,#3b7bff 45%,#6a4dff 100%)',c:'#3b8bff',glow:'#1f5dff'},
+ {g:'linear-gradient(135deg,#ff8fa3 0%,#ff3b6b 45%,#b0124f 100%)',c:'#ff3b6b',glow:'#d01c4f'},
+ {g:'linear-gradient(135deg,#f08bff 0%,#b84dff 45%,#5b3dff 100%)',c:'#b84dff',glow:'#8a2bff'},
+ {g:'linear-gradient(135deg,#e2f77a 0%,#5fd36b 40%,#14996b 100%)',c:'#3cc46a',glow:'#18a050'},
+ {g:'linear-gradient(135deg,#ffe25a 0%,#ff9a3d 45%,#ff3d6e 100%)',c:'#ff9a2d',glow:'#ff7a1a'},
+ {g:'linear-gradient(135deg,#6ff0e0 0%,#22b8cf 45%,#1864ab 100%)',c:'#22b8cf',glow:'#0f8aa8'},
+ {g:'linear-gradient(135deg,#c9ccd6 0%,#7c8296 50%,#3a3f52 100%)',c:'#9aa0b4',glow:'#556'},
+ {g:'linear-gradient(135deg,#ffb38a 0%,#ff6a3d 50%,#c2255c 100%)',c:'#ff6a3d',glow:'#e8590c'}
+];
+/* generic brand-colour tiles (initials, not logos) */
+const PRESETS=[
+ ['Apple ID','A','#f2f2f7','#111','账号'],['ChatGPT','GPT','#10a37f','#fff','AI'],['Claude','C','#d97757','#fff','AI'],
+ ['Notion','N','#fff','#111','效率'],['Steam','S','#1b2838','#fff','游戏'],['京东','京','#e1251b','#fff','购物'],
+ ['淘宝','淘','#ff5000','#fff','购物'],['Binance','B','#f0b90b','#1e2026','金融'],['Cloudflare','CF','#f38020','#fff','开发'],
+ ['GitHub','Git','#181717','#fff','开发'],['微信','微','#07c160','#fff','社交'],['支付宝','支','#1677ff','#fff','金融'],
+ ['哔哩哔哩','bili','#fb7299','#fff','娱乐'],['小红书','红','#ff2442','#fff','社交'],['网易云音乐','云','#e60026','#fff','娱乐'],
+ ['抖音','抖','#111','#fff','娱乐'],['Google','G','#fff','#4285f4','账号'],['Telegram','TG','#2aabee','#fff','社交'],
+ ['X','X','#000','#fff','社交'],['Netflix','N','#141414','#e50914','娱乐'],['Spotify','S','#1db954','#000','娱乐'],
+ ['Bybit','By','#17181e','#f7a600','金融'],['拼多多','拼','#e02e24','#fff','购物'],['美团','美','#ffc300','#222','生活'],
+ ['Discord','D','#5865f2','#fff','社交'],['PayPal','P','#003087','#fff','金融'],['Grab','G','#00b14f','#fff','生活'],['Shopee','S','#ee4d2d','#fff','购物']
+];
+const PMAP=Object.fromEntries(PRESETS.map(p=>[p[0],p]));
+const CATS=['全部','账号','AI','购物','金融','开发','社交','娱乐','效率','游戏','生活','其他'];
+const KEY='acct-wallet-v1';
+const DAY=864e5;
+
+function demo(){
+  const now=Date.now();
+  const A=[
+   {id:'a1',type:'email',name:'主力邮箱',addr:'me@gmail.com',note:'邮箱',grad:0},
+   {id:'a2',type:'email',name:'购物小号',addr:'shopping.fun@qq.com',note:'邮箱',grad:1},
+   {id:'a3',type:'email',name:'开发专用',addr:'dev@outlook.com',note:'邮箱',grad:2},
+   {id:'p1',type:'phone',name:'主力手机号',addr:'+86 138 0000 1234',note:'移动，已实名',grad:3},
+   {id:'p2',type:'phone',name:'副卡',addr:'+86 170 0000 5678',note:'联通，已实名',grad:4}];
+  const bind={ 'Apple ID':['a1','p1'],'ChatGPT':['a1'],'Claude':['a1'],'Notion':['a1'],'Steam':['a2'],'京东':['a2','p2'],
+   '淘宝':['a2','p1'],'Binance':['a3','p1'],'Cloudflare':['a3'],'GitHub':['a3','p1'],'微信':['p1'],'支付宝':['p1'],
+   '哔哩哔哩':['p2'],'小红书':['p2'],'网易云音乐':['p2']};
+  const names=Object.keys(bind);
+  const apps=names.map((n,i)=>{const p=PMAP[n];return{id:'x'+i,name:n,glyph:p[1],bg:p[2],fg:p[3],cat:p[4],accts:bind[n],added:now-(names.length-1-i)*DAY*0.6}});
+  return{accounts:A,apps};
+}
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.accounts)S=demo();
+let light=false;try{light=localStorage.getItem(KEY+'-light')==='1'}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const uid=()=>Math.random().toString(36).slice(2,9);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const acc=id=>S.accounts.find(a=>a.id===id);
+const appsOf=id=>S.apps.filter(x=>x.accts.includes(id));
+function icon(x,cls=''){return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph)}</div>`}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1600)}
+function ask(msg,ok='删除'){return new Promise(res=>{const d=document.createElement('div');d.className='dlg';
+  d.innerHTML=`<div class="box"><p>${esc(msg)}</p><div class="btns"><button class="no">取消</button><button class="yes">${ok}</button></div></div>`;
+  document.body.appendChild(d);requestAnimationFrame(()=>d.classList.add('on'));
+  const end=v=>{d.classList.remove('on');setTimeout(()=>d.remove(),250);res(v)};
+  d.querySelector('.no').onclick=()=>end(false);d.querySelector('.yes').onclick=()=>end(true);})}
+function haptic(){try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}}
+
+/* ---------- state ---------- */
+let segT='email',cur={email:0,phone:0},view='vWallet',sel=null,filt='全部';
+
+/* ---------- wallet ---------- */
+function list(t){return S.accounts.filter(a=>a.type===t)}
+function renderSummary(){
+  const e=list('email').length,p=list('phone').length,n=S.apps.length;
+  $('#summary').textContent=`${e} 个邮箱、${p} 个手机号，关联着 ${n} 个网站与 App`;
+  $('#nE').textContent=e;$('#nP').textContent=p;
+}
+function renderCards(keepScroll){
+  const L=list(segT),car=$('#car');
+  car.innerHTML=L.map((a,i)=>{
+    const ap=appsOf(a.id),G=GRADS[a.grad%GRADS.length];
+    const st=ap.slice(0,4).map(x=>icon(x,'xs')).join('')+(ap.length>4?`<div class="more">+${ap.length-4}</div>`:'');
+    const head=a.type==='phone'?'<div class="chip"></div>':'<svg width="20" height="15" viewBox="0 0 20 15" fill="none" stroke="#fff" stroke-width="1.6"><rect x="1" y="1" width="18" height="13" rx="2"/><path d="M1.5 2l8.5 6.5L18.5 2"/></svg>';
+    return `<div class="card ${a.type==='phone'?'sim':''}" data-i="${i}" style="background:${G.g};--sh:${G.glow}">
+      <div class="row"><div class="nm">${head}${esc(a.name)}</div><div class="cnt"><b>${ap.length}</b>个网站与 App</div></div>
+      <div class="addr">${esc(a.addr)}</div>
+      <div class="foot"><span>${esc(a.note||(a.type==='email'?'邮箱':'手机号'))}</span><div class="stack">${st}</div></div></div>`;
+  }).join('')+`<div class="addcard" id="newCard">＋ 新建${segT==='email'?'邮箱':'手机号'}</div>`;
+  $('#dots').innerHTML=L.map((_,i)=>`<i></i>`).join('');
+  if(cur[segT]>=L.length)cur[segT]=Math.max(0,L.length-1);
+  requestAnimationFrame(()=>{
+    const c=car.children[cur[segT]];
+    if(c)car.scrollTo({left:c.offsetLeft-20,behavior:keepScroll?'auto':'auto'});
+    markCards();
+  });
+  car.querySelectorAll('.card').forEach(c=>c.onclick=()=>{
+    const i=+c.dataset.i; if(i!==cur[segT]){car.scrollTo({left:c.offsetLeft-20,behavior:'smooth'});return}
+    openAccount(L[i]);
+  });
+  $('#newCard').onclick=()=>openAccount(null,segT);
+}
+function markCards(){
+  const L=list(segT);
+  document.querySelectorAll('#car .card').forEach((c,i)=>c.classList.toggle('side',i!==cur[segT]));
+  document.querySelectorAll('#dots i').forEach((d,i)=>d.classList.toggle('on',i===cur[segT]));
+  const a=L[cur[segT]];
+  setGlow(a?GRADS[a.grad%GRADS.length].glow:'#333');
+  renderDetail();
+}
+function setGlow(c){
+  $('#glow').style.background=`radial-gradient(90% 55% at 50% 22%,${c}${light?'55':'aa'} 0%,transparent 70%),radial-gradient(70% 50% at 100% 100%,${c}33,transparent 70%)`;
+}
+let scT;
+$('#car').addEventListener('scroll',()=>{
+  clearTimeout(scT);
+  scT=setTimeout(()=>{
+    const car=$('#car'),mid=car.scrollLeft+car.clientWidth/2;let best=0,bd=1e9;
+    [...car.children].forEach((c,i)=>{const d=Math.abs(c.offsetLeft+c.offsetWidth/2-mid);if(d<bd){bd=d;best=i}});
+    const L=list(segT);if(best>=L.length)return;
+    if(best!==cur[segT]){cur[segT]=best;haptic();markCards()}
+  },60);
+},{passive:true});
+function renderDetail(){
+  const a=list(segT)[cur[segT]],d=$('#detail');
+  if(!a){d.innerHTML=`<div class="empty">还没有${segT==='email'?'邮箱':'手机号'}，点上面的卡片新建一个</div>`;return}
+  const ap=appsOf(a.id),G=GRADS[a.grad%GRADS.length];
+  d.innerHTML=`<div class="sec"><div><h2>${esc(a.name)}</h2><p>用它注册或绑定的 ${ap.length} 个网站与 App</p></div>
+    <button class="tint" id="addTo" style="color:${G.c};background:${G.c}2e">＋ 添加</button></div>
+    <div class="grid">${ap.map((x,i)=>`<div class="cell" data-id="${x.id}" style="animation-delay:${i*35}ms">${icon(x)}<span>${esc(x.name)}</span></div>`).join('')}
+    <div class="cell" id="addCell" style="animation-delay:${ap.length*35}ms"><div class="ic plus">+</div><span style="color:var(--sub)">添加</span></div></div>`;
+  $('#addTo').onclick=$('#addCell').onclick=()=>openPicker(a);
+  d.querySelectorAll('.cell[data-id]').forEach(c=>c.onclick=()=>openApp(S.apps.find(x=>x.id===c.dataset.id)));
+}
+function fmtDay(t){
+  const d0=new Date();d0.setHours(0,0,0,0);const diff=Math.floor((d0-t)/DAY)+1;
+  if(t>=d0)return'今天';if(diff<=1)return'昨天';const d=new Date(t);return`${d.getMonth()+1}/${d.getDate()}`;
+}
+function renderRecent(){
+  const R=[...S.apps].sort((a,b)=>b.added-a.added).slice(0,6);
+  let last='';
+  $('#recent').innerHTML=R.length?R.map(x=>{const day=fmtDay(x.added),show=day!==last;last=day;
+    return `<div class="rrow"><div class="rday">${show?day:''}</div><div class="ritem" data-id="${x.id}">${icon(x,'sm')}
+     <div><div class="t">${esc(x.name)}</div><div class="tags">${x.accts.map(id=>{const a=acc(id);return a?`<span class="tag"><i style="background:${GRADS[a.grad%GRADS.length].c}"></i>${esc(a.name)}</span>`:''}).join('')}</div></div>
+     <span class="cat">${esc(x.cat||'')}</span></div></div>`}).join(''):'<div class="empty">还没有添加任何网站或 App</div>';
+  $('#recent').querySelectorAll('.ritem').forEach(r=>r.onclick=()=>openApp(S.apps.find(x=>x.id===r.dataset.id)));
+}
+$('#seg').onclick=e=>{
+  const b=e.target.closest('button');if(!b||b.dataset.t===segT)return;
+  segT=b.dataset.t;haptic();
+  $('#seg .pill').style.transform=segT==='phone'?'translateX(100%)':'none';
+  $('#seg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  renderCards();
+};
+
+/* ---------- all apps ---------- */
+function renderApps(){
+  const q=$('#q').value.trim().toLowerCase();
+  const cats=CATS.filter(c=>c==='全部'||S.apps.some(x=>x.cat===c));
+  if(!cats.includes(filt))filt='全部';
+  $('#filters').innerHTML=cats.map(c=>`<button class="${c===filt?'on':''}">${c}</button>`).join('');
+  $('#filters').querySelectorAll('button').forEach(b=>b.onclick=()=>{filt=b.textContent;renderApps()});
+  const L=S.apps.filter(x=>(filt==='全部'||x.cat===filt)&&(!q||x.name.toLowerCase().includes(q)||x.accts.some(id=>{const a=acc(id);return a&&(a.name+a.addr).toLowerCase().includes(q)})))
+    .sort((a,b)=>a.name.localeCompare(b.name,'zh'));
+  $('#appsSum').textContent=`共 ${S.apps.length} 个，绑定 ${S.apps.reduce((s,x)=>s+x.accts.length,0)} 条关系`;
+  $('#appList').innerHTML=L.length?L.map((x,i)=>`<div class="li" data-id="${x.id}" style="animation-delay:${Math.min(i,12)*25}ms">${icon(x,'sm')}<div><div class="t">${esc(x.name)}</div>
+    <div class="tags">${x.accts.map(id=>{const a=acc(id);return a?`<span class="tag"><i style="background:${GRADS[a.grad%GRADS.length].c}"></i>${esc(a.name)}</span>`:''}).join('')||'<span class="tag">未绑定</span>'}</div></div><span class="chev">›</span></div>`).join('')
+    :'<div class="empty">没有找到</div>';
+  $('#appList').querySelectorAll('.li').forEach(r=>r.onclick=()=>openApp(S.apps.find(x=>x.id===r.dataset.id)));
+}
+$('#q').oninput=renderApps;
+
+/* ---------- graph ---------- */
+function renderGraph(){
+  const W=$('#gwrap'),E=list('email'),P=list('phone');
+  const order=[];[...E,...P].forEach(a=>appsOf(a.id).forEach(x=>{if(!order.includes(x))order.push(x)}));
+  S.apps.forEach(x=>{if(!order.includes(x))order.push(x)});
+  const card=a=>{const G=GRADS[a.grad%GRADS.length];return `<div class="gacc ${a.type==='phone'?'sim':''}" data-a="${a.id}" style="background:${G.g};--sh:${G.glow}">
+    ${a.type==='phone'?'▣':'✉'} ${appsOf(a.id).length}<b>${esc(a.name)}</b><span>${esc(a.addr)}</span></div>`};
+  W.innerHTML=`<svg id="gsvg"></svg><div class="gcol l">${E.length?'<div class="glabel">邮箱</div>'+E.map(card).join(''):''}
+    ${P.length?'<div class="glabel" style="margin-top:10px">手机号</div>'+P.map(card).join(''):''}</div>
+    <div class="gcol r">${order.map(x=>`<div class="gapp" data-x="${x.id}">${icon(x)}<span>${esc(x.name)}</span></div>`).join('')}</div>`;
+  if(!S.accounts.length&&!S.apps.length)W.innerHTML='<div class="empty" style="width:100%">暂无数据</div>';
+  requestAnimationFrame(drawLines);
+  W.querySelectorAll('.gacc').forEach(c=>c.onclick=()=>{sel=sel&&sel.a===c.dataset.a?null:{a:c.dataset.a};haptic();applySel()});
+  W.querySelectorAll('.gapp').forEach(c=>c.onclick=()=>{sel=sel&&sel.x===c.dataset.x?null:{x:c.dataset.x};haptic();applySel()});
+}
+function drawLines(){
+  const W=$('#gwrap'),svg=$('#gsvg');if(!svg)return;
+  const R=W.getBoundingClientRect();let h='';
+  S.accounts.forEach(a=>{
+    const el=W.querySelector(`[data-a="${a.id}"]`);if(!el)return;
+    const r=el.getBoundingClientRect(),ap=appsOf(a.id),col=GRADS[a.grad%GRADS.length].c;
+    ap.forEach((x,k)=>{
+      const t=W.querySelector(`[data-x="${x.id}"]`);if(!t)return;const tr=t.getBoundingClientRect();
+      const x1=r.right-R.left-2,y1=r.top-R.top+r.height/2+(k-(ap.length-1)/2)*3,x2=tr.left-R.left+2,y2=tr.top-R.top+tr.height/2;
+      const mx=(x1+x2)/2,len=Math.round(Math.hypot(x2-x1,y2-y1)*1.4);
+      h+=`<path class="ln" data-a="${a.id}" data-x="${x.id}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" stroke="${col}" style="--len:${len};animation-delay:${k*60}ms"/>`;
+    });
+  });
+  svg.innerHTML=h;applySel();
+}
+function applySel(){
+  const W=$('#gwrap');let A=new Set(),X=new Set();
+  if(sel&&sel.a){A.add(sel.a);appsOf(sel.a).forEach(x=>X.add(x.id))}
+  if(sel&&sel.x){X.add(sel.x);(S.apps.find(x=>x.id===sel.x)||{accts:[]}).accts.forEach(a=>A.add(a))}
+  W.querySelectorAll('.gacc').forEach(e=>{e.classList.toggle('fade',!!sel&&!A.has(e.dataset.a));e.classList.toggle('hl',!!sel&&A.has(e.dataset.a))});
+  W.querySelectorAll('.gapp').forEach(e=>{e.classList.toggle('fade',!!sel&&!X.has(e.dataset.x));e.classList.toggle('hl',!!sel&&X.has(e.dataset.x))});
+  W.querySelectorAll('path.ln').forEach(p=>{const on=sel&&(sel.a?p.dataset.a===sel.a:p.dataset.x===sel.x);p.classList.toggle('fade',!!sel&&!on);p.classList.toggle('hl',!!on)});
+  if(view==='vGraph'){
+    const a=sel&&sel.a?acc(sel.a):null;setGlow(a?GRADS[a.grad%GRADS.length].glow:'#1f5dff');
+  }
+}
+addEventListener('resize',()=>{if(view==='vGraph')drawLines()});
+
+/* ---------- tabs ---------- */
+$('#tabbar').onclick=e=>{const b=e.target.closest('button');if(!b)return;go(b.dataset.v)};
+function go(v){
+  view=v;haptic();
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id===v));
+  document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  scrollTo(0,0);
+  if(v==='vWallet'){renderCards();}
+  if(v==='vApps'){renderApps();setGlow('#5b3dff')}
+  if(v==='vGraph'){sel=null;renderGraph();setGlow('#1f5dff')}
+}
+function refresh(){save();renderSummary();renderRecent();
+  if(view==='vWallet')renderCards(true);if(view==='vApps')renderApps();if(view==='vGraph')renderGraph();}
+
+/* ---------- sheets ---------- */
+function openSheet(html){$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#mask').classList.add('on');$('#sheet').classList.add('on');$('#sheet').scrollTop=0}
+function closeSheet(){$('#mask').classList.remove('on');$('#sheet').classList.remove('on');$('#menu').classList.remove('on')}
+$('#mask').onclick=closeSheet;
+
+function openAccount(a,type){
+  const isNew=!a;a=a?{...a}:{id:uid(),type:type||'email',name:'',addr:'',note:'',grad:(S.accounts.length)%GRADS.length};
+  const draw=()=>{
+    openSheet(`<div class="shead"><button id="cx">取消</button><h3>${isNew?'新建':'编辑'}${a.type==='email'?'邮箱':'手机号'}</h3><button class="done" id="ok">完成</button></div>
+    ${isNew?`<div class="seg" id="tseg" style="margin:0 0 18px"><div class="pill" style="transform:${a.type==='phone'?'translateX(100%)':'none'}"></div><button data-t="email" class="${a.type==='email'?'on':''}">邮箱</button><button data-t="phone" class="${a.type==='phone'?'on':''}">手机号</button></div>`:''}
+    <div class="form"><label><span>名称</span><input id="fn" placeholder="${a.type==='email'?'如：主力邮箱':'如：主力手机号'}" value="${esc(a.name)}"></label>
+    <label><span>${a.type==='email'?'邮箱':'号码'}</span><input id="fa" ${a.type==='email'?'type="email" placeholder="name@example.com"':'type="tel" placeholder="+86 138 0000 0000"'} value="${esc(a.addr)}"></label>
+    <label><span>备注</span><input id="fo" placeholder="${a.type==='email'?'邮箱':'如：移动，已实名'}" value="${esc(a.note||'')}"></label></div>
+    <div class="flabel">卡片颜色</div><div class="swatches">${GRADS.map((G,i)=>`<div class="sw ${i===a.grad?'on':''}" data-g="${i}" style="background:${G.g}"></div>`).join('')}</div>
+    ${isNew?'':`<button class="danger" id="del">删除这张卡</button>`}`);
+    const sync=()=>{a.name=$('#fn').value;a.addr=$('#fa').value;a.note=$('#fo').value};
+    $('#cx').onclick=closeSheet;
+    $('#sheet').querySelectorAll('.sw').forEach(s=>s.onclick=()=>{sync();a.grad=+s.dataset.g;draw()});
+    if(isNew)$('#tseg').onclick=e=>{const b=e.target.closest('button');if(!b)return;sync();a.type=b.dataset.t;draw()};
+    $('#ok').onclick=()=>{sync();if(!a.addr.trim()){toast('请填写'+(a.type==='email'?'邮箱地址':'手机号码'));return}
+      if(!a.name.trim())a.name=a.type==='email'?'新邮箱':'新号码';
+      if(isNew){S.accounts.push(a);segT=a.type;cur[segT]=list(segT).length-1;
+        $('#seg .pill').style.transform=segT==='phone'?'translateX(100%)':'none';
+        $('#seg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.t===segT));}
+      else Object.assign(acc(a.id),a);
+      closeSheet();refresh();toast(isNew?'已添加':'已保存')};
+    if(!isNew)$('#del').onclick=async()=>{if(!await ask(`删除「${a.name}」？绑定关系也会移除。`))return;
+      S.accounts=S.accounts.filter(x=>x.id!==a.id);S.apps.forEach(x=>x.accts=x.accts.filter(i=>i!==a.id));closeSheet();refresh();toast('已删除')};
+  };
+  draw();
+}
+
+/* pick apps for an account */
+function openPicker(a){
+  const have=new Set(appsOf(a.id).map(x=>x.name));const chosen=new Set(have);
+  const pool=[...new Set([...S.apps.map(x=>x.name),...PRESETS.map(p=>p[0])])];
+  const look=n=>S.apps.find(x=>x.name===n)||(p=>({name:p[0],glyph:p[1],bg:p[2],fg:p[3],cat:p[4]}))(PMAP[n]);
+  openSheet(`<div class="shead"><button id="cx">取消</button><h3>绑定到「${esc(a.name)}」</h3><button class="done" id="ok">完成</button></div>
+   <div class="picks">${pool.map(n=>{const x=look(n);return`<div class="pick ${chosen.has(n)?'on':''}" data-n="${esc(n)}">${icon(x)}<span>${esc(n)}</span></div>`}).join('')}
+   <div class="pick" id="custom"><div class="ic plus">+</div><span>自定义</span></div></div>`);
+  $('#cx').onclick=closeSheet;
+  $('#sheet').querySelectorAll('.pick[data-n]').forEach(p=>p.onclick=()=>{const n=p.dataset.n;chosen.has(n)?chosen.delete(n):chosen.add(n);p.classList.toggle('on');haptic()});
+  $('#custom').onclick=()=>openApp(null,[a.id]);
+  $('#ok').onclick=()=>{
+    pool.forEach(n=>{
+      let x=S.apps.find(y=>y.name===n);
+      if(chosen.has(n)){
+        if(!x){const p=PMAP[n];x={id:uid(),name:n,glyph:p[1],bg:p[2],fg:p[3],cat:p[4],accts:[],added:Date.now()};S.apps.push(x)}
+        if(!x.accts.includes(a.id)){x.accts.push(a.id);x.added=Date.now()}
+      }else if(x&&x.accts.includes(a.id)){x.accts=x.accts.filter(i=>i!==a.id)}
+    });
+    closeSheet();refresh();toast('已更新绑定');
+  };
+}
+
+/* add / edit app */
+const TILE_COLORS=['#0a84ff','#30d158','#ff9f0a','#ff375f','#bf5af2','#64d2ff','#ffd60a','#1c1c1e','#f2f2f7','#ac8e68'];
+function openApp(x,pre){
+  const isNew=!x;x=x?{...x,accts:[...x.accts]}:{id:uid(),name:'',glyph:'',bg:'#0a84ff',fg:'#fff',cat:'其他',accts:pre||[],added:Date.now()};
+  const draw=()=>{
+    openSheet(`<div class="shead"><button id="cx">取消</button><h3>${isNew?'添加网站或 App':esc(x.name)}</h3><button class="done" id="ok">完成</button></div>
+    <div style="display:flex;justify-content:center;margin-bottom:16px" id="prev">${icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})}</div>
+    <div class="form"><label><span>名称</span><input id="an" placeholder="如：Steam / 小红书" value="${esc(x.name)}" list="pl"></label>
+    <label><span>图标字</span><input id="ag" maxlength="4" placeholder="留空取首字" value="${esc(x.glyph)}"></label>
+    <label><span>分类</span><select id="ac">${CATS.slice(1).map(c=>`<option ${c===x.cat?'selected':''}>${c}</option>`).join('')}</select></label></div>
+    <datalist id="pl">${PRESETS.map(p=>`<option value="${p[0]}">`).join('')}</datalist>
+    <div class="flabel">图标颜色</div><div class="swatches">${TILE_COLORS.map(c=>`<div class="sw ${c===x.bg?'on':''}" data-c="${c}" style="background:${c}"></div>`).join('')}</div>
+    <div class="flabel">用哪些账号注册 / 绑定</div>
+    <div class="form checks">${S.accounts.map(a=>`<div class="opt ${x.accts.includes(a.id)?'on':''}" data-a="${a.id}"><i class="dot" style="background:${GRADS[a.grad%GRADS.length].c}"></i>
+      <div><div style="font-size:16px">${esc(a.name)}</div><div style="font-size:12px;color:var(--sub)">${esc(a.addr)}</div></div><span class="ok">✓</span></div>`).join('')||'<div class="opt" style="color:var(--sub)">先新建一个邮箱或手机号</div>'}</div>
+    ${isNew?'':'<button class="danger" id="del">删除这个 App</button>'}`);
+    const sync=()=>{x.name=$('#an').value.trim();x.glyph=$('#ag').value.trim();x.cat=$('#ac').value};
+    const upd=()=>{sync();$('#prev').innerHTML=icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})};
+    $('#an').oninput=()=>{const p=PMAP[$('#an').value.trim()];if(p&&isNew){x.glyph=p[1];x.bg=p[2];x.fg=p[3];x.cat=p[4];$('#ag').value=p[1];$('#ac').value=p[4]}upd()};
+    $('#ag').oninput=upd;
+    $('#sheet').querySelectorAll('.sw').forEach(s=>s.onclick=()=>{sync();x.bg=s.dataset.c;x.fg=['#f2f2f7','#ffd60a','#64d2ff'].includes(x.bg)?'#111':'#fff';draw()});
+    $('#sheet').querySelectorAll('.opt[data-a]').forEach(o=>o.onclick=()=>{const id=o.dataset.a;x.accts.includes(id)?x.accts=x.accts.filter(i=>i!==id):x.accts.push(id);o.classList.toggle('on');haptic()});
+    $('#cx').onclick=closeSheet;
+    $('#ok').onclick=()=>{sync();if(!x.name){toast('请填写名称');return}
+      if(!x.glyph)x.glyph=x.name.slice(0,1).toUpperCase();
+      if(isNew){if(S.apps.some(y=>y.name===x.name)){const y=S.apps.find(z=>z.name===x.name);x.accts.forEach(i=>{if(!y.accts.includes(i))y.accts.push(i)});y.added=Date.now()}else S.apps.push(x)}
+      else Object.assign(S.apps.find(y=>y.id===x.id),x);
+      closeSheet();refresh();toast(isNew?'已添加':'已保存')};
+    if(!isNew)$('#del').onclick=async()=>{if(!await ask(`删除「${x.name}」？`))return;S.apps=S.apps.filter(y=>y.id!==x.id);closeSheet();refresh();toast('已删除')};
+  };
+  draw();
+}
+
+/* ---------- top bar ---------- */
+$('#bAdd').onclick=()=>{
+  openSheet(`<div class="shead"><span></span><h3>添加</h3><button id="cx">关闭</button></div>
+   <div class="form checks"><div class="opt" id="o1"><span style="font-size:22px">✉️</span><div><div style="font-size:16px">新建邮箱</div><div style="font-size:12px;color:var(--sub)">像 Wallet 一样多一张卡</div></div><span class="chev">›</span></div>
+   <div class="opt" id="o2"><span style="font-size:22px">📱</span><div><div style="font-size:16px">新建手机号</div><div style="font-size:12px;color:var(--sub)">一张会发光的 SIM 卡</div></div><span class="chev">›</span></div>
+   <div class="opt" id="o3"><span style="font-size:22px">🧩</span><div><div style="font-size:16px">添加网站或 App</div><div style="font-size:12px;color:var(--sub)">记下它绑定了哪些账号</div></div><span class="chev">›</span></div></div>`);
+  $('#cx').onclick=closeSheet;$('#o1').onclick=()=>openAccount(null,'email');$('#o2').onclick=()=>openAccount(null,'phone');$('#o3').onclick=()=>openApp(null);
+};
+$('#bTheme').onclick=()=>{light=!light;document.body.classList.toggle('light',light);try{localStorage.setItem(KEY+'-light',light?'1':'0')}catch(e){}
+  if(view==='vWallet')markCards();else applySel();toast(light?'浅色模式':'深色模式')};
+$('#bMore').onclick=e=>{e.stopPropagation();$('#menu').classList.toggle('on')};
+document.addEventListener('click',e=>{if(!e.target.closest('#menu')&&!e.target.closest('#bMore'))$('#menu').classList.remove('on')});
+$('#menu').onclick=async e=>{const b=e.target.closest('button');if(!b)return;$('#menu').classList.remove('on');const m=b.dataset.m;
+  if(m==='acc')openAccount(null,segT);
+  if(m==='app')openApp(null);
+  if(m==='export'){const j=JSON.stringify(S);
+    openSheet(`<div class="shead"><span></span><h3>导出备份</h3><button id="cx">关闭</button></div>
+    <div class="form"><textarea id="bk" readonly style="width:100%;height:180px;background:none;border:0;padding:12px;font-size:12px;resize:none">${esc(j)}</textarea></div>
+    <button class="danger" id="cp" style="color:var(--accent)">复制备份内容</button>`);
+    $('#cx').onclick=closeSheet;
+    if(window.Android){$('#cp').insertAdjacentHTML('afterend','<button class="danger" id="sh" style="color:var(--accent);margin-top:10px">分享 / 保存到文件</button>');$('#sh').onclick=()=>Android.share(j)}
+    $('#cp').onclick=async()=>{if(window.Android){Android.copy(j);toast('已复制');return}try{await navigator.clipboard.writeText(j);toast('已复制')}catch(e){$('#bk').select();toast('请长按全选复制')}};}
+  if(m==='import')$('#file').click();
+  if(m==='demo'&&await ask('用示例数据替换当前数据？','替换')){S=demo();cur={email:0,phone:0};refresh();toast('已恢复示例')}
+  if(m==='clear'&&await ask('清空全部账号和 App？','清空')){S={accounts:[],apps:[]};refresh();toast('已清空')}
+};
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.accounts)||!Array.isArray(d.apps))throw 0;S=d;cur={email:0,phone:0};refresh();toast('导入成功')}catch(err){toast('文件格式不对')}};
+  r.readAsText(f);e.target.value=''};
+
+/* ---------- boot ---------- */
+window.onAndroidBack=()=>{const d=document.querySelector('.dlg');if(d){d.querySelector('.no').click();return true}
+  if($('#sheet').classList.contains('on')||$('#menu').classList.contains('on')){closeSheet();return true}
+  if(view!=='vWallet'){go('vWallet');return true}return false};
+document.body.classList.toggle('light',light);
+renderSummary();renderCards();renderRecent();
+}
+</script>
+</body>
+</html>
