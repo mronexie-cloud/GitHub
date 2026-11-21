@@ -1,4 +1,4 @@
-# 译聊 + 游戏 App：译聊、二人麻将、五子棋、象棋、三国身份局
+# 译聊 + 游戏 App：译聊、单词勇者、二人麻将、五子棋、象棋、三国身份局
 
 这个仓库里有五个原生安卓 App，都是用一个全屏 WebView 加载游戏页面，不需要联网也能玩。
 
@@ -13,6 +13,7 @@
 | 死亡倒计时（每年发 Gmail 提醒） | `deathclock/` | [deathclock.apk](https://github.com/mronexie-cloud/GitHub/releases/download/deathclock/deathclock.apk) |
 | 环球收款（跨境收款演示版） | `crosspay/` | [crosspay.apk](https://github.com/mronexie-cloud/GitHub/releases/download/crosspay/crosspay.apk) |
 | AI成片（免费生成知识短视频） | `video/` | [video.apk](https://github.com/mronexie-cloud/GitHub/releases/download/video/video.apk) |
+| 单词勇者（打怪背英语单词） | `english/` | [english.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/english.apk) |
 
 **苹果手机版：** 用 Safari 打开 https://mronexie-cloud.github.io/GitHub/ ，选游戏后通过"分享 → 添加到主屏幕"安装。苹果版文件在 `ios/` 目录，和安卓版互不影响。
 

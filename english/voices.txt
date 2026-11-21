@@ -1,0 +1,257 @@
+w-hello|hello
+s-hello|Hello, nice to meet you.
+w-thank|thank
+s-thank|Thank you for your help.
+w-sorry|sorry
+s-sorry|I am sorry I am late.
+w-please|please
+s-please|Please sit down.
+w-morning|morning
+s-morning|I drink coffee every morning.
+w-night|night
+s-night|Good night, see you soon.
+w-friend|friend
+s-friend|She is my best friend.
+w-family|family
+s-family|I love my family.
+w-home|home
+s-home|Let's go home.
+w-water|water
+s-water|Can I have some water?
+w-happy|happy
+s-happy|I am very happy today.
+w-name|name
+s-name|What is your name?
+w-today|today
+s-today|It is very hot today.
+w-tomorrow|tomorrow
+s-tomorrow|I will call you tomorrow.
+w-phone|phone
+s-phone|My phone is out of battery.
+w-time|time
+s-time|What time is it now?
+w-apple|apple
+s-apple|An apple a day keeps the doctor away.
+w-bread|bread
+s-bread|This bread is soft and warm.
+w-rice|rice
+s-rice|I would like a bowl of rice.
+w-egg|egg
+s-egg|Do you want an egg?
+w-milk|milk
+s-milk|The baby is drinking milk.
+w-chicken|chicken
+s-chicken|Fried chicken is my favorite.
+w-noodle|noodle
+s-noodle|This noodle soup is very hot.
+w-fish|fish
+s-fish|We had fish for lunch.
+w-vegetable|vegetable
+s-vegetable|Carrot is a healthy vegetable.
+w-fruit|fruit
+s-fruit|Which fruit do you like?
+w-sweet|sweet
+s-sweet|This cake is too sweet.
+w-spicy|spicy
+s-spicy|The curry is very spicy.
+w-hungry|hungry
+s-hungry|I am so hungry.
+w-delicious|delicious
+s-delicious|The food here is delicious.
+w-breakfast|breakfast
+s-breakfast|Breakfast is ready.
+w-dinner|dinner
+s-dinner|Let's have dinner together.
+w-dog|dog
+s-dog|My dog likes to run.
+w-cat|cat
+s-cat|The cat is sleeping on the sofa.
+w-bird|bird
+s-bird|A bird is singing in the tree.
+w-horse|horse
+s-horse|He can ride a horse.
+w-tiger|tiger
+s-tiger|The tiger has orange and black stripes.
+w-monkey|monkey
+s-monkey|The monkey is eating a banana.
+w-rabbit|rabbit
+s-rabbit|The rabbit has long ears.
+w-elephant|elephant
+s-elephant|An elephant has a long nose.
+w-snake|snake
+s-snake|Be careful, there is a snake!
+w-bear|bear
+s-bear|The bear is looking for honey.
+w-duck|duck
+s-duck|A duck is swimming in the lake.
+w-lion|lion
+s-lion|The lion is the king of animals.
+w-sheep|sheep
+s-sheep|The farmer has many sheep.
+w-whale|whale
+s-whale|The whale is the biggest animal in the sea.
+w-wing|wing
+s-wing|The bird hurt its wing.
+w-tail|tail
+s-tail|The dog is wagging its tail.
+w-school|school
+s-school|I go to school by bus.
+w-teacher|teacher
+s-teacher|Our teacher is very kind.
+w-student|student
+s-student|He is a good student.
+w-book|book
+s-book|I am reading a book.
+w-pen|pen
+s-pen|Can I borrow your pen?
+w-desk|desk
+s-desk|Put your bag on the desk.
+w-class|class
+s-class|The English class starts at nine.
+w-homework|homework
+s-homework|I have finished my homework.
+w-exam|exam
+s-exam|Good luck on your exam!
+w-question|question
+s-question|May I ask a question?
+w-answer|answer
+s-answer|Do you know the answer?
+w-learn|learn
+s-learn|I want to learn English.
+w-library|library
+s-library|Let's study in the library.
+w-easy|easy
+s-easy|This game is easy.
+w-difficult|difficult
+s-difficult|This word is difficult to spell.
+w-remember|remember
+s-remember|Please remember my name.
+w-street|street
+s-street|Walk along this street.
+w-bus|bus
+s-bus|The bus is coming.
+w-train|train
+s-train|The train leaves at eight.
+w-airport|airport
+s-airport|How do I get to the airport?
+w-hotel|hotel
+s-hotel|Our hotel is next to the beach.
+w-ticket|ticket
+s-ticket|I bought a ticket online.
+w-map|map
+s-map|Let me check the map.
+w-left|left
+s-left|Turn left at the corner.
+w-right|right
+s-right|The bank is on your right.
+w-near|near
+s-near|Is there a cafe near here?
+w-far|far
+s-far|Is it far from here?
+w-hospital|hospital
+s-hospital|Take him to the hospital.
+w-bank|bank
+s-bank|The bank closes at five.
+w-shop|shop
+s-shop|This shop sells shoes.
+w-taxi|taxi
+s-taxi|Let's take a taxi.
+w-station|station
+s-station|Where is the train station?
+w-head|head
+s-head|My head hurts.
+w-eye|eye
+s-eye|She has something in her eye.
+w-ear|ear
+s-ear|He whispered in my ear.
+w-mouth|mouth
+s-mouth|Open your mouth, please.
+w-hand|hand
+s-hand|Raise your hand if you know.
+w-leg|leg
+s-leg|I hurt my leg playing football.
+w-heart|heart
+s-heart|Her heart is beating fast.
+w-tooth|tooth
+s-tooth|My tooth hurts when I eat ice cream.
+w-sick|sick
+s-sick|I feel sick today.
+w-doctor|doctor
+s-doctor|You should see a doctor.
+w-medicine|medicine
+s-medicine|Take this medicine after meals.
+w-fever|fever
+s-fever|The child has a high fever.
+w-pain|pain
+s-pain|I have a pain in my back.
+w-healthy|healthy
+s-healthy|Fruit keeps you healthy.
+w-sleep|sleep
+s-sleep|I need to sleep early tonight.
+w-exercise|exercise
+s-exercise|I exercise three times a week.
+w-office|office
+s-office|I work in an office.
+w-meeting|meeting
+s-meeting|The meeting starts at ten.
+w-boss|boss
+s-boss|My boss is very strict.
+w-job|job
+s-job|She found a new job.
+w-salary|salary
+s-salary|The salary is paid every month.
+w-busy|busy
+s-busy|I am too busy to go out.
+w-email|email
+s-email|Please send me an email.
+w-colleague|colleague
+s-colleague|He is my colleague.
+w-customer|customer
+s-customer|The customer is always right.
+w-plan|plan
+s-plan|What is your plan for today?
+w-report|report
+s-report|I must finish this report.
+w-deadline|deadline
+s-deadline|The deadline is Friday.
+w-manager|manager
+s-manager|I want to speak to the manager.
+w-interview|interview
+s-interview|I have a job interview tomorrow.
+w-holiday|holiday
+s-holiday|We are going on holiday next week.
+w-success|success
+s-success|Hard work leads to success.
+w-angry|angry
+s-angry|Don't be angry with me.
+w-afraid|afraid
+s-afraid|I am afraid of the dark.
+w-tired|tired
+s-tired|I am tired after work.
+w-excited|excited
+s-excited|The kids are excited about the trip.
+w-worried|worried
+s-worried|Mom is worried about you.
+w-proud|proud
+s-proud|I am proud of you.
+w-lonely|lonely
+s-lonely|He feels lonely in the new city.
+w-surprised|surprised
+s-surprised|I was surprised by the news.
+w-brave|brave
+s-brave|The brave boy saved the cat.
+w-honest|honest
+s-honest|Please be honest with me.
+w-patient|patient
+s-patient|Be patient, it takes time.
+w-polite|polite
+s-polite|It is polite to say thank you.
+w-believe|believe
+s-believe|I believe you can do it.
+w-forgive|forgive
+s-forgive|Please forgive me.
+w-promise|promise
+s-promise|I promise I will come back.
+w-dream|dream
+s-dream|My dream is to travel the world.
+t-test|Hello, welcome to Word Hero!

@@ -1,0 +1,42 @@
+name: Build english game voices
+
+# 单词勇者的单词和例句发音：用美式英语神经网络语音预先录好，
+# 打包成 zip 发布，再嵌进游戏页面，这样不依赖手机自带的语音引擎。
+on:
+  push:
+    paths:
+      - "english/voices.txt"
+      - ".github/workflows/english-voices.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Synthesize words and sentences
+        run: |
+          pip install edge-tts
+          mkdir -p out
+          while IFS='|' read -r key text; do
+            [ -z "$key" ] && continue
+            for i in 1 2 3; do
+              edge-tts --voice en-US-JennyNeural --rate=-10% --text "$text" --write-media "out/$key.mp3" && break
+              echo "retry $key"; sleep 3
+            done
+            [ -s "out/$key.mp3" ] || { echo "::error::failed $key"; exit 1; }
+          done < english/voices.txt
+          ls out | wc -l
+          cd out && zip -q ../english-voices.zip *.mp3
+      - name: Publish voices
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete english-voices --yes --cleanup-tag || true
+          gh release create english-voices english-voices.zip --target "$GITHUB_SHA" --title "单词勇者 voices" --notes "Pre-recorded word and sentence audio for 单词勇者" --latest=false --prerelease
