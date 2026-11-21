@@ -89,26 +89,79 @@ def douyin_id(url):
     return m.group(1) if m else None
 
 
+DOUYIN_COOKIE = os.environ.get("DOUYIN_COOKIE", "").strip()
+
+
+def douyin_get(url, ua=UA_IPHONE):
+    req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept-Language": "zh-CN,zh;q=0.9",
+                                               "Referer": "https://www.douyin.com/"})
+    if DOUYIN_COOKIE:
+        req.add_header("Cookie", DOUYIN_COOKIE)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return r.status, r.read().decode("utf-8", "replace")
+
+
+def douyin_probe(vid):
+    """Tries Douyin's public share pages. Returns (item or None, notes for diagnosis)."""
+    notes = []
+    for name, url, ua in [
+        ("share-video", f"https://www.iesdouyin.com/share/video/{vid}/", UA_IPHONE),
+        ("share-note", f"https://www.iesdouyin.com/share/note/{vid}/", UA_IPHONE),
+        ("m-douyin", f"https://m.douyin.com/share/video/{vid}", UA_IPHONE),
+    ]:
+        n = {"try": name}
+        notes.append(n)
+        try:
+            n["status"], html = douyin_get(url, ua)
+        except Exception as e:  # noqa
+            n["error"] = str(e)[:120]
+            continue
+        n["size"] = len(html)
+        m = re.search(r"window\._ROUTER_DATA\s*=\s*(\{.*?\})</script>", html, re.S)
+        if not m:
+            n["page"] = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))[:120]
+            continue
+        try:
+            data = json.loads(m.group(1))
+        except ValueError:
+            n["page"] = "bad json"
+            continue
+        for v in (data.get("loaderData") or {}).values():
+            res = v.get("videoInfoRes") if isinstance(v, dict) else None
+            if not res:
+                continue
+            items = res.get("item_list") or []
+            n["items"] = len(items)
+            fl = res.get("filter_list") or []
+            if fl:
+                n["filter"] = [{k: f.get(k) for k in ("filter_reason", "detail_msg", "notice") if f.get(k)} for f in fl][:2]
+            if items:
+                return items[0], notes
+    return None, notes
+
+
 def douyin_info(url):
     vid = douyin_id(url)
     if not vid:
         raise Fail("BAD_LINK", "认不出这个抖音链接")
-    page = f"https://www.iesdouyin.com/share/video/{vid}/"
-    with http_get(page, referer="https://www.douyin.com/") as r:
-        html = r.read().decode("utf-8", "replace")
-    m = re.search(r"window\._ROUTER_DATA\s*=\s*(\{.*?\})</script>", html, re.S)
-    if not m:
-        raise Fail("DOUYIN_BLOCKED", "抖音暂时不让服务器读取这个视频，稍后再试")
-    data = json.loads(m.group(1))
-    item = None
-    for v in (data.get("loaderData") or {}).values():
-        try:
-            item = v["videoInfoRes"]["item_list"][0]
-            break
-        except (KeyError, IndexError, TypeError):
-            continue
+    item, notes = douyin_probe(vid)
     if not item:
-        raise Fail("NOT_FOUND", "视频不存在或已删除")
+        reason = ""
+        for n in notes:
+            for f in n.get("filter") or []:
+                reason = f.get("detail_msg") or f.get("notice") or f.get("filter_reason") or reason
+        print("douyin fail", vid, json.dumps(notes, ensure_ascii=False), flush=True)
+        try:  # last try: yt-dlp's own Douyin reader
+            d = ydl_info(f"https://www.douyin.com/video/{vid}")
+            d.update({"platform": "douyin", "platformName": "抖音", "ydl": True})
+            return d
+        except Fail:
+            pass
+        msg = "抖音没有把这个视频给服务器"
+        if reason:
+            msg += "（抖音说：%s）" % reason
+        msg += "。很可能是抖音不让海外服务器读取，这个视频请用安卓版下载。"
+        raise Fail("DOUYIN_BLOCKED", msg)
     video = item.get("video") or {}
     urls = ((video.get("play_addr") or {}).get("url_list")) or []
     images = [((i.get("url_list") or [None])[0]) for i in (item.get("images") or [])]
@@ -127,9 +180,11 @@ def douyin_info(url):
 
 
 # ------------------------------------------------------------------ yt-dlp
-def ydl_opts(extra=None):
+def ydl_opts(extra=None, url=""):
     o = {"quiet": True, "no_warnings": True, "noplaylist": True, "socket_timeout": 20,
          "http_headers": {"User-Agent": UA_PC}}
+    if DOUYIN_COOKIE and "douyin.com" in url:  # only ever sent to Douyin
+        o["http_headers"]["Cookie"] = DOUYIN_COOKIE
     if os.path.exists(os.path.join(HERE, "cookies.txt")):
         o["cookiefile"] = os.path.join(HERE, "cookies.txt")
     o.update(extra or {})
@@ -150,7 +205,7 @@ def explain(err):
 def ydl_info(url):
     import yt_dlp
     try:
-        with yt_dlp.YoutubeDL(ydl_opts({"skip_download": True})) as y:
+        with yt_dlp.YoutubeDL(ydl_opts({"skip_download": True}, url)) as y:
             j = y.extract_info(url, download=False)
     except Exception as e:
         raise explain(e)
@@ -177,7 +232,7 @@ def ydl_download(url, q, folder):
             o["format"] = "bv*+ba/b"
         o.update({"format_sort": ["res", "vcodec:h264", "acodec:m4a"], "merge_output_format": "mp4"})
     try:
-        with yt_dlp.YoutubeDL(ydl_opts(o)) as y:
+        with yt_dlp.YoutubeDL(ydl_opts(o, url)) as y:
             y.download([url])
     except Exception as e:
         raise explain(e)
@@ -193,6 +248,10 @@ def info(text):
     url = resolve(extract_url(text))
     if platform_of(url)[0] == "douyin":
         d = douyin_info(url)
+        if d.get("ydl"):
+            d.pop("heights", None)
+            d["choices"] = [{"q": "best", "label": "下载视频"}, {"q": "audio", "label": "只要声音 MP3"}]
+            return d
         d["choices"] = ([{"q": "best", "label": "无水印视频"}] if d["direct"] else []) + \
                        ([{"q": "img%d" % i, "label": "图片 %d" % (i + 1)} for i in range(len(d["images"]))])
         return d
@@ -254,6 +313,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if p == "/api/health":
                 return self.send_json(200, {"ok": True})
+            if p == "/api/debug":
+                u2 = resolve(extract_url(qs.get("url", [""])[0]))
+                vid = douyin_id(u2)
+                _, notes = douyin_probe(vid) if vid else (None, [])
+                return self.send_json(200, {"resolved": u2, "id": vid, "cookie": bool(DOUYIN_COOKIE), "tries": notes})
             if p == "/api/info":
                 return self.send_json(200, {"ok": True, **info(qs.get("url", [""])[0])})
             if p == "/api/download":
@@ -301,10 +365,13 @@ class Handler(BaseHTTPRequestHandler):
         url = resolve(extract_url(text))
         if platform_of(url)[0] == "douyin":
             d = douyin_info(url)
-            if q.startswith("img"):
+            if d.get("ydl"):
+                url = f"https://www.douyin.com/video/{d['id']}"
+            elif q.startswith("img"):
                 src, ext, ctype = d["images"][int(q[3:])], ".jpg", "image/jpeg"
             else:
                 src, ext, ctype = d["direct"], ".mp4", "video/mp4"
+        if platform_of(url)[0] == "douyin" and not d.get("ydl"):
             if not src:
                 raise Fail("NOT_FOUND", "没有可下载的内容")
             with http_get(src, referer="https://www.douyin.com/", timeout=30) as r:

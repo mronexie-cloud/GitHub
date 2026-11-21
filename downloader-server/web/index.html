@@ -124,7 +124,7 @@ async function analyze(){
   try{
     const r=await fetch(`${server}/api/info?url=${encodeURIComponent(text)}`,{signal:ctl.signal});
     const d=await r.json();
-    if(!d.ok){setStatus(esc(d.msg||'解析失败'),'err');return}
+    if(!d.ok){setStatus(esc(d.msg||'解析失败')+(/^(DOUYIN|NOT_FOUND)/.test(d.code||'')?` <a href="${server}/api/debug?url=${encodeURIComponent(text)}" target="_blank" style="color:#5ac8fa;white-space:nowrap">查看详细原因</a>`:''),'err');return}
     setStatus('');render(d,text);addHist(d,text);
   }catch(e){setStatus(e.name==='AbortError'?'服务器太久没响应，再点一次试试':'连不上下载服务器，检查网络或服务器地址','err')}
   finally{clearTimeout(slow);clearTimeout(kill);$('#go').disabled=false}
