@@ -101,6 +101,34 @@ def douyin_get(url, ua=UA_IPHONE):
         return r.status, r.read().decode("utf-8", "replace")
 
 
+def find_aweme(obj, vid, depth=0):
+    """Finds the video record anywhere in Douyin's page data: a dict whose 'video' has 'play_addr'
+    (or that holds 'images'), preferring the one whose aweme_id matches."""
+    best = None
+    if depth > 12:
+        return None
+    if isinstance(obj, dict):
+        v = obj.get("video")
+        if isinstance(v, dict) and (v.get("play_addr") or v.get("playAddr") or v.get("bit_rate")) or obj.get("images"):
+            if str(obj.get("aweme_id") or obj.get("awemeId") or "") == vid:
+                return obj
+            best = obj
+        for x in obj.values():
+            r = find_aweme(x, vid, depth + 1)
+            if r is not None:
+                if str(r.get("aweme_id") or r.get("awemeId") or "") == vid:
+                    return r
+                best = best or r
+    elif isinstance(obj, list):
+        for x in obj:
+            r = find_aweme(x, vid, depth + 1)
+            if r is not None:
+                if str(r.get("aweme_id") or r.get("awemeId") or "") == vid:
+                    return r
+                best = best or r
+    return best
+
+
 def douyin_probe(vid):
     """Tries Douyin's public share pages. Returns (item or None, notes for diagnosis)."""
     notes = []
@@ -126,9 +154,11 @@ def douyin_probe(vid):
         except ValueError:
             n["page"] = "bad json"
             continue
-        for v in (data.get("loaderData") or {}).values():
+        ld = data.get("loaderData") or {}
+        n["keys"] = {k: (sorted(v.keys())[:12] if isinstance(v, dict) else type(v).__name__) for k, v in list(ld.items())[:6]}
+        for v in ld.values():
             res = v.get("videoInfoRes") if isinstance(v, dict) else None
-            if not res:
+            if not isinstance(res, dict):
                 continue
             items = res.get("item_list") or []
             n["items"] = len(items)
@@ -137,6 +167,10 @@ def douyin_probe(vid):
                 n["filter"] = [{k: f.get(k) for k in ("filter_reason", "detail_msg", "notice") if f.get(k)} for f in fl][:2]
             if items:
                 return items[0], notes
+        found = find_aweme(data, vid)  # Douyin moves things around: look everywhere
+        if found:
+            n["found"] = "deep"
+            return found, notes
     return None, notes
 
 
@@ -163,17 +197,28 @@ def douyin_info(url):
         msg += "。很可能是抖音不让海外服务器读取，这个视频请用安卓版下载。"
         raise Fail("DOUYIN_BLOCKED", msg)
     video = item.get("video") or {}
-    urls = ((video.get("play_addr") or {}).get("url_list")) or []
+    pa = video.get("play_addr") or video.get("playAddr") or {}
+    urls = (pa.get("url_list") or pa.get("urlList") or []) if isinstance(pa, dict) else []
+    if isinstance(pa, list):  # some page versions: [{"src": ...}]
+        urls = [x.get("src") for x in pa if isinstance(x, dict) and x.get("src")]
+    if not urls:
+        for br in video.get("bit_rate") or video.get("bitRateList") or []:
+            p2 = br.get("play_addr") or br.get("playAddr") or {}
+            urls = p2.get("url_list") or p2.get("urlList") or []
+            if urls:
+                break
+    urls = [("https:" + u if u.startswith("//") else u) for u in urls if u]
     images = [((i.get("url_list") or [None])[0]) for i in (item.get("images") or [])]
     images = [i for i in images if i]
     if not urls and not images:
         raise Fail("NOT_FOUND", "没找到视频地址")
     play = urls[0].replace("playwm", "play") if urls else ""
-    cover = ((video.get("cover") or {}).get("url_list") or [""])[0]
+    cv = video.get("cover") or video.get("origin_cover") or {}
+    cover = ((cv.get("url_list") or cv.get("urlList") or [""]) if isinstance(cv, dict) else [str(cv)])[0]
     return {
         "platform": "douyin", "platformName": "抖音", "id": vid,
         "title": (item.get("desc") or "抖音视频").strip()[:80],
-        "uploader": (item.get("author") or {}).get("nickname", ""),
+        "uploader": (item.get("author") or item.get("authorInfo") or {}).get("nickname", ""),
         "duration": round((video.get("duration") or 0) / 1000),
         "thumb": cover, "direct": play, "images": images,
     }
