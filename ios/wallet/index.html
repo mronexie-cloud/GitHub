@@ -112,6 +112,10 @@ h1{font-size:34px;font-weight:700;letter-spacing:.3px;margin-top:4px}
 @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 .ic{width:58px;height:58px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none;
   box-shadow:0 4px 12px rgba(0,0,0,.25);overflow:hidden;letter-spacing:-.5px}
+.ic.real{background:transparent!important;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.ic img{width:100%;height:100%;object-fit:cover;display:block}.ic img:not([src]),.ic img[src=""]{visibility:hidden}
+.pick .ic{background:var(--panel2)}
+.scanb{width:100%;height:46px;border-radius:12px;background:var(--panel2);color:var(--accent);font-size:16px;font-weight:600;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:8px}
 .ic.plus{background:var(--panel2);color:var(--sub);font-weight:300;font-size:30px;box-shadow:none}
 .ic.sm{width:38px;height:38px;border-radius:9px;font-size:14px}
 .ic.xs{width:30px;height:30px;border-radius:7px;font-size:12px}
@@ -383,8 +387,8 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const acc=id=>S.accounts.find(a=>a.id===id);
 const appsOf=id=>S.apps.filter(x=>x.accts.includes(id));
-function icon(x,cls=''){return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph)}</div>`}
-function linkOf(x){const L=LINKS[x.name]||['','',''];return{pkg:L[0],sch:x.link||L[1],web:(x.link&&/^https?:/i.test(x.link))?x.link:L[2]}}
+function icon(x,cls=''){if(x.icon)return `<div class="ic real ${cls}"><img src="${esc(x.icon)}" alt=""></div>`;return `<div class="ic ${cls}" style="background:${x.bg};color:${x.fg}">${esc(x.glyph)}</div>`}
+function linkOf(x){const L=LINKS[x.name]||['','',''];return{pkg:x.pkg||L[0],sch:x.link||L[1],web:(x.link&&/^https?:/i.test(x.link))?x.link:L[2]}}
 function openWeb(u){const a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
 let afAsked=false;
 function launch(x){
@@ -426,6 +430,38 @@ function press(el,tap,long){let t,fired=false,sx,sy;
   el.addEventListener('contextmenu',e=>e.preventDefault());
   el.addEventListener('click',e=>{if(fired){e.preventDefault();return}tap()});}
 const hasPw=x=>x.pw&&Object.values(x.pw).some(Boolean);
+/* ---------- installed apps (Android) ---------- */
+let INSTALLED=null;const ICONS={};
+const canScan=()=>!!(window.Android&&Android.listApps);
+const PKG2NAME=Object.fromEntries(Object.entries(LINKS).filter(e=>e[1][0]).map(e=>[e[1][0],e[0]]));
+function installedList(){if(INSTALLED)return INSTALLED;try{INSTALLED=JSON.parse(Android.listApps()).sort((a,b)=>a.label.localeCompare(b.label,'zh'))}catch(e){INSTALLED=[]}return INSTALLED}
+function appIcon(pkg){if(pkg in ICONS)return ICONS[pkg];let s='';try{s=Android.appIcon(pkg)||''}catch(e){}return ICONS[pkg]=s}
+function fromInstalled(it){const pn=PKG2NAME[it.pkg]||(PMAP[it.label]?it.label:null),p=pn&&PMAP[pn];
+  return{name:pn||it.label,glyph:p?p[1]:it.label.slice(0,1),bg:p?p[2]:'#2c2c2e',fg:p?p[3]:'#fff',cat:p?p[4]:'其他',pkg:it.pkg,icon:appIcon(it.pkg)}}
+function appByPkg(pkg){return S.apps.find(x=>(x.pkg||(LINKS[x.name]||[])[0])===pkg)}
+function installedPicker({multi,pre=[],title,onDone}){
+  const list=installedList();const chosen=new Set(pre);
+  openSheet(`<div class="shead"><button id="cx">取消</button><h3>${title}</h3><button class="done" id="iok">${multi?'完成':''}</button></div>
+   <div class="search" style="margin:0 0 16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="iq" placeholder="搜索本机 App（共 ${list.length} 个）"></div>
+   <div class="picks" id="ip"></div>`);
+  const draw=()=>{const q=$('#iq').value.trim().toLowerCase();
+    const L=list.filter(it=>!q||it.label.toLowerCase().includes(q)||it.pkg.toLowerCase().includes(q));
+    $('#ip').innerHTML=L.map(it=>`<div class="pick ${chosen.has(it.pkg)?'on':''}" data-p="${esc(it.pkg)}"><div class="ic real"><img data-k="${esc(it.pkg)}" alt=""></div><span>${esc(it.label)}</span></div>`).join('')
+      ||'<div class="empty" style="grid-column:1/-1">'+(list.length?'没有找到':'读取不到本机 App')+'</div>';
+    const imgs=[...$('#ip').querySelectorAll('img[data-k]')];let i=0;
+    const step=()=>{for(let k=0;k<14&&i<imgs.length;k++,i++)imgs[i].src=appIcon(imgs[i].dataset.k);if(i<imgs.length)requestAnimationFrame(step)};step();
+    $('#ip').querySelectorAll('.pick').forEach(p=>p.onclick=()=>{const k=p.dataset.p;
+      if(!multi){onDone([list.find(x=>x.pkg===k)]);return}
+      chosen.has(k)?chosen.delete(k):chosen.add(k);p.classList.toggle('on');haptic()});};
+  $('#iq').oninput=draw;draw();$('#cx').onclick=closeSheet;
+  $('#iok').onclick=()=>{if(multi){closeSheet();onDone(list.filter(it=>chosen.has(it.pkg)),pre.filter(k=>!chosen.has(k)))}};
+}
+function upgradeIcons(){
+  if(!canScan()||(BOX&&!KEYC))return;
+  const have=new Set(installedList().map(i=>i.pkg));let n=0;
+  S.apps.forEach(x=>{const p=x.pkg||(LINKS[x.name]||[])[0];if(!x.icon&&p&&have.has(p)){const ic=appIcon(p);if(ic){x.icon=ic;n++}}});
+  if(n){save();renderAll()}
+}
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1600)}
 function ask(msg,ok='删除'){return new Promise(res=>{const d=document.createElement('div');d.className='dlg';
   d.innerHTML=`<div class="box"><p>${esc(msg)}</p><div class="btns"><button class="no">取消</button><button class="yes">${ok}</button></div></div>`;
@@ -634,11 +670,23 @@ function openPicker(a){
   const pool=[...new Set([...S.apps.map(x=>x.name),...PRESETS.map(p=>p[0])])];
   const look=n=>S.apps.find(x=>x.name===n)||(p=>({name:p[0],glyph:p[1],bg:p[2],fg:p[3],cat:p[4]}))(PMAP[n]);
   openSheet(`<div class="shead"><button id="cx">取消</button><h3>绑定到「${esc(a.name)}」</h3><button class="done" id="ok">完成</button></div>
+   ${canScan()?'<button class="scanb" id="scan">📱 从本机已安装的 App 添加</button>':''}
    <div class="picks">${pool.map(n=>{const x=look(n);return`<div class="pick ${chosen.has(n)?'on':''}" data-n="${esc(n)}">${icon(x)}<span>${esc(n)}</span></div>`}).join('')}
    <div class="pick" id="custom"><div class="ic plus">+</div><span>自定义</span></div></div>`);
   $('#cx').onclick=closeSheet;
   $('#sheet').querySelectorAll('.pick[data-n]').forEach(p=>p.onclick=()=>{const n=p.dataset.n;chosen.has(n)?chosen.delete(n):chosen.add(n);p.classList.toggle('on');haptic()});
   $('#custom').onclick=()=>openApp(null,[a.id]);
+  if(canScan())$('#scan').onclick=()=>{
+    const pre=appsOf(a.id).map(x=>x.pkg||(LINKS[x.name]||[])[0]).filter(Boolean);
+    installedPicker({multi:true,pre,title:`绑定到「${esc(a.name)}」`,onDone:(items,removed)=>{
+      items.forEach(it=>{let x=appByPkg(it.pkg);
+        if(!x){x={id:uid(),...fromInstalled(it),accts:[],pw:{},link:'',added:Date.now()};
+          const same=S.apps.find(y=>y.name===x.name);if(same){same.pkg=it.pkg;same.icon=same.icon||x.icon;x=same}else S.apps.push(x)}
+        else{x.pkg=x.pkg||it.pkg;x.icon=x.icon||appIcon(it.pkg)}
+        if(!x.accts.includes(a.id)){x.accts.push(a.id);x.added=Date.now()}});
+      removed.forEach(k=>{const x=appByPkg(k);if(x)x.accts=x.accts.filter(i=>i!==a.id)});
+      refresh();toast('已更新绑定')}});
+  };
   $('#ok').onclick=()=>{
     pool.forEach(n=>{
       let x=S.apps.find(y=>y.name===n);
@@ -654,10 +702,11 @@ function openPicker(a){
 /* add / edit app */
 const TILE_COLORS=['#0a84ff','#30d158','#ff9f0a','#ff375f','#bf5af2','#64d2ff','#ffd60a','#1c1c1e','#f2f2f7','#ac8e68'];
 function openApp(x,pre){
-  const isNew=!x;x=x?{...x,accts:[...x.accts],pw:{...(x.pw||{})}}:{id:uid(),name:'',glyph:'',bg:'#0a84ff',fg:'#fff',cat:'其他',accts:pre||[],pw:{},link:'',added:Date.now()};
+  let isNew=!x;x=x?{...x,accts:[...x.accts],pw:{...(x.pw||{})}}:{id:uid(),name:'',glyph:'',bg:'#0a84ff',fg:'#fff',cat:'其他',accts:pre||[],pw:{},link:'',added:Date.now()};
   const draw=()=>{
     openSheet(`<div class="shead"><button id="cx">取消</button><h3>${isNew?'添加网站或 App':esc(x.name)}</h3><button class="done" id="ok">完成</button></div>
     <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:16px"><div id="prev">${icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})}</div>${isNew?'':'<button class="openb" id="go" style="margin:0;height:36px;padding:0 20px;font-size:15px">打开 App ↗</button>'}</div>
+    ${canScan()?`<button class="scanb" id="scan">📱 ${isNew?'从本机已安装的 App 选择':'关联本机 App（用真图标）'}</button>`:(isNew?'<p style="font-size:12px;color:var(--sub);margin:-4px 4px 12px">安卓版可以直接从本机已安装的 App 里选</p>':'')}
     <div class="form"><label><span>名称</span><input id="an" placeholder="如：Steam / 小红书" value="${esc(x.name)}" list="pl"></label>
     <label><span>图标字</span><input id="ag" maxlength="4" placeholder="留空取首字" value="${esc(x.glyph)}"></label>
     <label><span>分类</span><select id="ac">${CATS.slice(1).map(c=>`<option ${c===x.cat?'selected':''}>${c}</option>`).join('')}</select></label>
@@ -674,6 +723,11 @@ function openApp(x,pre){
     $('#sheet').querySelectorAll('.pwrow .eye').forEach(b=>b.onclick=()=>{const i=b.parentNode.querySelector('input');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈'});
     $('#sheet').querySelectorAll('.pwrow .cpy').forEach(b=>b.onclick=()=>copyText(b.parentNode.querySelector('input').value,'密码已复制'));
     if(!isNew)$('#go').onclick=()=>{sync();launch(x)};
+    if(canScan())$('#scan').onclick=()=>{sync();installedPicker({multi:false,title:'选择本机 App',onDone:([it])=>{
+      const f=fromInstalled(it);
+      if(isNew){const ex=appByPkg(it.pkg)||S.apps.find(y=>y.name===f.name);if(ex){x={...ex,accts:[...new Set([...ex.accts,...x.accts])],pw:{...(ex.pw||{}),...x.pw}};isNew=false;toast('已有这个 App，改为编辑它')}else Object.assign(x,f)}
+      else{x.pkg=f.pkg;x.icon=f.icon}
+      draw()}})};
     const upd=()=>{sync();$('#prev').innerHTML=icon({...x,glyph:x.glyph||(x.name||'?').slice(0,1)})};
     $('#an').oninput=()=>{const p=PMAP[$('#an').value.trim()];if(p&&isNew){x.glyph=p[1];x.bg=p[2];x.fg=p[3];x.cat=p[4];$('#ag').value=p[1];$('#ac').value=p[4]}upd()};
     $('#ag').oninput=upd;
@@ -779,7 +833,7 @@ async function lockNow(){
 function showUnlock(){
   pinPad({title:'账号卡包已锁定',sub:'输入 6 位密码解锁',forgot:async()=>{
       if(await ask('忘记密码只能清空全部数据重新开始，确定？','清空')){BOX=null;KEYC=null;SALT=null;S={accounts:[],apps:[]};save();$('#lock').classList.remove('on');renderAll();renderLockItems();toast('已清空')}},
-    check:async p=>{try{const salt=ub64(BOX.salt),k=await derive(p,salt);S=await unseal(k,BOX);KEYC=k;SALT=salt;renderAll();renderLockItems();if(window.Android&&!localStorage.getItem(KEY+'-pv'))pinVerifier(p).then(vaultSync);else vaultSync();return true}catch(e){return false}}});
+    check:async p=>{try{const salt=ub64(BOX.salt),k=await derive(p,salt);S=await unseal(k,BOX);KEYC=k;SALT=salt;renderAll();renderLockItems();setTimeout(upgradeIcons,300);if(window.Android&&!localStorage.getItem(KEY+'-pv'))pinVerifier(p).then(vaultSync);else vaultSync();return true}catch(e){return false}}});
 }
 function renderLockItems(){
   const st=afState();
@@ -793,7 +847,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Da
 addEventListener('scroll',()=>{$('#topbar').classList.toggle('sc',scrollY>40)},{passive:true});
 function setTitle(){$('#tt').textContent={vWallet:'账号',vApps:'全部 App',vGraph:'关系图'}[view]}
 
-window.onAndroidResume=()=>{renderLockItems();if(!(BOX&&!KEYC))vaultSync()};
+window.onAndroidResume=()=>{renderLockItems();if(!(BOX&&!KEYC)){INSTALLED=null;vaultSync()}};
 /* ---------- boot ---------- */
 window.onAndroidBack=()=>{if($('#lock').classList.contains('on')){const x=$('#lx');if(x){x.click();return true}return false}
   const d=document.querySelector('.dlg');if(d){d.querySelector('.no').click();return true}
@@ -801,7 +855,7 @@ window.onAndroidBack=()=>{if($('#lock').classList.contains('on')){const x=$('#lx
   if(view!=='vWallet'){go('vWallet');return true}return false};
 document.body.classList.toggle('light',light);
 renderLockItems();renderSummary();renderCards();renderRecent();
-if(BOX)showUnlock();else vaultSync();
+if(BOX)showUnlock();else{vaultSync();setTimeout(upgradeIcons,300)}
 }
 </script>
 </body>

@@ -6,7 +6,13 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
 import android.net.Uri;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.util.Base64;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.autofill.AutofillManager;
@@ -16,6 +22,16 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 账号卡包: the whole app is assets/index.html (cards, all apps, relationship graph).
@@ -165,6 +181,55 @@ public class MainActivity extends Activity {
                     }
                 }
             });
+        }
+
+        /** Apps on this phone that have a launcher icon: [{"pkg","label"}]. */
+        @JavascriptInterface
+        public String listApps() {
+            JSONArray out = new JSONArray();
+            try {
+                PackageManager pm = getPackageManager();
+                Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+                List<ResolveInfo> list = pm.queryIntentActivities(i, 0);
+                Set<String> seen = new HashSet<>();
+                for (ResolveInfo r : list) {
+                    String p = r.activityInfo.packageName;
+                    if (p.equals(getPackageName()) || !seen.add(p)) continue;
+                    JSONObject o = new JSONObject();
+                    o.put("pkg", p);
+                    o.put("label", String.valueOf(r.loadLabel(pm)));
+                    out.put(o);
+                }
+            } catch (Exception ignored) {
+            }
+            return out.toString();
+        }
+
+        private final Map<String, String> iconCache = new HashMap<>();
+
+        /** The app's real icon as a 96px PNG data URL ("" if not installed). */
+        @JavascriptInterface
+        public String appIcon(String pkg) {
+            synchronized (iconCache) {
+                String c = iconCache.get(pkg);
+                if (c != null) return c;
+            }
+            String res = "";
+            try {
+                Drawable d = getPackageManager().getApplicationIcon(pkg);
+                Bitmap b = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888);
+                Canvas cv = new Canvas(b);
+                d.setBounds(0, 0, 96, 96);
+                d.draw(cv);
+                ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                b.compress(Bitmap.CompressFormat.PNG, 100, bo);
+                res = "data:image/png;base64," + Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+            } catch (Exception ignored) {
+            }
+            synchronized (iconCache) {
+                iconCache.put(pkg, res);
+            }
+            return res;
         }
 
         @JavascriptInterface
