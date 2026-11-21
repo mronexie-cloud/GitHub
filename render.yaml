@@ -1,0 +1,33 @@
+# Render Blueprint for 环球收款 第 2 期服务器（沙盒）。
+# Render 后台 → New → Blueprint → 选这个仓库 → 分支 crosspay，按提示填入沙盒密钥即可。
+services:
+  - type: web
+    name: crosspay-server
+    runtime: docker
+    plan: free
+    branch: crosspay
+    dockerfilePath: ./crosspay-server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: APP_TOKEN
+        generateValue: true
+      - key: AIRWALLEX_CLIENT_ID
+        sync: false
+      - key: AIRWALLEX_API_KEY
+        sync: false
+      - key: AIRWALLEX_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: BTCPAY_URL
+        value: https://testnet.demo.btcpayserver.org
+      - key: BTCPAY_API_KEY
+        sync: false
+      - key: BTCPAY_STORE_ID
+        sync: false
+      - key: BTCPAY_WEBHOOK_SECRET
+        sync: false

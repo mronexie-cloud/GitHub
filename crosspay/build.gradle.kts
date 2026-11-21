@@ -1,0 +1,30 @@
+plugins {
+    id("com.android.application")
+}
+
+android {
+    namespace = "com.zlc.crosspay"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "com.zlc.crosspay"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 2
+        versionName = "2.0"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
