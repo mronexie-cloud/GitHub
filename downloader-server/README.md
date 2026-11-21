@@ -16,7 +16,7 @@ iPhone / 网页版的万能下载靠这台服务器解析和下载视频（网�
 4. 点 **Deploy Web Service**，等 3～5 分钟显示 Live。
 5. 复制页面左上方的地址，比如 `https://vdl-xxxx.onrender.com`。
    - 直接用 Safari 打开这个地址就是万能下载网页版；
-   - 或者在苹果版首页打开「万能下载」，把地址填到最下面的「⚙︎ 服务器地址」（只填一次）。
+   - 苹果版首页的「万能下载」已经内置了地址 https://vdl-qiab.onrender.com 。
 
 ## 说明
 
