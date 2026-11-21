@@ -896,8 +896,8 @@ function showUnlock(){
 function renderLockItems(){
   const st=afState();
   const af=st==='on'?'<button data-m="af">自动填充 <span style="color:#30d158">已开启</span></button>':st==='off'?'<button data-m="af">开启自动填充 <span>⌨︎</span></button>':'';
-  $('#lockItems').innerHTML=af+KEYC?'<button data-m="locknow">立即锁定 <span>🔒</span></button><button data-m="lockchg">修改密码锁 <span>✎</span></button><button data-m="lockoff">关闭密码锁 <span>🔓</span></button>'
-    :'<button data-m="lockon">开启密码锁 <span>🔒</span></button>';
+  $('#lockItems').innerHTML=af+(KEYC?'<button data-m="locknow">立即锁定 <span>🔒</span></button><button data-m="lockchg">修改密码锁 <span>✎</span></button><button data-m="lockoff">关闭密码锁 <span>🔓</span></button>'
+    :'<button data-m="lockon">开启密码锁 <span>🔒</span></button>');
 }
 function renderAll(){renderSummary();renderRecent();if(view==='vWallet')renderCards();if(view==='vApps')renderApps();if(view==='vGraph')renderGraph();}
 let hiddenAt=0;
