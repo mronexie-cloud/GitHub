@@ -9,6 +9,7 @@
 | 三国身份局 | `sanguo/` | [sanguo.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/sanguo.apk) |
 | 译聊（多人聊天 + 翻译） | `chat/` | [chat.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/chat.apk) |
 | 订阅卡包（自动续费管理、续费提醒、月度账单） | `subs/` | [subs.apk](https://github.com/mronexie-cloud/GitHub/releases/download/subs/subs.apk) |
+| PDF编辑器（改原文、批注、签名、合并页面） | `pdfeditor/` | [pdfeditor.apk](https://github.com/mronexie-cloud/GitHub/releases/download/pdfeditor/pdfeditor.apk) |
 | 账号卡包（邮箱/手机号绑定了哪些 App） | `wallet/` | [wallet.apk](https://github.com/mronexie-cloud/GitHub/releases/download/wallet/wallet.apk) |
 | 二人麻将（联网） | `mahjong/` | [mahjong.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/mahjong.apk) |
 | 死亡倒计时（每年发 Gmail 提醒） | `deathclock/` | [deathclock.apk](https://github.com/mronexie-cloud/GitHub/releases/download/deathclock/deathclock.apk) |

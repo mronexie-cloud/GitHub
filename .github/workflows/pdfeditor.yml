@@ -1,0 +1,47 @@
+name: Build pdfeditor APK
+
+# PDF编辑器：编译 APK，发布到固定的 "pdfeditor" 下载链接。
+on:
+  push:
+    paths:
+      - "pdfeditor/**"
+      - ".github/workflows/pdfeditor.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pdfeditor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          chmod +x gradlew
+          set -o pipefail
+          for i in 1 2 3; do ./gradlew :pdfeditor:assembleDebug --no-daemon 2>&1 | tee build.log && break; echo "build try $i failed"; [ $i = 3 ] && exit 1; sleep 20; done
+      - name: Publish log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tail -c 200000 build.log > pdfeditor-build-tail.log || true
+          gh release delete pdfeditor-build-log --yes --cleanup-tag || true
+          gh release create pdfeditor-build-log pdfeditor-build-tail.log --target "$GITHUB_SHA" --title "pdfeditor build log" --notes "last failed pdfeditor build" --latest=false --prerelease
+      - name: Publish APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp pdfeditor/build/outputs/apk/debug/pdfeditor-debug.apk pdfeditor.apk
+          gh release delete pdfeditor --yes --cleanup-tag || true
+          gh release create pdfeditor "pdfeditor.apk#PDF编辑器.apk" --target "$GITHUB_SHA" --title "PDF编辑器 下载" --notes "点中文名称即可下载安装。由 GitHub Actions 自动编译。" --latest=false

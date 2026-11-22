@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDF 编辑器</title>
+<style>
+/* VOICE: 安静、利落的实用工具
+   IDEA: 摊在石墨色工作台上的一张纸，红笔随手批注
+   PICTURE: 正在编辑的页面本身，占满主区域
+   COLOUR and TYPE: 白纸、石墨台面、PDF 红点缀；系统中文黑体
+   LAYOUT: 顶栏+工具条+选项行，页面居中；页面管理在桌面为侧栏、手机为底部抽屉 */
+:root{color-scheme:light dark;--bg:light-dark(#f6f5f3,#17181b);--desk:light-dark(#d9d7d3,#0c0d0f);--panel:light-dark(#fff,#202125);--ink:light-dark(#1b1c1f,#ecebe8);--mute:light-dark(#66676c,#9d9ea4);--line:light-dark(#e3e1dd,#303238);--red:#e0322b;--red2:light-dark(#fdeceb,#3b1d1c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;overflow:hidden;display:flex;flex-direction:column}
+button,input,textarea{font:inherit;color:inherit}
+svg{flex:none}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.logo{width:34px;height:34px}
+.fname{flex:1;overflow:hidden;line-height:1.25}
+.fname b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fname span{font-size:13px;color:var(--mute)}
+.btn{min-height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn svg{width:18px;height:18px}
+.btn.pri{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.btn:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.bar{display:flex;gap:4px;padding:6px 8px;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
+.bar::-webkit-scrollbar{display:none}
+.tool{flex:none;width:56px;height:54px;border:0;border-radius:10px;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;cursor:pointer;color:var(--mute)}
+.tool svg{width:22px;height:22px}
+.tool.on{background:var(--red2);color:var(--red);font-weight:600}
+.tool:disabled{opacity:.35;cursor:default}
+.sep{flex:none;width:1px;background:var(--line);margin:8px 4px}
+.opts{display:flex;align-items:center;gap:10px 14px;padding:7px 14px;background:var(--panel);border-bottom:1px solid var(--line);min-height:50px;flex-wrap:wrap}
+.sws{display:flex;gap:8px}
+.sw{width:28px;height:28px;border-radius:50%;border:1px solid rgba(0,0,0,.2);cursor:pointer;padding:0}
+.sw.on{outline:2px solid var(--ink);outline-offset:2px}
+.opts label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute);white-space:nowrap}
+input[type=range]{width:110px;accent-color:var(--red)}input[type=checkbox]{width:20px;height:20px;accent-color:var(--red);margin:0}
+.hint{font-size:13px;color:var(--mute)}
+main{flex:1;display:flex;overflow:hidden;position:relative}
+#stagewrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#stage{flex:1;overflow:auto;background:var(--desk);padding:16px}
+#sheet{position:relative;margin:0 auto;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25),0 14px 34px rgba(0,0,0,.22)}
+#pgc,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}
+#ov{touch-action:none}
+#stage.drop{outline:3px dashed var(--red);outline-offset:-10px}
+.nav{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--panel);border-top:1px solid var(--line)}
+.nav .btn{min-height:40px;padding:0 10px}
+.nav .grow{flex:1}
+#pn,#zl{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:14px;min-width:54px;text-align:center}
+#side{width:230px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;order:-1}
+.sh{display:flex;align-items:center;gap:8px;padding:12px 14px 6px}
+.sh b{font-size:16px}.sh span{color:var(--mute);font-size:13px;flex:1}
+.x{border:0;background:transparent;width:40px;height:40px;font-size:24px;cursor:pointer;display:none}
+.pact{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:4px 10px 8px;border-bottom:1px solid var(--line)}
+.pact button{border:0;background:transparent;border-radius:8px;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--mute);cursor:pointer}
+.pact button:hover{background:var(--red2);color:var(--red)}
+.pact svg{width:19px;height:19px}
+#list{flex:1;overflow:auto;padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-content:start}
+.th{border:0;background:transparent;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;color:var(--mute)}
+.th canvas{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--line);border-radius:3px}
+.th.on canvas{outline:3px solid var(--red);outline-offset:1px}
+.th.on{color:var(--red);font-weight:600}
+.sf{display:grid;gap:6px;padding:10px;border-top:1px solid var(--line)}
+.sf .btn{font-size:14px}
+#scrim{display:none}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal[hidden]{display:none}
+.card{background:var(--panel);border-radius:16px;padding:18px;width:min(460px,100%);display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.card h3{margin:0;font-size:18px}
+.card textarea{width:100%;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);resize:vertical}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row.end{justify-content:flex-end}
+#sp{width:100%;height:210px;background:#fff;border:1px dashed #b9b7b2;border-radius:10px;touch-action:none;display:block}
+#busy{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:30;color:#fff;font-size:16px}
+#busy[hidden]{display:none}
+#busy div{background:rgba(20,20,22,.9);padding:16px 22px;border-radius:12px}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);background:#1b1c1f;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:40;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%)}
+@media(prefers-reduced-motion:reduce){#toast,#side{transition:none!important}}
+.only-m{display:none}
+@media(max-width:900px){
+ .only-m{display:inline-flex}
+ #side{position:fixed;left:0;right:0;bottom:0;height:68vh;width:auto;border:0;border-radius:18px 18px 0 0;z-index:15;transform:translateY(105%);transition:transform .25s;box-shadow:0 -10px 40px rgba(0,0,0,.3)}
+ #side.open{transform:none}
+ #scrim.on{display:block;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:14}
+ .x{display:block}
+ #list{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+ .sf{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:600px){
+ header{padding:8px 10px;gap:8px}
+ header .btn{padding:0 11px}
+ .hide-s{display:none}
+ #stage{padding:10px}
+}
+</style></head><body>
+<header>
+ <svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><path d="M8 3h13l7 7v19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="#e0322b"/><path d="M21 3v5a2 2 0 0 0 2 2h5z" fill="#f59b96"/><path d="M11 24l2-6 8-8 3 3-8 8z" fill="#fff"/><path d="M11 27h12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+ <div class="fname"><b id="fn">正在加载…</b><span id="fi">PDF 编辑器</span></div>
+ <button class="btn" id="openBtn" aria-label="打开 PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>打开</span></button>
+ <button class="btn pri" id="expBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>导出</span></button>
+</header>
+<nav class="bar" id="tools" aria-label="工具"></nav>
+<div class="opts" id="opts"></div>
+<main>
+ <div id="stagewrap">
+  <div id="stage"><div id="sheet"><canvas id="pgc"></canvas><canvas id="ov"></canvas></div></div>
+  <div class="nav">
+   <button class="btn only-m" id="sideBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="9" rx="1"/><rect x="13" y="4" width="7" height="9" rx="1"/><path d="M4 18h16"/></svg>页面</button>
+   <span class="grow"></span>
+   <button class="btn" id="prev" aria-label="上一页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 6l-6 6 6 6"/></svg></button>
+   <span id="pn">1 / 1</span>
+   <button class="btn" id="next" aria-label="下一页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg></button>
+   <span class="grow"></span>
+   <button class="btn" id="zout" aria-label="缩小">−</button>
+   <span id="zl" class="hide-s">100%</span>
+   <button class="btn" id="zin" aria-label="放大">+</button>
+  </div>
+ </div>
+ <aside id="side" aria-label="页面管理">
+  <div class="sh"><b>页面</b><span id="pc"></span><button class="x" id="closeSide" aria-label="关闭">×</button></div>
+  <div class="pact" id="pact"></div>
+  <div id="list"></div>
+  <div class="sf">
+   <button class="btn" id="addBlank">＋ 空白页</button>
+   <button class="btn" id="mergeBtn">合并 PDF</button>
+   <button class="btn" id="imgPageBtn">图片转页</button>
+  </div>
+ </aside>
+ <div id="scrim"></div>
+</main>
+
+<div class="modal" id="tm" hidden><div class="card" role="dialog" aria-label="添加文字">
+ <h3 id="tmh">添加文字</h3>
+ <textarea id="tt" rows="3" placeholder="输入要添加的文字，可换行"></textarea>
+ <div class="row"><label>字号 <input type="range" id="tsz" min="4" max="72"></label><span id="tszv" class="hint"></span><button class="btn" id="tbold" aria-pressed="false"><b>B</b> 加粗</button></div>
+ <div class="row sws" id="tcol"></div>
+ <div class="row end"><button class="btn" data-close>取消</button><button class="btn pri" id="tok">确定</button></div>
+</div></div>
+
+<div class="modal" id="sm" hidden><div class="card" role="dialog" aria-label="手写签名">
+ <h3>手写签名</h3>
+ <canvas id="sp"></canvas>
+ <div class="row"><div class="sws" id="scol"></div><span class="hint">在框内用手指或鼠标签名</span></div>
+ <div class="row end"><button class="btn" id="sclear">清除</button><button class="btn" data-close>取消</button><button class="btn pri" id="sok">使用签名</button></div>
+</div></div>
+
+<div id="busy" hidden><div id="busyt">处理中…</div></div>
+<div id="toast" role="status"></div>
+<input type="file" id="fPdf" accept="application/pdf,.pdf" hidden>
+<input type="file" id="fMerge" accept="application/pdf,.pdf" hidden multiple>
+<input type="file" id="fImg" accept="image/*" hidden>
+<input type="file" id="fImgPage" accept="image/*" hidden multiple>
+
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf.worker.min.js"></script>
+<script src="lib/pdf-lib.min.js"></script>
+<script src="lib/fontkit.umd.min.js"></script>
+<script>
+{
+const $=s=>document.querySelector(s);
+const FONT='-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei","Hiragino Sans GB",sans-serif';
+const I=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICON={
+ pan:'<path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4.5a1.5 1.5 0 0 1 3 0V11M14 10.5V6a1.5 1.5 0 0 1 3 0v7c0 4.5-2.5 8-7 8-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 14"/>',
+ sel:'<path d="M5 3l13 7.5-5.5 1.5L10 18z"/><path d="M13 13l5 5"/>',
+ edit:'<path d="M3 6V4h11v2M8.5 4v13M6 17h5"/><path d="M13 20l.6-2.6L19.5 11.5l2 2-5.9 5.9z"/>',
+ pen:'<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',
+ hl:'<path d="M9 14l-3 3v2h4l2-2"/><path d="M9 14l7-7 3 3-7 7z"/><path d="M14 21h6"/>',
+ text:'<path d="M5 7V4h14v3M12 4v16M9 20h6"/>',
+ rect:'<rect x="4" y="6" width="16" height="12" rx="1"/>',
+ wo:'<path d="M5 20h14"/><path d="M7 15l7-10 5 4-7 8H8z"/>',
+ img:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/>',
+ sign:'<path d="M3 16c3-7 5-10 6.5-10 2.5 0-1.5 10 1 10 1.5 0 2.5-3.5 4-3.5s1 2.5 2.5 2.5c1 0 1.5-.5 2-1"/><path d="M3 20h18"/>',
+ undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+ redo:'<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+ rot:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+ up:'<path d="M12 19V5M6 11l6-6 6 6"/>',
+ dn:'<path d="M12 5v14M6 13l6 6 6-6"/>',
+ dup:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+ del:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'
+};
+const TOOLS=[['pan','浏览'],['edit','改原文'],['sel','选择'],['pen','画笔'],['hl','荧光笔'],['text','文字'],['rect','方框'],['wo','涂白'],['img','图片'],['sign','签名']];
+const COLORS=['#1b1c1f','#e0322b','#1f5fd6','#178a4a','#8a3fd1'];
+const HLC=['#ffd400','#7ee07e','#ff8fc8','#7cc8ff'];
+const st={docs:[],pages:[],cur:0,zoom:1,tool:'pan',color:'#e0322b',hlc:'#ffd400',size:{pen:3,hl:16,rect:3,text:16},bold:false,sel:null,name:'',purge:true,lines:[]};
+const undo=[],redo=[];
+let uidN=0;const uid=()=>'p'+(++uidN);
+const pgc=$('#pgc'),ov=$('#ov'),oc=ov.getContext('2d'),sheet=$('#sheet'),stage=$('#stage');
+const TW=170;
+
+/* ---------- 通用 ---------- */
+let tt=0;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2400)}
+function busy(m){$('#busy').hidden=!m;if(m)$('#busyt').textContent=m}
+const cp=()=>st.pages[st.cur];
+function dims(p){const R=((p.base+p.rot)%360+360)%360;return R%180?{W:p.h,H:p.w,R}:{W:p.w,H:p.h,R}}
+const cloneA=a=>({...a,pts:a.pts&&a.pts.map(q=>q.slice())});
+const cloneP=(p,nid)=>({...p,id:nid?uid():p.id,anns:p.anns.map(cloneA)});
+const clonePages=()=>st.pages.map(p=>cloneP(p));
+function snap(){undo.push(clonePages());if(undo.length>60)undo.shift();redo.length=0;updUndo()}
+function updUndo(){$('#t-undo').disabled=!undo.length;$('#t-redo').disabled=!redo.length}
+function restore(from,to){if(!from.length)return;to.push(clonePages());st.pages=from.pop();st.sel=null;st.cur=Math.min(st.cur,st.pages.length-1);refresh();updUndo()}
+const fileBytes=f=>f.arrayBuffer().then(b=>new Uint8Array(b));
+function loadImg(src){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=src})}
+async function fileToCanvas(f,max=2200){const u=URL.createObjectURL(f);try{const i=await loadImg(u);const k=Math.min(1,max/Math.max(i.naturalWidth,i.naturalHeight));const c=document.createElement('canvas');c.width=Math.round(i.naturalWidth*k);c.height=Math.round(i.naturalHeight*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);return c}finally{URL.revokeObjectURL(u)}}
+
+/* ---------- 载入 PDF ---------- */
+async function loadPdf(bytes){
+ const doc=await pdfjsLib.getDocument({data:bytes.slice(),isEvalSupported:false}).promise;
+ const d=st.docs.push({bytes,doc})-1,out=[];
+ for(let i=0;i<doc.numPages;i++){const pg=await doc.getPage(i+1);const[x1,y1,x2,y2]=pg.view;out.push({id:uid(),d,i,w:x2-x1,h:y2-y1,base:pg.rotate||0,rot:0,anns:[]})}
+ return out;
+}
+function pdfErr(e){return e&&e.name==='PasswordException'?'这个 PDF 有密码保护，暂时无法打开':'无法读取这个文件，请确认是有效的 PDF'}
+async function openFile(f){busy('正在打开…');try{await openBytes(await fileBytes(f),f.name)}catch(e){toast(pdfErr(e))}finally{busy()}}
+async function openBytes(b,name){
+ const pages=await loadPdf(b);st.docs=[st.docs[st.docs.length-1]];pages.forEach(p=>p.d=0);cache.clear();lineCache.clear();
+ st.pages=pages;st.cur=0;st.sel=null;st.name=name;st.sample=false;undo.length=0;redo.length=0;updUndo();refresh();setTool('pan');toast('已打开 '+name);
+}
+window.__openPending=async()=>{
+ const B=window.AndroidBridge;if(!B)return;const b64=B.pendingB64();if(!b64)return;busy('正在打开…');
+ try{const s=atob(b64),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);await openBytes(u,B.pendingName()||'文档.pdf')}catch(e){toast(pdfErr(e))}finally{busy()}
+};
+/* ---------- 渲染 ---------- */
+const cache=new Map();
+async function base(p,cssW){
+ const{W,H,R}=dims(p),dpr=Math.min(devicePixelRatio||1,2.5),s=cssW/W;
+ const key=[p.d,p.i,R,Math.round(cssW),dpr].join(':');
+ if(p.d>=0&&cache.has(key))return cache.get(key);
+ const c=document.createElement('canvas');c.width=Math.max(1,Math.round(W*s*dpr));c.height=Math.max(1,Math.round(H*s*dpr));
+ const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+ if(p.d>=0){const pg=await st.docs[p.d].doc.getPage(p.i+1);await pg.render({canvasContext:x,viewport:pg.getViewport({scale:s*dpr,rotation:R})}).promise;cache.set(key,c);if(cache.size>40)cache.delete(cache.keys().next().value)}
+ return c;
+}
+function drawAnn(x,a,W,H){
+ x.save();
+ if(a.t==='pen'||a.t==='hl'){
+  x.globalAlpha=a.t==='hl'?.4:1;x.strokeStyle=a.c;x.lineWidth=Math.max(.5,a.s*W);x.lineCap=a.t==='hl'?'square':'round';x.lineJoin='round';x.beginPath();
+  a.pts.forEach(([u,v],k)=>k?x.lineTo(u*W,v*H):x.moveTo(u*W,v*H));if(a.pts.length===1)x.lineTo(a.pts[0][0]*W+.1,a.pts[0][1]*H);x.stroke();
+ }else if(a.t==='rect'){x.strokeStyle=a.c;x.lineWidth=Math.max(.5,a.s*W);x.strokeRect(a.x*W,a.y*H,a.w*W,a.h*H)}
+ else if(a.t==='wo'){x.fillStyle='#fff';x.fillRect(a.x*W,a.y*H,a.w*W,a.h*H)}
+ else if(a.t==='text'){
+  const fs=a.s*W,L=a.text.split('\n');x.font=`${a.b?'700 ':''}${fs}px ${FONT}`;x.fillStyle=a.c;x.textBaseline='top';let mw=0;
+  L.forEach((l,k)=>{x.fillText(l,a.x*W,a.y*H+k*fs*1.3);mw=Math.max(mw,x.measureText(l).width)});a.w=mw/W;a.h=L.length*fs*1.3/H;
+ }else if(a.t==='img'){x.drawImage(a.el,a.x*W,a.y*H,a.w*W,a.h*H)}
+ else if(a.t==='te'){
+  const fs=a.s*W,L=a.text?a.text.split('\n'):[],lh=fs*1.3;x.font=`${a.b?'700 ':''}${fs}px ${FONT}`;
+  const mw=Math.max(a.cw*W,...L.map(l=>x.measureText(l).width)),mh=Math.max(a.ch*H,(L.length-1)*lh+a.ch*H),pd=Math.max(1,fs*.12);
+  x.fillStyle=a.bg;x.fillRect(a.cx*W-pd,a.cy*H-pd,mw+2*pd,mh+2*pd);
+  x.fillStyle=a.c;x.textBaseline='alphabetic';L.forEach((l,k)=>x.fillText(l,a.cx*W,a.cy*H+a.asc*H+k*lh));
+  a.x=a.cx;a.y=a.cy;a.w=mw/W;a.h=mh/H;
+ }
+ x.restore();
+}
+function bbox(a){
+ if(a.pts){let x1=1,y1=1,x2=0,y2=0;a.pts.forEach(([u,v])=>{x1=Math.min(x1,u);y1=Math.min(y1,v);x2=Math.max(x2,u);y2=Math.max(y2,v)});const r=a.s/2;return{x:x1-r,y:y1-r,w:x2-x1+2*r,h:y2-y1+2*r}}
+ return{x:a.x,y:a.y,w:a.w||0,h:a.h||0};
+}
+function drawOv(){
+ const p=cp();oc.clearRect(0,0,ov.width,ov.height);if(!p)return;
+ p.anns.forEach(a=>drawAnn(oc,a,ov.width,ov.height));
+ if(st.tool==='edit'){const W=ov.width,H=ov.height,d=devicePixelRatio||1;oc.save();oc.lineWidth=1*d;
+  st.lines.forEach(l=>{const done=edited(p,l);oc.fillStyle=done?'rgba(23,138,74,.10)':'rgba(31,95,214,.07)';oc.strokeStyle=done?'rgba(23,138,74,.75)':'rgba(31,95,214,.55)';
+   const b=done?bbox(done):l;oc.fillRect(b.x*W-2*d,b.y*H-2*d,b.w*W+4*d,b.h*H+4*d);oc.strokeRect(b.x*W-2*d,b.y*H-2*d,b.w*W+4*d,b.h*H+4*d)});oc.restore()}
+ const s=st.sel;if(s&&p.anns.includes(s)){
+  const b=bbox(s),W=ov.width,H=ov.height,d=devicePixelRatio||1,pad=4*d;
+  oc.save();oc.setLineDash([6*d,4*d]);oc.strokeStyle='#e0322b';oc.lineWidth=1.5*d;oc.strokeRect(b.x*W-pad,b.y*H-pad,b.w*W+2*pad,b.h*H+2*pad);
+  if(!s.pts){oc.setLineDash([]);oc.fillStyle='#fff';const hx=(b.x+b.w)*W+pad,hy=(b.y+b.h)*H+pad;oc.fillRect(hx-7*d,hy-7*d,14*d,14*d);oc.strokeRect(hx-7*d,hy-7*d,14*d,14*d)}
+  oc.restore();
+ }
+}
+let tok=0;
+async function show(){
+ const p=cp();if(!p)return;const t=++tok;
+ const{W,H}=dims(p),avail=stage.clientWidth-(innerWidth<600?20:32);
+ const cssW=Math.max(120,Math.round(Math.min(avail,780)*st.zoom)),cssH=Math.round(cssW*H/W);
+ const b=await base(p,cssW);if(t!==tok)return;
+ pgc.width=b.width;pgc.height=b.height;pgc.getContext('2d').drawImage(b,0,0);
+ sheet.style.width=cssW+'px';sheet.style.height=cssH+'px';
+ const d=devicePixelRatio||1;ov.width=Math.round(cssW*d);ov.height=Math.round(cssH*d);
+ st.lines=[];drawOv();nav();
+ const ls=await getLines(p).catch(()=>[]);if(t!==tok)return;st.lines=ls;drawOv();
+ if(st.tool==='edit'&&!ls.length)toast('这一页没有可识别的文字（可能是扫描件），可用「涂白」+「文字」替代');
+}
+/* ---------- 识别原文文字行 ---------- */
+const lineCache=new Map();
+const edited=(p,l)=>p.anns.find(a=>a.t==='te'&&a.lk===l.k);
+async function getLines(p){
+ if(p.d<0)return[];const{R}=dims(p),key=p.d+':'+p.i+':'+R;if(lineCache.has(key))return lineCache.get(key);
+ const pg=await st.docs[p.d].doc.getPage(p.i+1),vp=pg.getViewport({scale:1,rotation:R}),tc=await pg.getTextContent(),W=vp.width,H=vp.height,its=[];
+ for(const it of tc.items){
+  if(!it.str||!it.str.trim())continue;
+  const m=pdfjsLib.Util.transform(vp.transform,it.transform),fh=Math.hypot(m[2],m[3]);
+  if(fh<2||Math.abs(m[1])>Math.abs(m[0])*.05)continue;
+  let b=false;try{const f=pg.commonObjs.get(it.fontName);b=/bold|black|heavy|semibold|medium/i.test(f&&f.name||'')}catch{}
+  its.push({x:m[4],y:m[5],w:it.width*vp.scale,fh,str:it.str,b});
+ }
+ its.sort((a,b)=>Math.abs(a.y-b.y)<a.fh*.3?a.x-b.x:a.y-b.y);
+ const L=[];
+ for(const it of its){
+  const l=L[L.length-1];
+  if(l&&Math.abs(l.y-it.y)<l.fh*.3&&it.x-l.x2<l.fh*1.2&&it.x-l.x2>-l.fh*.5){const gap=it.x-l.x2;l.str+=(gap>l.fh*.25&&!/\s$/.test(l.str)?' ':'')+it.str;l.x2=Math.max(l.x2,it.x+it.w);l.b=l.b&&it.b}
+  else L.push({x1:it.x,x2:it.x+it.w,y:it.y,fh:it.fh,str:it.str,b:it.b});
+ }
+ const out=L.filter(l=>l.str.trim()).map(l=>{const top=l.y-l.fh*.92,h=l.fh*1.16;return{k:(l.x1/W).toFixed(4)+','+(top/H).toFixed(4),x:l.x1/W,y:top/H,w:(l.x2-l.x1)/W,h:h/H,asc:l.fh*.92/H,s:l.fh/W,b:l.b,text:l.str.trim()}});
+ lineCache.set(key,out);return out;
+}
+function sampleColors(l){
+ const W=pgc.width,H=pgc.height,x=pgc.getContext('2d');
+ const x1=Math.max(0,Math.floor(l.x*W)-3),y1=Math.max(0,Math.floor(l.y*H)-3),w=Math.min(W-x1,Math.ceil(l.w*W)+6),h=Math.min(H-y1,Math.ceil(l.h*H)+6);
+ if(w<2||h<2)return{bg:'#ffffff',c:'#1b1c1f'};
+ const D=x.getImageData(x1,y1,w,h).data,px=(i,j)=>{const o=(j*w+i)*4;return[D[o],D[o+1],D[o+2]]};
+ const edge=[];for(let i=0;i<w;i+=2){edge.push(px(i,0),px(i,h-1))}for(let j=0;j<h;j+=2){edge.push(px(0,j),px(w-1,j))}
+ edge.sort((a,b)=>(a[0]+a[1]+a[2])-(b[0]+b[1]+b[2]));const bg=edge[Math.floor(edge.length*.6)];
+ let best=bg,bd=-1;for(let j=0;j<h;j++)for(let i=0;i<w;i++){const p=px(i,j),dd=Math.abs(p[0]-bg[0])+Math.abs(p[1]-bg[1])+Math.abs(p[2]-bg[2]);if(dd>bd){bd=dd;best=p}}
+ const hex=c=>'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');return{bg:hex(bg),c:hex(best)};
+}
+function nav(){const n=st.pages.length;$('#pn').textContent=`${st.cur+1} / ${n}`;$('#prev').disabled=st.cur<=0;$('#next').disabled=st.cur>=n-1;$('#zl').textContent=Math.round(st.zoom*100)+'%';
+ $('#fn').textContent=st.name;$('#fi').textContent=`${n} 页`+(st.sample?' · 示例文档，点「打开」载入你的 PDF':'')}
+let ttok=0;
+function renderSide(){
+ const list=$('#list');
+ list.innerHTML=st.pages.map((p,k)=>`<button class="th${k===st.cur?' on':''}" data-k="${k}" aria-label="第 ${k+1} 页"><canvas id="t${p.id}" width="10" height="14"></canvas><span>${k+1}</span></button>`).join('');
+ $('#pc').textContent=st.pages.length+' 页';
+ const t=++ttok;(async()=>{for(const p of st.pages){if(t!==ttok)return;await thumb(p)}})();
+}
+async function thumb(p){
+ const c=document.getElementById('t'+p.id);if(!c)return;const b=await base(p,TW);
+ c.width=b.width;c.height=b.height;const x=c.getContext('2d');x.drawImage(b,0,0);p.anns.forEach(a=>drawAnn(x,a,c.width,c.height));
+}
+let thT=0;function thumbLater(p){clearTimeout(thT);thT=setTimeout(()=>thumb(p),250)}
+function markSide(){document.querySelectorAll('.th').forEach((e,k)=>e.classList.toggle('on',k===st.cur));const on=document.querySelector('.th.on');if(on)on.scrollIntoView({block:'nearest'})}
+function refresh(){renderSide();show();updOpts()}
+function go(k){if(k<0||k>=st.pages.length)return;st.cur=k;st.sel=null;show();markSide();updOpts();stage.scrollTop=0}
+
+/* ---------- 工具与选项 ---------- */
+$('#tools').innerHTML=TOOLS.map(([k,n])=>`<button class="tool" id="t-${k}" data-t="${k}">${I(ICON[k])}${n}</button>`).join('')+
+ `<span class="sep"></span><button class="tool" id="t-undo" disabled>${I(ICON.undo)}撤销</button><button class="tool" id="t-redo" disabled>${I(ICON.redo)}重做</button>`;
+$('#pact').innerHTML=[['rot','旋转'],['up','前移'],['dn','后移'],['dup','复制'],['del','删除']].map(([k,n])=>`<button data-a="${k}">${I(ICON[k])}${n}</button>`).join('');
+function setTool(t){
+ st.tool=t;if(t!=='sel')st.sel=null;
+ document.querySelectorAll('.tool[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+ ov.style.pointerEvents=t==='pan'?'none':'auto';ov.style.cursor=t==='sel'?'default':t==='edit'?'text':'crosshair';
+ ov.style.touchAction=t==='edit'?'pan-x pan-y pinch-zoom':'none';
+ if(t==='edit'&&cp()&&cp().d>=0&&!st.lines.length)getLines(cp()).then(ls=>{if(!ls.length)toast('这一页没有可识别的文字（可能是扫描件），可用「涂白」+「文字」替代')}).catch(()=>{});
+ updOpts();drawOv();
+}
+const swatch=(list,cur,key)=>`<div class="sws">${list.map(c=>`<button class="sw${c===cur?' on':''}" style="background:${c}" data-c="${c}" data-k="${key}" aria-label="颜色 ${c}"></button>`).join('')}</div>`;
+const slider=(lab,t,min,max)=>`<label>${lab} <input type="range" data-s="${t}" min="${min}" max="${max}" value="${st.size[t]}"></label>`;
+function updOpts(){
+ const t=st.tool,s=st.sel;let h='';
+ if(t==='pan')h='<span class="hint">拖动滑动浏览页面；选上方工具开始编辑，右下角 +/− 缩放</span>';
+ else if(t==='edit')h='<span class="hint">点页面上蓝框里的原文即可修改，清空内容=删除这行；改过的显示绿框</span><label><input type="checkbox" id="o-purge"'+(st.purge?' checked':'')+'> 导出时彻底清除旧文字</label>';
+ else if(t==='sel'){
+  if(s&&cp().anns.includes(s))h=`<button class="btn" id="o-del">${I(ICON.del)}删除</button>`+(s.t==='text'||s.t==='te'?'<button class="btn" id="o-edit">编辑文字</button>':'')+`<span class="hint">${s.t==='te'?'这是改过的原文，删除即恢复原样':'拖动移动，拉右下角方块缩放'}</span>`;
+  else h='<span class="hint">点一下页面上的标注即可选中、移动或删除</span>';
+ }
+ else if(t==='pen')h=swatch(COLORS,st.color,'color')+slider('粗细','pen',1,20);
+ else if(t==='hl')h=swatch(HLC,st.hlc,'hlc')+slider('粗细','hl',6,40);
+ else if(t==='rect')h=swatch(COLORS,st.color,'color')+slider('线宽','rect',1,14);
+ else if(t==='text')h=swatch(COLORS,st.color,'color')+slider('字号','text',8,72)+'<span class="hint">点页面放置文字</span>';
+ else if(t==='wo')h='<span class="hint">在页面上拖出方框，用白色遮住内容（视觉遮盖，原文字仍在文件里）</span>';
+ else if(t==='img')h=`<button class="btn" id="o-img">选择图片</button><span class="hint">插入照片、印章或 Logo</span>`;
+ else if(t==='sign')h=`<button class="btn pri" id="o-sign">写签名</button>`+(lastSig()?'<button class="btn" id="o-last">用上次的签名</button>':'');
+ $('#opts').innerHTML=h;
+}
+$('#opts').addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.c){st[b.dataset.k]=b.dataset.c;updOpts();return}
+ if(b.id==='o-del')delSel();
+ if(b.id==='o-edit')openText(st.sel);
+ if(b.id==='o-img')$('#fImg').click();
+ if(b.id==='o-sign')openSig();
+ if(b.id==='o-last')loadImg(lastSig()).then(i=>placeImg(i,i.naturalWidth,i.naturalHeight,.32));
+});
+$('#opts').addEventListener('change',e=>{if(e.target.id==='o-purge'){st.purge=e.target.checked;toast(st.purge?'改过原文的页导出时会转成图片，旧文字彻底消失':'旧文字只被盖住，页面保持可选中文字')}});
+$('#opts').addEventListener('input',e=>{if(e.target.dataset.s)st.size[e.target.dataset.s]=+e.target.value});
+$('#tools').addEventListener('click',e=>{
+ const b=e.target.closest('.tool');if(!b)return;
+ if(b.id==='t-undo')return restore(undo,redo);
+ if(b.id==='t-redo')return restore(redo,undo);
+ const t=b.dataset.t;setTool(t);
+ if(t==='img')$('#fImg').click();
+ if(t==='sign'&&!lastSig())openSig();
+});
+function delSel(){const p=cp(),s=st.sel;if(!s)return;const k=p.anns.indexOf(s);if(k<0)return;snap();p.anns.splice(k,1);st.sel=null;drawOv();updOpts();thumbLater(p)}
+
+/* ---------- 在页面上绘制 ---------- */
+let drag=null;
+function pos(e){const r=ov.getBoundingClientRect();return[(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height]}
+function hit(p,u,v){const W=ov.clientWidth,H=ov.clientHeight,pd=10;for(let k=p.anns.length-1;k>=0;k--){const b=bbox(p.anns[k]);if(u*W>=b.x*W-pd&&u*W<=(b.x+b.w)*W+pd&&v*H>=b.y*H-pd&&v*H<=(b.y+b.h)*H+pd)return p.anns[k]}return null}
+function nearHandle(a,u,v){if(a.pts)return false;const b=bbox(a),W=ov.clientWidth,H=ov.clientHeight;return Math.hypot((b.x+b.w)*W+4-u*W,(b.y+b.h)*H+4-v*H)<24}
+ov.addEventListener('pointerdown',e=>{
+ const p=cp();if(!p||st.tool==='pan')return;e.preventDefault();
+ const[u,v]=pos(e),t=st.tool;ov.setPointerCapture(e.pointerId);
+ if(t==='pen'||t==='hl'){snap();const a={t,c:t==='hl'?st.hlc:st.color,s:st.size[t]/600,pts:[[u,v]]};p.anns.push(a);drag={k:'draw',a}}
+ else if(t==='rect'||t==='wo'){snap();const a={t,c:st.color,s:st.size.rect/600,x:u,y:v,w:0,h:0};p.anns.push(a);drag={k:'box',a,u,v}}
+ else if(t==='text'){openText(null,u,v)}
+ else if(t==='edit'){
+  const W=ov.clientWidth,H=ov.clientHeight,inb=b=>u*W>=b.x*W-6&&u*W<=(b.x+b.w)*W+6&&v*H>=b.y*H-4&&v*H<=(b.y+b.h)*H+4;
+  const te=[...p.anns].reverse().find(a=>a.t==='te'&&inb(bbox(a)));if(te){openText(te);return}
+  const l=st.lines.find(inb);if(l)openText(null,u,v,l);else if(st.lines.length)toast('请点在蓝框内的文字上');
+ }
+ else if(t==='sel'){
+  const s=st.sel;
+  if(s&&s.t!=='te'&&p.anns.includes(s)&&nearHandle(s,u,v)){drag={k:'rs',a:s,u,v,o:{...s,...bbox(s)}};return}
+  const a=hit(p,u,v);st.sel=a;
+  if(a&&a.t!=='te')drag={k:'mv',a,u,v,o:{x:a.x,y:a.y,pts:a.pts&&a.pts.map(q=>q.slice())}};
+  drawOv();updOpts();
+ }
+ drawOv();
+});
+ov.addEventListener('pointermove',e=>{
+ if(!drag)return;const[u,v]=pos(e),a=drag.a;
+ if(drag.k==='draw')a.pts.push([u,v]);
+ else if(drag.k==='box'){a.x=Math.min(u,drag.u);a.y=Math.min(v,drag.v);a.w=Math.abs(u-drag.u);a.h=Math.abs(v-drag.v)}
+ else{
+  if(!drag.m){if(Math.hypot(u-drag.u,v-drag.v)<.004)return;snap();drag.m=1}
+  const du=u-drag.u,dv=v-drag.v,o=drag.o;
+  if(drag.k==='mv'){if(a.pts)a.pts=o.pts.map(([x,y])=>[x+du,y+dv]);else{a.x=o.x+du;a.y=o.y+dv}}
+  else{const nw=Math.max(.02,o.w+du),f=nw/o.w;
+   if(a.t==='text')a.s=o.s*f;else if(a.t==='img'){a.w=nw;a.h=o.h*f}else{a.w=nw;a.h=Math.max(.01,o.h+dv)}}
+ }
+ drawOv();
+});
+function endDrag(){
+ if(!drag)return;const p=cp(),a=drag.a;
+ if(drag.k==='box'&&a.w<.008&&a.h<.008){p.anns.splice(p.anns.indexOf(a),1);undo.pop();updUndo()}
+ drag=null;drawOv();thumbLater(p);
+}
+ov.addEventListener('pointerup',endDrag);ov.addEventListener('pointercancel',endDrag);
+
+/* ---------- 文字 ---------- */
+let tctx=null;
+function openText(a,u,v,line){
+ let col=null;
+ if(line){col=sampleColors(line);line.bg=col.bg}
+ const src=a||line,te=line||(a&&a.t==='te');
+ tctx={a,u,v,line};$('#tmh').textContent=te?(a?'修改原文（原句：'+a.orig.slice(0,14)+(a.orig.length>14?'…':'')+'）':'修改原文'):a?'编辑文字':'添加文字';
+ $('#tt').value=src?src.text:'';$('#tt').placeholder=te?'清空并确定 = 删除这行原文':'输入要添加的文字，可换行';
+ const sz=src?Math.round(src.s*600):st.size.text;$('#tsz').value=Math.max(4,sz);$('#tszv').textContent=sz;
+ st.bold=src?!!src.b:st.bold;$('#tbold').setAttribute('aria-pressed',st.bold);$('#tbold').classList.toggle('pri',st.bold);
+ tColor=line?col.c:a?a.c:st.color;$('#tcol').innerHTML=[...new Set([tColor,...COLORS])].map(c=>`<button class="sw${c===tColor?' on':''}" style="background:${c}" data-c="${c}" aria-label="颜色"></button>`).join('');
+ $('#tm').hidden=false;setTimeout(()=>$('#tt').focus(),50);
+}
+let tColor=st.color;
+$('#tcol').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;tColor=b.dataset.c;document.querySelectorAll('#tcol .sw').forEach(x=>x.classList.toggle('on',x===b))});
+$('#tsz').addEventListener('input',e=>$('#tszv').textContent=e.target.value);
+$('#tbold').addEventListener('click',()=>{st.bold=!st.bold;$('#tbold').setAttribute('aria-pressed',st.bold);$('#tbold').classList.toggle('pri',st.bold)});
+$('#tok').addEventListener('click',()=>{
+ const txt=$('#tt').value.replace(/\s+$/,''),p=cp(),{a,u,v,line}=tctx,s=+$('#tsz').value/600;
+ $('#tm').hidden=true;
+ if(line||(a&&a.t==='te')){
+  const src=a||line;if(!a&&txt===line.text&&Math.round(line.s*600)===+$('#tsz').value)return;snap();
+  if(a)Object.assign(a,{text:txt,s,c:tColor,b:st.bold});
+  else p.anns.push({t:'te',lk:line.k,cx:line.x,cy:line.y,cw:line.w,ch:line.h,asc:line.asc,bg:line.bg,orig:line.text,text:txt,s,c:tColor,b:st.bold,x:line.x,y:line.y,w:line.w,h:line.h});
+  st.sel=null;drawOv();thumbLater(p);toast(txt?'已修改':'已删除这行');return;
+ }
+ if(!txt)return;snap();
+ if(a)Object.assign(a,{text:txt,s,c:tColor,b:st.bold});
+ else{const n={t:'text',x:u,y:v,s,c:tColor,b:st.bold,text:txt,w:0,h:0};p.anns.push(n);st.sel=n;st.size.text=+$('#tsz').value}
+ st.color=tColor;setTool('sel');st.sel=st.sel||a;drawOv();updOpts();thumbLater(p);
+});
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('.modal').hidden=true));
+
+/* ---------- 图片与签名 ---------- */
+function placeImg(el,iw,ih,wn){
+ const p=cp(),{W,H}=dims(p);let w=wn,h=w*W*ih/iw/H;if(h>.8){h=.8;w=h*H*iw/ih/W}
+ snap();const a={t:'img',el,x:(1-w)/2,y:(1-h)/2,w,h};p.anns.push(a);setTool('sel');st.sel=a;drawOv();updOpts();thumbLater(p);toast('已插入，可拖动调整位置');
+}
+$('#fImg').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const c=await fileToCanvas(f);placeImg(c,c.width,c.height,.5)}catch{toast('无法读取这张图片')}});
+const sp=$('#sp'),sx=sp.getContext('2d');let sigColor='#1b1c1f',sDraw=null,sInk=false;
+function lastSig(){try{return localStorage.getItem('pdfed-sig')}catch{return null}}
+function openSig(){
+ $('#sm').hidden=false;const d=devicePixelRatio||1;sp.width=sp.clientWidth*d;sp.height=sp.clientHeight*d;sx.setTransform(d,0,0,d,0,0);sx.clearRect(0,0,sp.width,sp.height);sInk=false;
+ $('#scol').innerHTML=['#1b1c1f','#1f5fd6','#e0322b'].map(c=>`<button class="sw${c===sigColor?' on':''}" style="background:${c}" data-c="${c}" aria-label="墨水颜色"></button>`).join('');
+}
+$('#scol').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;sigColor=b.dataset.c;document.querySelectorAll('#scol .sw').forEach(x=>x.classList.toggle('on',x===b))});
+sp.addEventListener('pointerdown',e=>{e.preventDefault();sp.setPointerCapture(e.pointerId);const r=sp.getBoundingClientRect();sDraw=[e.clientX-r.left,e.clientY-r.top];sx.fillStyle=sigColor;sx.beginPath();sx.arc(sDraw[0],sDraw[1],1.4,0,7);sx.fill();sInk=true});
+sp.addEventListener('pointermove',e=>{if(!sDraw)return;const r=sp.getBoundingClientRect(),q=[e.clientX-r.left,e.clientY-r.top];sx.strokeStyle=sigColor;sx.lineWidth=3;sx.lineCap='round';sx.beginPath();sx.moveTo(...sDraw);sx.lineTo(...q);sx.stroke();sDraw=q});
+sp.addEventListener('pointerup',()=>sDraw=null);
+$('#sclear').addEventListener('click',()=>{sx.clearRect(0,0,sp.width,sp.height);sInk=false});
+$('#sok').addEventListener('click',()=>{
+ if(!sInk)return toast('请先在框内签名');
+ const D=sx.getImageData(0,0,sp.width,sp.height).data;let x1=sp.width,y1=sp.height,x2=0,y2=0;
+ for(let y=0;y<sp.height;y++)for(let x=0;x<sp.width;x++)if(D[(y*sp.width+x)*4+3]>8){if(x<x1)x1=x;if(x>x2)x2=x;if(y<y1)y1=y;if(y>y2)y2=y}
+ const m=6,c=document.createElement('canvas');c.width=x2-x1+2*m;c.height=y2-y1+2*m;c.getContext('2d').drawImage(sp,x1-m,y1-m,c.width,c.height,0,0,c.width,c.height);
+ try{localStorage.setItem('pdfed-sig',c.toDataURL('image/png'))}catch{}
+ $('#sm').hidden=true;placeImg(c,c.width,c.height,.3);
+});
+
+/* ---------- 页面管理 ---------- */
+function rotAnn(a,W,H){
+ const f=W/H,R=(u,v)=>[1-v,u];
+ if(a.pts){a.pts=a.pts.map(([u,v])=>R(u,v));a.s*=f;return}
+ if(a.t==='rect'||a.t==='wo'){[a.x,a.y,a.w,a.h]=[1-(a.y+a.h),a.x,a.h,a.w];a.s*=f;return}
+ if(a.t==='te'){[a.cx,a.cy,a.cw,a.ch]=[1-(a.cy+a.ch),a.cx,a.ch,a.cw];a.asc=a.s*.92;a.s*=f;a.lk='';return}
+ const[cx,cy]=R(a.x+a.w/2,a.y+a.h/2),nw=a.w*f,nh=a.h/f;a.x=cx-nw/2;a.y=cy-nh/2;a.w=nw;a.h=nh;if(a.t==='text')a.s*=f;
+}
+$('#pact').addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;const a=b.dataset.a,P=st.pages,k=st.cur,p=P[k];
+ if(a==='del'){if(P.length<2)return toast('至少要保留一页');snap();P.splice(k,1);st.cur=Math.min(k,P.length-1);toast('已删除第 '+(k+1)+' 页')}
+ if(a==='rot'){snap();const{W,H}=dims(p);p.anns.forEach(x=>rotAnn(x,W,H));p.rot=(p.rot+90)%360}
+ if(a==='up'){if(k===0)return;snap();[P[k-1],P[k]]=[P[k],P[k-1]];st.cur--}
+ if(a==='dn'){if(k>=P.length-1)return;snap();[P[k+1],P[k]]=[P[k],P[k+1]];st.cur++}
+ if(a==='dup'){snap();P.splice(k+1,0,cloneP(p,true));st.cur++}
+ st.sel=null;refresh();
+});
+$('#list').addEventListener('click',e=>{const b=e.target.closest('.th');if(!b)return;go(+b.dataset.k);if(innerWidth<=900)side(false)});
+$('#addBlank').addEventListener('click',()=>{const{W,H}=dims(cp());snap();st.pages.splice(st.cur+1,0,{id:uid(),d:-1,i:0,w:W,h:H,base:0,rot:0,anns:[]});st.cur++;st.sel=null;refresh();toast('已插入空白页')});
+$('#mergeBtn').addEventListener('click',()=>$('#fMerge').click());
+$('#fMerge').addEventListener('change',async e=>{
+ const fs=[...e.target.files];e.target.value='';if(!fs.length)return;busy('正在合并…');let n=0;
+ try{snap();for(const f of fs){const ps=await loadPdf(await fileBytes(f));st.pages.push(...ps);n+=ps.length}st.sample=false;refresh();toast(`已在末尾加入 ${n} 页`)}
+ catch(err){undo.pop();updUndo();toast(pdfErr(err))}finally{busy()}
+});
+$('#imgPageBtn').addEventListener('click',()=>$('#fImgPage').click());
+$('#fImgPage').addEventListener('change',async e=>{
+ const fs=[...e.target.files];e.target.value='';if(!fs.length)return;busy('正在添加…');
+ try{snap();let at=st.cur+1;for(const f of fs){const c=await fileToCanvas(f,2400);const w=595.28,h=w*c.height/c.width;st.pages.splice(at++,0,{id:uid(),d:-1,i:0,w,h,base:0,rot:0,anns:[{t:'img',el:c,x:0,y:0,w:1,h:1}]})}st.cur++;refresh();toast(`已添加 ${fs.length} 页图片`)}
+ catch{toast('无法读取图片')}finally{busy()}
+});
+function side(o){$('#side').classList.toggle('open',o);$('#scrim').classList.toggle('on',o)}
+$('#sideBtn').addEventListener('click',()=>side(true));$('#closeSide').addEventListener('click',()=>side(false));$('#scrim').addEventListener('click',()=>side(false));
+
+/* ---------- 导航、打开、拖放 ---------- */
+$('#prev').addEventListener('click',()=>go(st.cur-1));$('#next').addEventListener('click',()=>go(st.cur+1));
+$('#zin').addEventListener('click',()=>{st.zoom=Math.min(3,+(st.zoom+.25).toFixed(2));show()});
+$('#zout').addEventListener('click',()=>{st.zoom=Math.max(.5,+(st.zoom-.25).toFixed(2));show()});
+$('#openBtn').addEventListener('click',()=>$('#fPdf').click());
+$('#fPdf').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f){st.sample=false;openFile(f)}});
+stage.addEventListener('dragover',e=>{e.preventDefault();stage.classList.add('drop')});
+stage.addEventListener('dragleave',()=>stage.classList.remove('drop'));
+stage.addEventListener('drop',e=>{e.preventDefault();stage.classList.remove('drop');const f=[...e.dataTransfer.files].find(f=>/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name));if(f){st.sample=false;openFile(f)}});
+document.addEventListener('keydown',e=>{
+ if(e.target.closest('input,textarea')||!$('#tm').hidden)return;
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?restore(redo,undo):restore(undo,redo);return}
+ if((e.key==='Delete'||e.key==='Backspace')&&st.sel){e.preventDefault();delSel()}
+ if(e.key==='ArrowRight'||e.key==='PageDown')go(st.cur+1);
+ if(e.key==='ArrowLeft'||e.key==='PageUp')go(st.cur-1);
+ if(e.key==='Escape'){st.sel=null;drawOv();updOpts()}
+});
+let rT=0;const ro=new ResizeObserver(()=>{clearTimeout(rT);rT=setTimeout(show,120)});ro.observe(stage);
+
+/* ---------- 导出 ---------- */
+async function blobBuf(c){const b=await new Promise(r=>c.toBlob(r,'image/png'));return new Uint8Array(await b.arrayBuffer())}
+async function exportPdf(){
+ busy('正在生成 PDF…');
+ try{
+  const{PDFDocument,degrees}=PDFLib,out=await PDFDocument.create(),need=new Map(),emb={};
+  st.pages.forEach(p=>{if(p.d>=0){if(!need.has(p.d))need.set(p.d,new Set());need.get(p.d).add(p.i)}});
+  for(const[d,set]of need){const src=await PDFDocument.load(st.docs[d].bytes,{ignoreEncryption:true}),idx=[...set],e=await out.embedPdf(src,idx);idx.forEach((i,k)=>emb[d+':'+i]=e[k])}
+  for(const p of st.pages){
+   const R=((p.base+p.rot)%360+360)%360,e=p.d>=0?emb[p.d+':'+p.i]:null,w=e?e.width:p.w,h=e?e.height:p.h;
+   const sw=R%180?h:w,sh=R%180?w:h,pg=out.addPage([sw,sh]);
+   if(e&&st.purge&&p.anns.some(a=>a.t==='te')){
+    const src=await st.docs[p.d].doc.getPage(p.i+1),v1=src.getViewport({scale:1,rotation:R}),S=Math.min(3,Math.sqrt(20e6/(v1.width*v1.height)));
+    const c=document.createElement('canvas'),vp=src.getViewport({scale:S,rotation:R});c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);await src.render({canvasContext:x,viewport:vp}).promise;
+    p.anns.forEach(a=>drawAnn(x,a,c.width,c.height));
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.93));pg.drawImage(await out.embedJpg(new Uint8Array(await b.arrayBuffer())),{x:0,y:0,width:sw,height:sh});
+    continue;
+   }
+   if(e){const T={0:[0,0,0],90:[0,w,-90],180:[w,h,180],270:[h,0,90]}[R];pg.drawPage(e,{x:T[0],y:T[1],rotate:degrees(T[2])})}
+   if(p.anns.length){
+    const S=Math.min(3,Math.sqrt(16e6/(sw*sh))),c=document.createElement('canvas');c.width=Math.round(sw*S);c.height=Math.round(sh*S);
+    const x=c.getContext('2d');p.anns.forEach(a=>drawAnn(x,a,c.width,c.height));
+    pg.drawImage(await out.embedPng(await blobBuf(c)),{x:0,y:0,width:sw,height:sh});
+   }
+  }
+  const bytes=await out.save();busy();
+  await saveFile(st.name.replace(/\.pdf$/i,'')+'-已编辑.pdf',new Blob([bytes],{type:'application/pdf'}));
+ }catch(err){busy();toast('导出失败：'+(err&&err.message||err))}
+}
+async function saveFile(fn,blob){
+ if(window.AndroidBridge){const u=new Uint8Array(await blob.arrayBuffer());let t='';for(let i=0;i<u.length;i+=32768)t+=String.fromCharCode.apply(null,u.subarray(i,i+32768));toast(window.AndroidBridge.saveFile(fn,btoa(t)));return}
+ let dl=null;try{if(window.claude&&window.claude.use)dl=await window.claude.use('downloads')}catch{}
+ if(dl){try{await dl.save({filename:fn,data:blob});toast('已保存 '+fn)}catch(err){const c=err&&err.code;toast(c==='declined'?'已取消保存':c==='rate_limited'?'请稍后再试':'保存失败，请在浏览器中打开本页再导出')}return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast('已下载 '+fn);
+}
+$('#expBtn').addEventListener('click',exportPdf);
+
+/* ---------- 示例文档 ---------- */
+function wrap(x,t,X,y,maxW,lh){let line='';for(const ch of t){if(x.measureText(line+ch).width>maxW){x.fillText(line,X,y);y+=lh;line=ch}else line+=ch}if(line){x.fillText(line,X,y);y+=lh}return y}
+function pageCanvas(draw){const c=document.createElement('canvas');c.width=1240;c.height=1754;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,1240,1754);x.fillStyle='#1b1c1f';x.textBaseline='top';draw(x);return c}
+/* SAMPLE-START */
+async function makeSampleText(){
+ const fk=window.fontkit;if(!fk)throw new Error('no fontkit');
+ const[r1,r2]=await Promise.all([fetch('sample-regular.otf'),fetch('sample-bold.otf')]);if(!r1.ok||!r2.ok)throw new Error('font');
+ const{PDFDocument,rgb}=PDFLib,doc=await PDFDocument.create();doc.registerFontkit(fk);
+ const F=await doc.embedFont(await r1.arrayBuffer(),{subset:false}),FB=await doc.embedFont(await r2.arrayBuffer(),{subset:false});
+ const ink=rgb(.106,.11,.12),gray=rgb(.42,.42,.44),PW=595.28,PH=841.89,ML=57,MW=481,m={};
+ let pg,top;
+ const T=(t,x,tp,size,f=F,color=ink)=>pg.drawText(t,{x,y:PH-tp-size*.88,size,font:f,color});
+ const para=(t,gap=12,size=14,f=F)=>{let line='';for(const ch of t){if(f.widthOfTextAtSize(line+ch,size)>MW){T(line,ML,top,size,f);top+=23;line=ch}else line+=ch}if(line){T(line,ML,top,size,f);top+=23}top+=gap};
+ pg=doc.addPage([PW,PH]);
+ T('房屋租赁协议',ML,64,27,FB);T('合同编号：KL-2026-1122　　签订地点：吉隆坡',ML,106,12.5,F,gray);
+ pg.drawRectangle({x:ML,y:PH-136,width:MW,height:1.4,color:ink});
+ top=158;para('甲方（出租方）：陈志明',4);para('乙方（承租方）：林嘉欣',18);
+ para('第一条　租赁房屋',2,15,FB);para('甲方将位于吉隆坡 Mont Kiara 的公寓一套（建筑面积约 1,100 平方英尺，含两个停车位）出租给乙方作居住使用。',14);
+ para('第二条　租赁期限',2,15,FB);para('租期为十二个月，自 2026 年 12 月 1 日起至 2027 年 11 月 30 日止。期满前一个月双方可协商续租。',14);
+ m.h3=top;para('第三条　租金及支付',2,15,FB);m.r=top;para('每月租金为 RM 2,800，乙方应于每月 5 日前转账至甲方指定账户。逾期超过七日，甲方有权按日收取千分之一的滞纳金。',14);
+ para('第四条　押金',2,15,FB);para('乙方于签约时支付两个月租金作为押金，另付半个月租金作为水电押金。租期届满且房屋无损坏时，甲方于十四日内全额退还。',14);
+ para('第五条　维修责任',2,15,FB);para('房屋主体结构及原有电器的正常损耗由甲方负责维修；因乙方使用不当造成的损坏由乙方承担费用。',14);
+ m.sg=720;T('甲方签名：____________',ML,720,14);T('乙方签名：____________',317,720,14);T('日期：____________',ML,754,14);T('日期：____________',317,754,14);
+ T('第 1 页 / 共 2 页',262,806,10.5,F,gray);
+ pg=doc.addPage([PW,PH]);
+ T('附件：屋内物品清单',ML,64,21,FB);pg.drawRectangle({x:ML,y:PH-104,width:MW,height:1.4,color:ink});
+ [['物品','数量','状况'],['冰箱','1','良好'],['洗衣机','1','良好'],['空调','3','良好'],['沙发','1','轻微磨损'],['床架与床垫','2','良好'],['餐桌椅','1 套','良好'],['热水器','2','良好']].forEach((r,k)=>{
+  const y=124+k*37,f=k?F:FB;T(r[0],67,y,14,f);T(r[1],298,y,14,f);T(r[2],413,y,14,f);pg.drawRectangle({x:ML,y:PH-y-30,width:MW,height:.8,color:rgb(.82,.81,.79)});
+ });
+ top=440;para('以上物品于交房当日由双方共同清点确认，退房时按此清单验收。');
+ T('第 2 页 / 共 2 页',262,806,10.5,F,gray);
+ const pages=await loadPdf(await doc.save());
+ pages[0].anns=[
+  {t:'hl',c:'#ffd400',s:17/PW,pts:[[59/PW,(m.r+9)/PH],[536/PW,(m.r+9)/PH]]},
+  {t:'text',x:225/PW,y:(m.h3+1)/PH,s:12.5/PW,c:'#e0322b',b:true,text:'← 租金待双方最终确认',w:0,h:0},
+  {t:'rect',c:'#e0322b',s:1.5/PW,x:52/PW,y:(m.sg-7)/PH,w:228/PW,h:32/PH}
+ ];
+ st.pages=pages;st.cur=0;st.name='示例-房屋租赁协议.pdf';st.sample=true;
+}
+/* SAMPLE-END */
+async function makeSample(){
+ const m={};
+ const c1=pageCanvas(x=>{
+  x.font=`600 56px ${FONT}`;x.fillText('房屋租赁协议',120,140);
+  x.font=`28px ${FONT}`;x.fillStyle='#6b6c70';x.fillText('合同编号：KL-2026-1122　　签订地点：吉隆坡',120,222);x.fillStyle='#1b1c1f';x.fillRect(120,280,1000,3);
+  let y=330;const P=(t,g,f=`30px ${FONT}`)=>{x.font=f;y=wrap(x,t,120,y,1000,48)+g},Hd=t=>P(t,6,`600 32px ${FONT}`);
+  P('甲方（出租方）：______________________',10);P('乙方（承租方）：______________________',36);
+  Hd('第一条　租赁房屋');P('甲方将位于吉隆坡 Mont Kiara 的公寓一套（建筑面积约 1,100 平方英尺，含两个停车位）出租给乙方作居住使用。',30);
+  Hd('第二条　租赁期限');P('租期为十二个月，自 2026 年 12 月 1 日起至 2027 年 11 月 30 日止。期满前一个月双方可协商续租。',30);
+  m.h3=y;Hd('第三条　租金及支付');m.r=y;P('每月租金为 RM 2,800，乙方应于每月 5 日前转账至甲方指定账户。逾期超过七日，甲方有权按日收取千分之一的滞纳金。',30);
+  Hd('第四条　押金');P('乙方于签约时支付两个月租金作为押金，另付半个月租金作为水电押金。租期届满且房屋无损坏时，甲方于十四日内全额退还。',30);
+  Hd('第五条　维修责任');P('房屋主体结构及原有电器的正常损耗由甲方负责维修；因乙方使用不当造成的损坏由乙方承担费用。',30);
+  x.font=`30px ${FONT}`;x.fillText('甲方签名：______________',120,1500);x.fillText('乙方签名：______________',660,1500);
+  x.fillText('日期：______________',120,1570);x.fillText('日期：______________',660,1570);m.sg=1500;
+  x.font=`22px ${FONT}`;x.fillStyle='#9a9ba0';x.fillText('第 1 页 / 共 2 页',560,1680);
+ });
+ const c2=pageCanvas(x=>{
+  x.font=`600 44px ${FONT}`;x.fillText('附件：屋内物品清单',120,140);x.fillRect(120,215,1000,3);
+  const rows=[['物品','数量','状况'],['冰箱','1','良好'],['洗衣机','1','良好'],['空调','3','良好'],['沙发','1','轻微磨损'],['床架与床垫','2','良好'],['餐桌椅','1 套','良好'],['热水器','2','良好']];
+  rows.forEach((r,k)=>{const y=250+k*78;x.font=(k?'':'600 ')+`30px ${FONT}`;x.fillStyle='#1b1c1f';x.fillText(r[0],140,y+22);x.fillText(r[1],620,y+22);x.fillText(r[2],860,y+22);x.fillStyle='#d9d7d3';x.fillRect(120,y+76,1000,2)});
+  x.fillStyle='#1b1c1f';x.font=`30px ${FONT}`;wrap(x,'以上物品于交房当日由双方共同清点确认，退房时按此清单验收。',120,930,1000,48);
+  x.font=`22px ${FONT}`;x.fillStyle='#9a9ba0';x.fillText('第 2 页 / 共 2 页',560,1680);
+ });
+ const{PDFDocument}=PDFLib,doc=await PDFDocument.create();
+ for(const c of[c1,c2]){const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.9));const j=await doc.embedJpg(new Uint8Array(await b.arrayBuffer()));doc.addPage([595.28,841.89]).drawImage(j,{x:0,y:0,width:595.28,height:841.89})}
+ const pages=await loadPdf(await doc.save());
+ const W=1240,H=1754;
+ pages[0].anns=[
+  {t:'hl',c:'#ffd400',s:36/W,pts:[[124/W,(m.r+24)/H],[1116/W,(m.r+24)/H]]},
+  {t:'text',x:470/W,y:(m.h3+2)/H,s:26/W,c:'#e0322b',b:true,text:'← 租金待双方最终确认',w:0,h:0},
+  {t:'rect',c:'#e0322b',s:3/W,x:110/W,y:(m.sg-14)/H,w:470/W,h:66/H}
+ ];
+ st.pages=pages;st.cur=0;st.name='示例-房屋租赁协议.pdf';st.sample=true;
+}
+
+/* ---------- 启动 ---------- */
+(async()=>{
+ if(!window.pdfjsLib||!window.PDFLib){$('#fn').textContent='组件加载失败';$('#fi').textContent='请检查网络后刷新页面';return}
+ pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js';
+ setTool('pan');
+ try{await makeSampleText()}catch(e){try{await makeSample()}catch(e2){$('#fi').textContent='示例生成失败：'+e2.message}}
+ refresh();
+ if(window.AndroidBridge)window.__openPending();
+})();
+}
+</script>
+</body></html>
