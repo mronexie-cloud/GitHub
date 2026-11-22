@@ -5,11 +5,16 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.NotificationManager;
 import android.content.Intent;
+import android.content.ClipData;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Base64;
 import android.view.View;
 import android.view.Window;
 import android.webkit.JavascriptInterface;
@@ -18,6 +23,15 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * 订阅卡包: the whole app is assets/index.html (subscription cards, expense records, bills).
@@ -30,6 +44,7 @@ public class MainActivity extends Activity {
     private static final int ASK_NOTIFY = 8;
     private WebView web;
     private ValueCallback<Uri[]> pending;
+    private TextRecognizer recognizer;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -49,11 +64,14 @@ public class MainActivity extends Activity {
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
                 if (pending != null) pending.onReceiveValue(null);
                 pending = cb;
+                boolean images = false;
+                for (String t : p.getAcceptTypes()) if (t != null && t.startsWith("image")) images = true;
                 Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                 i.addCategory(Intent.CATEGORY_OPENABLE);
-                i.setType("*/*");
+                i.setType(images ? "image/*" : "*/*");
+                if (p.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 try {
-                    startActivityForResult(Intent.createChooser(i, "选择备份文件"), PICK_FILE);
+                    startActivityForResult(Intent.createChooser(i, images ? "选择账单截图" : "选择备份文件"), PICK_FILE);
                 } catch (Exception e) {
                     pending = null;
                     return false;
@@ -82,8 +100,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         if (req == PICK_FILE && pending != null) {
-            Uri u = (res == RESULT_OK && data != null) ? data.getData() : null;
-            pending.onReceiveValue(u == null ? null : new Uri[]{u});
+            Uri[] out = null;
+            if (res == RESULT_OK && data != null) {
+                ClipData cd = data.getClipData();
+                if (cd != null && cd.getItemCount() > 0) {
+                    out = new Uri[cd.getItemCount()];
+                    for (int k = 0; k < out.length; k++) out[k] = cd.getItemAt(k).getUri();
+                } else if (data.getData() != null) {
+                    out = new Uri[]{data.getData()};
+                }
+            }
+            pending.onReceiveValue(out);
             pending = null;
             return;
         }
@@ -112,7 +139,60 @@ public class MainActivity extends Activity {
         return nm == null || nm.areNotificationsEnabled();
     }
 
+    private void ocrDone(String id, String json, String err) {
+        String js = "window.__ocrDone&&__ocrDone(" + JSONObject.quote(id) + "," + (json == null ? "null" : JSONObject.quote(json))
+                + "," + (err == null ? "null" : JSONObject.quote(err)) + ")";
+        runOnUiThread(() -> web.evaluateJavascript(js, null));
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (recognizer != null) recognizer.close();
+        super.onDestroy();
+    }
+
     class Bridge {
+        /** Reads the text of a screenshot on the phone; answers with __ocrDone(id, "[{t,x,y,w,h}]"). */
+        @JavascriptInterface
+        public void ocr(String id, String base64) {
+            runOnUiThread(() -> {
+                try {
+                    byte[] b = Base64.decode(base64, Base64.DEFAULT);
+                    Bitmap bmp = BitmapFactory.decodeByteArray(b, 0, b.length);
+                    if (bmp == null) {
+                        ocrDone(id, null, "图片读不出来");
+                        return;
+                    }
+                    if (recognizer == null) recognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
+                    recognizer.process(InputImage.fromBitmap(bmp, 0))
+                            .addOnSuccessListener(text -> {
+                                JSONArray a = new JSONArray();
+                                try {
+                                    for (Text.TextBlock blk : text.getTextBlocks()) {
+                                        for (Text.Line ln : blk.getLines()) {
+                                            Rect r = ln.getBoundingBox();
+                                            if (r == null) continue;
+                                            JSONObject o = new JSONObject();
+                                            o.put("t", ln.getText());
+                                            o.put("x", r.left);
+                                            o.put("y", r.top);
+                                            o.put("w", r.width());
+                                            o.put("h", r.height());
+                                            a.put(o);
+                                        }
+                                    }
+                                } catch (Exception ignored) {
+                                }
+                                ocrDone(id, a.toString(), null);
+                            })
+                            .addOnFailureListener(e -> ocrDone(id, null, "识别失败：" + e.getMessage()));
+                } catch (Throwable e) {
+                    ocrDone(id, null, "识别失败：" + e.getMessage());
+                }
+            });
+        }
+
+
         @JavascriptInterface
         public void share(String text) {
             runOnUiThread(() -> {

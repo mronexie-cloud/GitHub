@@ -241,6 +241,24 @@ input,select,textarea{font:inherit;color:inherit;-webkit-user-select:text;user-s
 .soonc div b{display:block;color:var(--tx);font-size:14px}
 .soonc div b em{font-style:normal;color:var(--orange)}
 .small{font-size:12px;color:var(--sub);line-height:1.6;margin:8px 6px}
+.shotbtn{width:100%;margin-top:10px;display:flex;align-items:center;gap:12px;background:var(--card);border-radius:18px;padding:12px 14px;box-shadow:inset 0 0 0 1px var(--line);text-align:left}
+.shotbtn i{width:40px;height:40px;border-radius:12px;background:rgba(10,132,255,.16);color:var(--acc);display:grid;place-items:center;flex-shrink:0}
+.shotbtn i svg{width:22px;height:22px}
+.shotbtn b{display:block;font-size:15px}
+.shotbtn small{font-size:12px;color:var(--sub)}
+.shotbtn .chev{margin-left:auto;color:var(--sub2);font-size:20px}
+.prog{height:6px;border-radius:3px;background:var(--chip);overflow:hidden;margin:16px 0 8px}
+.prog i{display:block;height:100%;background:var(--acc);width:0;transition:width .3s}
+.imp{background:var(--card);border-radius:18px;padding:12px 12px 10px;margin-top:10px;box-shadow:inset 0 0 0 1px var(--line);display:flex;gap:10px;align-items:flex-start}
+.imp.off{opacity:.5}
+.imp .ck{margin-top:8px;flex-shrink:0;cursor:pointer}
+.imp .fl{flex:1;min-width:0;display:grid;grid-template-columns:1fr 104px;gap:6px 8px}
+.imp input,.imp select{background:var(--field);border:0;outline:none;border-radius:10px;padding:9px 10px;font-size:14px;min-width:0;width:100%;box-shadow:inset 0 0 0 1px var(--line)}
+.imp .am{font-weight:700;text-align:right}
+.imp .tags{grid-column:1/3;display:flex;gap:6px;flex-wrap:wrap}
+.imp .tags span{font-size:11px;padding:3px 8px;border-radius:8px;background:rgba(255,159,10,.16);color:var(--orange)}
+.imp .tags span.dup{background:rgba(255,69,58,.15);color:var(--red)}
+
 </style>
 </head>
 <body>
@@ -260,6 +278,7 @@ input,select,textarea{font:inherit;color:inherit;-webkit-user-select:text;user-s
 <section class="view" id="vFlow">
   <div class="top"><h1 class="hi">流水</h1><div class="monthbar" id="flowMonth"></div></div>
   <div class="sumcard" id="flowSum"></div>
+  <button class="shotbtn" id="bShot"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.8"/><path d="M21 15.5l-5-5L6 20.5"/></svg></i><span><b>截图导入</b><small>选微信、支付宝或银行 App 的账单截图，自动识别成流水</small></span><span class="chev">›</span></button>
   <div id="flowList"></div>
 </section>
 
@@ -291,6 +310,7 @@ input,select,textarea{font:inherit;color:inherit;-webkit-user-select:text;user-s
 <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetIn" style="display:flex;flex-direction:column;min-height:0"></div></div>
 <div class="toast" id="toast"></div>
 <div class="confirm" id="confirm"><div class="box"><p id="cfText"></p><div><button id="cfNo">取消</button><button id="cfYes">确定</button></div></div></div>
+<input type="file" id="shotIn" accept="image/*" multiple style="display:none">
 <input type="file" id="fileIn" accept=".json,application/json,text/plain" style="display:none">
 
 <script>
@@ -658,6 +678,252 @@ function openRec(r,date){
       const d=pd(f.date);fm={y:d.getFullYear(),m:d.getMonth()};
       save();closeSheet();render();haptic();toast(isNew?'已记下':'已保存')};
     if(!isNew)inn.querySelector('#rDel').onclick=async()=>{if(await ask('删除这笔流水？','删除',true)){S.recs=S.recs.filter(x=>x.id!==r.id);save();closeSheet();render();toast('已删除')}};
+  });
+}
+
+/*PARSER-START*/
+/* Turns OCR lines of a bill / payment screenshot into expense items.
+   lines: [{t, x, y, w, h}] in image pixels; todayStr: 'YYYY-MM-DD'.
+   Returns {items:[{title, amount, date, dateSure, cat, raw}], income:n} */
+function parseBill(lines, todayStr, imgH) {
+  const CJK = '\\u4e00-\\u9fff';
+  const norm = t => String(t || '')
+    .replace(/[ 　]/g, ' ')
+    .replace(new RegExp(`(?<=[${CJK}])\\s+(?=[${CJK}])`, 'g'), '')
+    .replace(new RegExp(`(?<=[${CJK}])\\s+(?=[\\d（(])|(?<=\\d)\\s+(?=[${CJK}])`, 'g'), '')
+    .replace(/(?<=\d)\s*([.．,，:：])\s*(?=\d)/g, '$1')
+    .replace(/([+\-−－—–])\s+(?=[\d¥￥$R])/g, '$1')
+    .replace(/([¥￥$])\s+(?=\d)/g, '$1')
+    .replace(/\s+/g, ' ').trim();
+  const pdx = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const p2 = n => String(n).padStart(2, '0');
+  const fmt = d => d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+  const T = pdx(todayStr);
+  const mkDay = (y, m, d) => {
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    let yy = y || T.getFullYear();
+    let dt = new Date(yy, m - 1, d);
+    if (dt.getMonth() !== m - 1) return null;
+    if (!y && dt - T > 2 * 864e5) dt = new Date(yy - 1, m - 1, d);
+    return fmt(dt);
+  };
+  function parseDate(s) {
+    let m;
+    if ((m = s.match(/(20\d{2})\s*[年\-/.]\s*(\d{1,2})\s*[月\-/.]\s*(\d{1,2})/))) { const v = mkDay(+m[1], +m[2], +m[3]); if (v) return { d: v, k: 'day' }; }
+    if ((m = s.match(/(?<!\d)(\d{1,2})\s*月\s*(\d{1,2})\s*日/))) { const v = mkDay(0, +m[1], +m[2]); if (v) return { d: v, k: 'day' }; }
+    if (/今天/.test(s)) return { d: todayStr, k: 'day' };
+    if (/昨天/.test(s)) { const d = new Date(T); d.setDate(d.getDate() - 1); return { d: fmt(d), k: 'day' }; }
+    if (/前天/.test(s)) { const d = new Date(T); d.setDate(d.getDate() - 2); return { d: fmt(d), k: 'day' }; }
+    const MON = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+    if ((m = s.match(/(?<!\d)(\d{1,2})\/(\d{1,2})\/(20\d{2})/))) { const v = mkDay(+m[3], +m[2], +m[1]) || mkDay(+m[3], +m[1], +m[2]); if (v) return { d: v, k: 'day' }; }
+    if ((m = s.match(/(?<!\d)(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?(?:\s+(20\d{2}))?/i))) { const v = mkDay(m[3] ? +m[3] : 0, MON[m[2].toLowerCase()], +m[1]); if (v) return { d: v, k: 'day' }; }
+    if ((m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?!\d)(?:,?\s+(20\d{2}))?/i))) { const v = mkDay(m[3] ? +m[3] : 0, MON[m[1].toLowerCase()], +m[2]); if (v) return { d: v, k: 'day' }; }
+    if (/^today\b/i.test(s)) return { d: todayStr, k: 'day' };
+    if (/^yesterday\b/i.test(s)) { const d = new Date(T); d.setDate(d.getDate() - 1); return { d: fmt(d), k: 'day' }; }
+    if ((m = s.match(/(?<![\d.:])(\d{1,2})[-/](\d{1,2})(?![\d.]|\s*[-/]\d)/))) { const v = +m[1] > 12 ? mkDay(0, +m[2], +m[1]) : mkDay(0, +m[1], +m[2]); if (v) return { d: v, k: 'day' }; }
+    if ((m = s.match(/(?<![\d.:])(\d{1,2})[.](\d{1,2})\s+\d{1,2}:\d{2}/))) { const v = mkDay(0, +m[1], +m[2]); if (v) return { d: v, k: 'day' }; }
+    if ((m = s.match(/(20\d{2})\s*年\s*(\d{1,2})\s*月(?!\s*\d)/))) { if (+m[2] >= 1 && +m[2] <= 12) return { d: m[1] + '-' + p2(+m[2]) + '-01', k: 'month' }; }
+    if (/^本月/.test(s)) return { d: fmt(new Date(T.getFullYear(), T.getMonth(), 1)), k: 'month' };
+    return null;
+  }
+  const AMT = /(^|[^\d.,，:：/\-])([+\-−－—–])?\s*(¥|￥|RM|MYR|S\$|HK\$|US\$|\$|CNY)?\s*([+\-−－—–])?\s*(\d{1,3}(?:[,，]\d{3})+|\d+)(?:[.．](\d{2}))?\s*(元)?(?=$|\s|[)）])/g;
+  function amounts(t) {
+    const out = []; let m;
+    AMT.lastIndex = 0;
+    while ((m = AMT.exec(t))) {
+      const sign = m[2] || m[4] || '', cur = m[3] || m[7] || '', dec = m[6];
+      if (dec === undefined && !cur) continue;               // plain integers are not money
+      const num = parseFloat(m[5].replace(/[,，]/g, '') + '.' + (dec || '0'));
+      if (!(num >= 0) || num > 1e7) continue;
+      out.push({ v: num, sign: /[+]/.test(sign) ? '+' : sign ? '-' : '', start: m.index + m[1].length, end: AMT.lastIndex });
+    }
+    return out;
+  }
+  const STATUS = /^(交易成功|支付成功|付款成功|已支付|已完成|成功|对方已收钱|已收钱|已存入零钱|待支付|账单详情|全部账单|账单|筛选|查找交易|收支统计|统计|支出|收入|本月|全部|更多|详情|设置支出预算|零钱|余额)$/;
+  const SUMMARY = /支出|收入|合计|总计|共计|余额|预算|已支出|本月|累计|可用|额度|笔数|日均|月均|平均|最多|最高|统计|Total|Balance|Spent|Income/i;
+  const REFUND = /退款|退还|已退|返现|收款|转入|红包-来自|来自|入账|收入/;
+  const KV = /^(收款方|商户名称|商户|商家|商品|商品说明|对方|收款人|交易对象|Merchant|To)\s*[:：]?\s*(.+)$/i;
+  const cleanTitle = t => t
+    .replace(/^[A-Za-z]{1,3}\s*[|｜]\s*/, '')
+    .replace(new RegExp(`^[^${CJK}A-Za-z0-9]+`), '')
+    .replace(/^[A-Za-z]\s+(?=[\u4e00-\u9fff])/, '')
+    .replace(/[|｜]+$/, '')
+    .replace(/\s*(交易成功|支付成功|已支付|已完成)$/, '')
+    .trim();
+  const meaningful = t => new RegExp(`[${CJK}A-Za-z]{2,}|[${CJK}]`).test(t) && !STATUS.test(t);
+
+  let L = lines.map((l, i) => ({ i, t: norm(l.t), x: +l.x || 0, y: +l.y || 0, w: +l.w || 0, h: Math.max(1, +l.h || 1) }))
+    .filter(l => l.t && !(imgH && l.y + l.h < imgH * .045));
+  L.forEach(l => { l.cy = l.y + l.h / 2; l.am = amounts(l.t); l.dt = parseDate(l.t); });
+  L.sort((a, b) => a.cy - b.cy || a.x - b.x);
+  const hs = L.map(l => l.h).sort((a, b) => a - b);
+  const medH = hs.length ? hs[Math.floor(hs.length / 2)] : 30;
+
+  // payment-success / detail page: one big amount + key/value rows
+  const kvTitle = L.map(l => (l.t.match(KV) || [])[2]).find(Boolean);
+  const isDetail = L.some(l => /支付成功|付款成功|交易成功|账单详情|交易详情|Payment Successful|Transaction Details/i.test(l.t)) && L.filter(l => l.am.length).length <= 3;
+  if (isDetail) {
+    const big = L.filter(l => l.am.length === 1 && l.t.length - (l.am[0].end - l.am[0].start) < 4).sort((a, b) => b.h - a.h)[0];
+    if (big) {
+      const a = big.am[0];
+      const dl = L.find(l => /时间|日期|Time|Date/i.test(l.t) && l.dt) || L.find(l => l.dt && l.dt.k === 'day');
+      const title = cleanTitle(kvTitle || (L.find(l => l !== big && meaningful(l.t) && !/成功|时间|日期|方式|单号|编号|状态/.test(l.t)) || {}).t || '');
+      if (a.sign !== '+') return { items: [{ title: title || '支付', amount: a.v, date: dl ? dl.dt.d : todayStr, dateSure: !!dl, raw: big.t }], income: 0 };
+      return { items: [], income: 1 };
+    }
+  }
+
+  const items = []; let income = 0;
+  let sectDay = null, sectMonth = null;
+  const used = new Set();
+  for (const l of L) {
+    if (l.dt && SUMMARY.test(l.t) && l.am.length <= 2) {     // "今天  支出 ¥38.00" day headers
+      if (l.dt.k === 'month') { sectMonth = l.dt.d; sectDay = null; } else sectDay = l.dt.d;
+      continue;
+    }
+    if (!l.am.length) {
+      // section headers like "11月20日 星期五" or "2026年11月"
+      if (l.dt && !L.some(o => o !== l && o.am.length && Math.abs(o.cy - l.cy) < medH * .7)) {
+        if (l.dt.k === 'month') { sectMonth = l.dt.d; sectDay = null; }
+        else if (l.t.replace(/[\d\s年月日\-/.:：星期周一二三四五六日天今昨前]/g, '').length <= 2) sectDay = l.dt.d;
+      }
+      continue;
+    }
+    if (l.am.length > 1) continue;                            // "支出 ¥x 收入 ¥y" summaries
+    const a = l.am[0];
+    if (!(a.v > 0)) continue;
+    const pre = cleanTitle(l.t.slice(0, a.start));
+    const post = l.t.slice(a.end).trim();
+    if (SUMMARY.test(pre) && !/[-−－—–]/.test(a.sign)) continue;
+    if (/^(支出|收入|合计|总计|共计|余额)/.test(pre)) continue;
+    const tol = Math.max(l.h, medH) * .75;
+    // title: same row to the left, else just above
+    let title = meaningful(pre) ? pre : '';
+    let titleLine = null;
+    if (!title) {
+      const cands = L.filter(o => o !== l && !o.am.length && meaningful(o.t) && o.x < l.x && !used.has(o.i) &&
+        !(o.dt && o.t.replace(/[\d\s年月日:\-/.]/g, '').length < 2));
+      titleLine = cands.filter(o => Math.abs(o.cy - l.cy) < tol).sort((p, q) => p.x - q.x)[0] ||
+        cands.filter(o => o.cy < l.cy && l.cy - o.cy < medH * 2.2).sort((p, q) => q.cy - p.cy)[0] || null;
+      if (!titleLine) {
+        const above = L.filter(o => o !== l && o.cy < l.cy - tol * .5 && l.cy - o.cy < medH * 2.6).sort((p, q) => q.cy - p.cy)[0];
+        if (above && SUMMARY.test(above.t)) continue;
+      }
+      if (titleLine) {
+        if (SUMMARY.test(titleLine.t) && a.sign !== '-') continue;   // big totals under "本月支出"
+        title = cleanTitle(titleLine.t); used.add(titleLine.i);
+      }
+    }
+    // date: on this item's rows, else the section header above
+    const anchorY = titleLine ? Math.min(titleLine.cy, l.cy) : l.cy;
+    const nextAmt = L.filter(o => o.am.length && o.cy > l.cy + tol).reduce((m, o) => Math.min(m, o.cy), Infinity);
+    const dl = L.filter(o => o.dt && o.dt.k === 'day' && !o.am.length && o.cy >= anchorY - tol && o.cy - l.cy < medH * 3.2 && o.cy < nextAmt - tol && o.x < l.x + l.w &&
+        !(o.x < (titleLine ? titleLine.x : l.x) - medH && o.t.replace(/[\d\s年月日\-/.:：星期周一二三四五六日天今昨前]/g, '').length <= 2))
+      .sort((p, q) => Math.abs(p.cy - l.cy) - Math.abs(q.cy - l.cy))[0];
+    let date = dl ? dl.dt.d : (l.dt && l.dt.k === 'day' ? l.dt.d : sectDay);
+    let sure = !!date;
+    if (!date) date = sectMonth || todayStr;
+    const near = L.filter(o => o !== l && Math.abs(o.cy - l.cy) < medH * 3 && o.cy >= anchorY - tol).map(o => o.t).join(' ');
+    if (a.sign === '+' || REFUND.test(title) || /已全额退款|退款成功|已退款/.test(near + post)) { income++; continue; }
+    items.push({ title: title || '未命名', amount: a.v, date, dateSure: sure, raw: l.t });
+  }
+  return { items, income };
+}
+
+const CAT_RULES = [
+  ['餐饮', /美团|饿了么|外卖|餐|饭|面馆|粉|咖啡|瑞幸|星巴克|luckin|starbucks|奶茶|喜茶|蜜雪|茶百道|霸王茶姬|麦当劳|肯德基|KFC|McDonald|必胜客|汉堡|食|茶|饮|烧烤|火锅|海底捞|早餐|午餐|晚餐|夜宵|面包|甜品|蛋糕|GrabFood|Grab Food|foodpanda|kopi|restoran|restaurant|cafe|mamak/i],
+  ['交通', /滴滴|打车|出租|地铁|公交|出行|高德|曹操|T3|铁路|12306|高铁|火车|加油|石化|石油|中石化|中石油|壳牌|停车|ETC|高速|单车|哈啰|Grab(?!\s*Food|Food)|Touch.?n.?Go|TNG|RapidKL|MRT|LRT|Shell|Petronas|Caltex|toll|parking|taxi/i],
+  ['购物', /淘宝|天猫|京东|拼多多|抖音商城|唯品会|闲鱼|商城|旗舰店|专卖|优衣库|Shopee|Lazada|Zalora|Uniqlo|Taobao|购物|服饰|鞋/i],
+  ['日用', /超市|便利店|便利|7-?Eleven|7-?11|全家|罗森|盒马|物美|永辉|沃尔玛|山姆|大润发|家乐福|日用|百货|Lotus|Aeon|Mydin|99 ?Speedmart|Jaya ?Grocer|Watsons|屈臣氏|KK ?Mart|FamilyMart/i],
+  ['住房', /房租|租金|物业|水费|电费|燃气|天然气|宽带|网费|TNB|Syabas|Unifi|Indah ?Water/i],
+  ['娱乐', /电影|影城|影院|猫眼|淘票票|游戏|KTV|演出|门票|剧|演唱会|Steam|Netflix|GSC|TGV|酒吧|bar/i],
+  ['医疗', /医院|药|诊所|医疗|体检|牙|clinic|pharmacy|hospital|Guardian/i],
+  ['学习', /书店|图书|课程|教育|学费|培训|知识|得到|极客|Udemy|Coursera/i],
+  ['数码', /Apple|苹果|华为|小米|数码|电子|手机|电脑|耳机/i],
+  ['人情', /红包|转账|礼物|礼金|份子/i],
+  ['旅行', /酒店|宾馆|机票|航空|携程|飞猪|去哪儿|同程|Agoda|Booking|Airbnb|AirAsia|Trip\.com|hotel|旅行|景区/i],
+];
+function guessCat(title) { for (const [c, re] of CAT_RULES) if (re.test(title)) return c; return '其他'; }
+/*PARSER-END*/
+
+/* ---------- 截图导入 ---------- */
+const hasMLKit=()=>!!(window.Android&&Android.ocr);
+const ocrCb={};
+window.__ocrDone=(id,json,err)=>{const c=ocrCb[id];delete ocrCb[id];if(c)c(json?JSON.parse(json):null,err)};
+function loadScript(src){return new Promise((res,rej)=>{const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('net'));document.head.appendChild(e)})}
+function fileToImage(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f);const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('img'));im.src=u})}
+function imageToCanvas(im,forTess){
+  let w=im.naturalWidth,h=im.naturalHeight;const k=w>1280?1280/w:(forTess&&w<900?900/w:1);w=Math.round(w*k);h=Math.round(h*k);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(im,0,0,w,h);
+  if(forTess){const d=x.getImageData(0,0,w,h),a=d.data;let sum=0;const g=new Uint8ClampedArray(w*h);
+    for(let i=0,j=0;i<a.length;i+=4,j++){g[j]=(a[i]*.299+a[i+1]*.587+a[i+2]*.114);sum+=g[j]}
+    const inv=sum/(w*h)<110;const hist=new Uint32Array(256);for(let j=0;j<g.length;j++){if(inv)g[j]=255-g[j];hist[g[j]]++}
+    let lo=0,hi=255,acc=0;const n=g.length;for(let v=0;v<256;v++){acc+=hist[v];if(acc>n*.02){lo=v;break}}acc=0;for(let v=255;v>=0;v--){acc+=hist[v];if(acc>n*.02){hi=v;break}}
+    const sp=Math.max(1,hi-lo);for(let i=0,j=0;i<a.length;i+=4,j++){const v=Math.max(0,Math.min(255,(g[j]-lo)*255/sp));a[i]=a[i+1]=a[i+2]=v}
+    x.putImageData(d,0,0)}
+  return c}
+function ocrAndroid(c){const b64=c.toDataURL('image/jpeg',.92).split(',')[1];const id=uid();
+  return new Promise((res,rej)=>{const t=setTimeout(()=>{delete ocrCb[id];rej(new Error('识别超时'))},60000);
+    ocrCb[id]=(lines,err)=>{clearTimeout(t);lines?res(lines):rej(new Error(err||'识别失败'))};Android.ocr(id,b64)})}
+let tessWorker=null;
+async function ocrWeb(c,onStage){
+  if(!window.Tesseract){onStage('正在下载识别组件…');await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js')}
+  if(!tessWorker){onStage('正在下载中文识别模型（首次约 10MB）…');
+    tessWorker=await Tesseract.createWorker('chi_sim+eng',1,{logger:m=>{if(m.status==='recognizing text')onStage('正在识别…',m.progress)}});
+    await tessWorker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'})}
+  const {data}=await tessWorker.recognize(c);
+  return (data.lines||[]).map(l=>({t:l.text,x:l.bbox.x0,y:l.bbox.y0,w:l.bbox.x1-l.bbox.x0,h:l.bbox.y1-l.bbox.y0}))}
+$('#bShot').onclick=()=>{haptic();$('#shotIn').click()};
+$('#shotIn').onchange=async e=>{
+  const files=[...e.target.files];e.target.value='';
+  if(!files.length)return;
+  openSheet(`<div class="sh"><span style="width:62px"></span><div class="ttl">截图导入</div><button class="pill" id="iX">取消</button></div>
+    <div class="sb"><p style="font-size:16px;font-weight:600;margin:14px 4px 0" id="iMsg">正在准备…</p><div class="prog"><i id="iBar"></i></div><p class="small" id="iSub">共 ${files.length} 张截图，识别只在手机上进行${hasMLKit()?'':'（网页版首次需联网下载识别组件）'}</p></div>`,inn=>{inn.querySelector('#iX').onclick=()=>{cancelled=true;closeSheet()}});
+  let cancelled=false;const all=[];let income=0,failed=0,lastErr='';
+  for(let i=0;i<files.length;i++){
+    if(cancelled)return;
+    const stage=(t,p)=>{const m=$('#iMsg'),b=$('#iBar');if(m)m.textContent=(files.length>1?`第 ${i+1}/${files.length} 张：`:'')+t;if(b)b.style.width=((i+(p||0))/files.length*100)+'%'};
+    try{stage('正在识别…');const im=await fileToImage(files[i]);
+      const c=imageToCanvas(im,!hasMLKit());
+      const lines=hasMLKit()?await ocrAndroid(c):await ocrWeb(c,stage);
+      const r=parseBill(lines,today(),c.height);income+=r.income;r.items.forEach(it=>all.push({...it,img:i}));URL.revokeObjectURL(im.src)}
+    catch(err){failed++;lastErr=err&&err.message||''}
+  }
+  if(cancelled)return;
+  // merge overlapping screenshots, flag ones already recorded
+  const seen=new Set(),items=[];
+  for(const it of all){const k=it.date+'|'+it.amount.toFixed(2)+'|'+it.title;if(seen.has(k))continue;seen.add(k);
+    it.cat=guessCat(it.title);it.dup=S.recs.some(r=>r.date===it.date&&Math.abs((+r.amount||0)-it.amount)<.005);it.on=!it.dup;items.push(it)}
+  items.sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  openImportReview(items,{income,failed,lastErr,n:files.length});
+};
+function openImportReview(items,info){
+  const cnt=()=>items.filter(i=>i.on).length;
+  const body=()=>{
+    if(!items.length)return `<div class="empty" style="height:auto;padding:30px 20px;margin-top:10px"><b>没有识别到支出</b>${info.failed?`有 ${info.failed} 张没能识别${info.lastErr==='net'?'：识别组件下载失败，检查一下网络再试':''}。`:''}${info.income?`跳过了 ${info.income} 笔收入或退款。`:''}<br>支持微信、支付宝、银行 App 的账单列表和「支付成功」页，截图要完整清晰。</div>`;
+    return `<p class="small" style="margin-top:2px">识别到 <b>${items.length}</b> 笔支出${info.income?`，已跳过 ${info.income} 笔收入/退款`:''}${info.failed?`，${info.failed} 张没能识别`:''}。识别可能有误，导入前核对一下金额和日期。</p>`+
+    items.map((it,i)=>`<div class="imp ${it.on?'':'off'}" data-i="${i}"><span class="ck ${it.on?'on':''}" data-ck="${i}">${it.on?'✓':''}</span><div class="fl">
+      <input data-f="title" value="${esc(it.title)}" maxlength="30" placeholder="说明"><input class="am num" data-f="amount" inputmode="decimal" value="${it.amount.toFixed(2)}">
+      <input type="date" data-f="date" value="${it.date}"><select data-f="cat">${FLOWCATS.map(c=>`<option ${it.cat===c[0]?'selected':''}>${c[0]}</option>`).join('')}</select>
+      ${it.dup||!it.dateSure?`<div class="tags">${it.dup?'<span class="dup">可能已记过</span>':''}${!it.dateSure?'<span>日期没认出来，核对一下</span>':''}</div>`:''}
+    </div></div>`).join('')};
+  openSheet(`<div class="sh"><button class="pill" id="rvX">取消</button><div class="ttl">识别结果</div><button class="pill solid" id="rvOk" ${cnt()?'':'disabled'}>导入 ${cnt()}</button></div><div class="sb" id="rvB">${body()}</div>`,inn=>{
+    const ok=inn.querySelector('#rvOk');const upd=()=>{ok.textContent='导入 '+cnt();ok.disabled=!cnt()};
+    inn.querySelector('#rvX').onclick=closeSheet;
+    const B=inn.querySelector('#rvB');
+    B.addEventListener('click',e=>{const c=e.target.closest('[data-ck]');if(!c)return;haptic();const it=items[+c.dataset.ck];it.on=!it.on;c.classList.toggle('on',it.on);c.textContent=it.on?'✓':'';c.closest('.imp').classList.toggle('off',!it.on);upd()});
+    B.addEventListener('input',e=>{const f=e.target.dataset.f;if(!f)return;const box=e.target.closest('.imp'),it=items[+box.dataset.i];it[f]=e.target.value;
+      if(f==='title'&&!it.catSet){const g=guessCat(it.title);if(g!=='其他'||it.cat!=='其他'){it.cat=g;box.querySelector('[data-f=cat]').value=g}}
+      if(f==='cat')it.catSet=true});
+    B.addEventListener('change',e=>{const f=e.target.dataset.f;if(!f)return;const it=items[+e.target.closest('.imp').dataset.i];it[f]=e.target.value;if(f==='cat')it.catSet=true});
+    ok.onclick=()=>{const sel=items.filter(i=>i.on);let bad=0;const add=[];
+      sel.forEach(it=>{const a=parseFloat(String(it.amount).replace(/[,，\s]/g,''));if(!(a>0)||!/^\d{4}-\d{2}-\d{2}$/.test(it.date)){bad++;return}
+        add.push({id:uid(),date:it.date,amount:Math.round(a*100)/100,title:String(it.title||'').trim()||it.cat,cat:FCM[it.cat]?it.cat:'其他',note:'截图导入'})});
+      if(bad){toast(bad+' 笔的金额或日期不对，改一下再导入');return}
+      S.recs.push(...add);
+      const months={};add.forEach(r=>months[r.date.slice(0,7)]=(months[r.date.slice(0,7)]||0)+1);
+      const top=Object.entries(months).sort((a,b)=>b[1]-a[1])[0];if(top){const [y,m]=top[0].split('-').map(Number);fm={y,m:m-1}}
+      save();closeSheet();render();haptic();toast('已导入 '+add.length+' 笔流水')};
   });
 }
 
