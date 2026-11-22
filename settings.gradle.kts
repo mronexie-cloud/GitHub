@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "Gomoku"
-include(":app", ":xiangqi", ":sanguo", ":mahjong", ":chat", ":downloader", ":music", ":travel", ":wallet", ":deathclock", ":crosspay", ":video", ":english", ":stickfight", ":trader", ":trader3d", ":traderidle", ":earbuds", ":subs", ":pdfeditor")
+include(":app", ":xiangqi", ":sanguo", ":mahjong", ":chat", ":downloader", ":music", ":travel", ":wallet", ":deathclock", ":crosspay", ":video", ":english", ":stickfight", ":trader", ":trader3d", ":traderidle", ":earbuds", ":subs", ":pdfeditor", ":grammar")

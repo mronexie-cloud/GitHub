@@ -15,6 +15,7 @@
 | 死亡倒计时（每年发 Gmail 提醒） | `deathclock/` | [deathclock.apk](https://github.com/mronexie-cloud/GitHub/releases/download/deathclock/deathclock.apk) |
 | 环球收款（跨境收款演示版） | `crosspay/` | [crosspay.apk](https://github.com/mronexie-cloud/GitHub/releases/download/crosspay/crosspay.apk) |
 | AI成片（免费生成知识短视频） | `video/` | [video.apk](https://github.com/mronexie-cloud/GitHub/releases/download/video/video.apk) |
+| 0基础英语发音（零基础英语语法闯关，带发音） | `grammar/` | [grammar.apk](https://github.com/mronexie-cloud/GitHub/releases/download/grammar/grammar.apk) |
 | 单词勇者（打怪背英语单词） | `english/` | [english.apk](https://github.com/mronexie-cloud/GitHub/releases/latest/download/english.apk) |
 | 全屏翻译（屏幕实时翻译） | `translator/` | [translator.apk](https://github.com/mronexie-cloud/GitHub/releases/download/translator/translator.apk) |
 
