@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     id("com.android.application")
 }
@@ -49,7 +51,7 @@ val fetchWebLibs by tasks.registering {
         webLibs.forEach { (name, url) ->
             val f = File(libDir, name)
             if (!f.exists() || f.length() == 0L) {
-                java.net.URI(url).toURL().openStream().use { input -> f.outputStream().use { input.copyTo(it) } }
+                URI(url).toURL().openStream().use { input -> f.outputStream().use { out -> input.copyTo(out) } }
                 println("downloaded $name (${f.length()} bytes)")
             }
         }
