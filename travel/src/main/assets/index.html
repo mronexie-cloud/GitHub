@@ -274,6 +274,27 @@ table.eat{width:100%;border-collapse:collapse;font-size:14px}
 .leg .note.warn,.note.warn{color:var(--warn);background:var(--warnBg);border-radius:8px;padding:4px 8px}
 .fdays{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .fdays input{height:34px;border-radius:17px;border:1.5px solid var(--line);background:var(--bg);padding:0 10px}
+
+/* 游神节庆 */
+.fbn{display:block;width:100%;text-align:left;background:linear-gradient(120deg,#B4241B,#E8622F);color:#fff;border-radius:16px;padding:12px 14px;margin:0 0 14px;box-shadow:var(--shadow)}
+.fbn b{font-size:16px}.fbn .l{display:flex;gap:8px;align-items:baseline;margin-top:4px;font-size:13.5px;line-height:1.45}.fbn .l span:first-child{flex:none;font-weight:800}
+.fbn small{display:block;opacity:.85;margin-top:6px;font-size:12px}
+.slot{display:inline-block;font-size:12px;font-weight:800;border-radius:8px;padding:1px 7px;white-space:nowrap}
+.slot.day{background:#FFF1C9;color:#8A5A00}.slot.eve{background:#FFE0D0;color:#A63D10}.slot.night{background:#22304F;color:#E6ECFF}
+:root[data-theme="dark"] .slot.day{background:#4A3A10;color:#FFE08A}:root[data-theme="dark"] .slot.eve{background:#4A2414;color:#FFB48F}
+.est{display:inline-block;font-size:11.5px;color:var(--warn);background:var(--warnBg);border-radius:6px;padding:0 6px;margin-left:4px;white-space:nowrap}
+.fi{display:flex;gap:12px;background:var(--card);border-radius:16px;padding:12px;box-shadow:var(--shadow);text-align:left;width:100%}
+.fi .dt{flex:none;width:58px;text-align:center;border-radius:12px;background:var(--soft);padding:6px 0;line-height:1.2}
+.fi .dt b{display:block;font-size:20px}.fi .dt small{font-size:11.5px;color:var(--sub)}
+.fi .bd{flex:1;min-width:0}.fi .bd b{font-size:15px}.fi .t{font-size:13px;color:var(--sub);margin-top:2px}
+.fi .cd{font-size:12px;font-weight:800;color:var(--acc2)}
+.fses{border-top:1px solid var(--line);padding:10px 0}.fses:first-of-type{border-top:0}
+.fses .when{font-size:14px;margin-top:4px}.fses .old{font-size:12px;color:var(--faint);margin-top:2px}
+.fpl{border-top:1px solid var(--line);padding:10px 0}.fpl:first-of-type{border-top:0}
+.fsrc a{display:block;font-size:13px;margin:4px 0}
+.fnote{margin-top:8px;font-size:13px;background:#FBE9E4;color:#8C2A12;border-radius:10px;padding:8px 10px;line-height:1.5}
+:root[data-theme="dark"] .fnote{background:#3A1D15;color:#FFB59E}
+.fnote button{color:inherit;text-decoration:underline;font-weight:800}
 </style>
 </head>
 <body>
@@ -294,6 +315,7 @@ table.eat{width:100%;border-collapse:collapse;font-size:14px}
 
 <script src="lib/leaflet.js"></script>
 <script src="data.js"></script>
+<script src="festivals.js"></script>
 <script>
 'use strict';
 const A = window.A || null;           // Android bridge (absent on the web version)
@@ -1227,6 +1249,7 @@ function renderPlanResult() {
       <div class="stat"><b>${Math.round(tot.drive)} 公里</b><small>${f.mode === 'car' ? '开车' : '陆路'}${tot.flights ? ` · ${tot.flights} 段飞机` : ''}${tot.ferries ? ` · ${tot.ferries} 段渡轮` : ''}</small></div>
     </div>
     ${want && pl.days.length > want ? `<div class="warn">⚠ 调整后行程变成 ${pl.days.length} 天（原定 ${want} 天）。可以删掉几站，或点「修改条件」重新规划。</div>` : ''}
+    ${planFestivals(pl).map(h => `<div class="fnote">🏮 行程期间有游神：<b>${esc(fdate(h.r.date))}${h.r.to ? ' 至 ' + esc(fdate(h.r.to)) : ''}</b> ${esc(SLOT[h.r.s.slot] || '')} · ${esc(h.r.f.name)}${h.r.f.sessions.length > 1 ? ' · ' + esc(h.r.s.title) : ''}（${esc(h.r.s.time)}）${h.r.est ? '，日期按农历推算' : ''} <button data-fest="${h.r.f.id}">看详情</button></div>`).join('')}
     <div class="mini" style="margin-top:8px">点「调整」可以删掉、换掉或挪动景点，时间和顺序会自动重排。</div>
     ${onlyAsked(f) ? `<div class="note" style="margin-top:8px">只选了${f.interests.map(c => '「' + CAT[c] + '」').join('')}，所以只排这些${f.interests.some(c => c !== 'dining') ? '（KTV、酒吧、免税店每天最多各一家）' : ''}，不排景点。想白天也有去处，可以点「修改条件」再选城市地标、美食夜市等。</div>` : ''}
   </div>
@@ -1244,6 +1267,7 @@ function renderPlanResult() {
   $('rShare').onclick = () => shareText(planText(pl));
   $('rCal').onclick = exportCal;
   $('rCost').onclick = () => openCost();
+  p.querySelectorAll('[data-fest]').forEach(b => b.onclick = () => openFestival(b.dataset.fest));
   renderDays();
   drawPlanMap(pl);
   loadWeather(pl);
@@ -1723,6 +1747,7 @@ function renderExplore() {
   const p = $('pExplore');
   const regs = D.regions.filter(r => EX.country === 'all' || r.country === EX.country);
   p.innerHTML = `<h1>景点</h1><p class="lead">${D.places.length} 个景点，附实拍照片和门票。</p>
+  ${festBanner()}
   <div class="search"><svg viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 0 1 5.2 10.4l4.2 4.2-1.4 1.4-4.2-4.2A6.5 6.5 0 1 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><input id="exQ" placeholder="搜索景点或城市" value="${esc(EX.q)}"></div>
   <div class="hscroll" style="margin-top:12px"><button class="chip near${EX.near ? ' on' : ''}" id="exNear">📍 附近</button>${[['all', '全部'], ...Object.entries(COUNTRY)].map(([k, v]) => `<button class="chip${!EX.near && EX.country === k ? ' on' : ''}" data-c="${k}">${v}</button>`).join('')}</div>
   ${EX.near ? '<div class="nearhd" id="exWhere"></div>' : `<div class="hscroll">${[['all', '全部地区'], ...regs.map(r => [r.key, r.name])].map(([k, v]) => `<button class="chip${EX.region === k ? ' on' : ''}" data-r="${k}">${esc(v)}</button>`).join('')}</div>`}
@@ -1732,6 +1757,7 @@ function renderExplore() {
   const morePt = () => EX.near ? EX.pos : EX.region !== 'all' ? R[EX.region] : F.start;
   $('exMore').onclick = e => { e.preventDefault(); openUrl(gmapsMore(EX.cat === 'all' ? 'city' : EX.cat, morePt())); };
   $('exAdd').onclick = () => addFromGoogle();
+  if ($('exFest')) $('exFest').onclick = () => openFestivals();
   if (EX.near) nearWhere(); else listExplore();
   $('exQ').oninput = e => { EX.q = e.target.value; listExplore(); };
   $('exNear').onclick = () => { EX.near = !EX.near; renderExplore(); };
@@ -2735,7 +2761,7 @@ function renderMine() {
   <h2>必去清单</h2>${mini(must)}
   <h2>收藏的景点</h2>${mini(favs)}
   <h2>汇率</h2><div class="card"><div class="mini">${['SGD', 'THB', 'IDR', 'USD'].map(fxLine).join('　')}</div><div class="mini" style="margin-top:4px">更新于 ${esc(FX.asof || '')}（${esc(String(FX.src || '').replace(/^https?:\/\//, '').split('/')[0])}）</div><button class="btn ghost sm" id="fxNow" style="margin-top:8px">立即更新汇率</button></div>
-  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.9.2 · 数据版本：${esc(D.built)}</div>`;
+  <h2>关于</h2><div class="card note" style="margin:0">景点照片来自维基共享资源 Wikimedia Commons，作者与授权写在每张照片下方。门票价格于 2026 年 11 月整理，每个价格都附来源和资料日期，「约」表示未能在官网核实；出发前请以官方为准。车程按道路距离估算，公交和地铁班次来自 <a href="${TRANSIT_SRC}">Transitous</a>，天气来自 Open-Meteo，地图 © OpenStreetMap 贡献者。<br>App 版本 1.10.0 · 数据版本：${esc(D.built)}</div>`;
   p.onclick = e => {
     const o = e.target.closest('[data-open]'); if (o) { openPlace(o.dataset.open); return; }
     const pl = e.target.closest('[data-plan]');
@@ -2745,6 +2771,148 @@ function renderMine() {
     if (e.target.id === 'fxNow') refreshFx(true);
     if (e.target.id === 'mAdd') addFromGoogle();
   };
+}
+
+
+/* ---------------- 游神节庆 ----------------
+   window.FEST (festivals.js)：每个节庆有几场活动（session），每场在不同年份的日期。已办过的是实际日期，
+   下一年按农历换算（est），主办方通常活动前一两周才公布时间和封路。 */
+const FE = (window.FEST && window.FEST.list) || [];
+const SLOT = {day: '☀️ 白天', eve: '🌅 傍晚起', night: '🌙 晚上'};
+const FST = {state: 'all', slot: 'all'};
+function dOf(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+function today0() { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+function daysTo(s) { return Math.round((dOf(s) - today0()) / 864e5); }
+function fdate(s, withYear) { const d = dOf(s); return (withYear ? d.getFullYear() + '年' : '') + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + WD[d.getDay()]; }
+/** every dated run of every session: {f, s, i, y, date, to, est} */
+function festRuns() {
+  const out = [];
+  FE.forEach(f => f.sessions.forEach((s, i) => Object.keys(s.d || {}).forEach(y => out.push({f, s, i, y, date: s.d[y], to: s.to && s.to[y], est: !!(s.est && s.est[y])}))));
+  return out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+}
+function festUpcoming() { const t = ymd(today0()); return festRuns().filter(r => (r.to || r.date) >= t); }
+function cdText(r) {
+  const a = daysTo(r.date), b = r.to ? daysTo(r.to) : a;
+  if (a <= 0 && b >= 0) return r.to && a < 0 ? '进行中' : '今天';
+  if (a === 1) return '明天';
+  return a + ' 天后';
+}
+function slotTag(s) { return `<span class="slot ${s.slot}">${SLOT[s.slot] || ''}</span>`; }
+function festBanner() {
+  const up = festUpcoming();
+  if (!up.length) return '';
+  const seen = new Set(), pick = [];
+  for (const r of up) { if (seen.has(r.f.id)) continue; if (r.s.main || r.f.sessions.length === 1 || !up.some(x => x.f === r.f && x.s.main)) { seen.add(r.f.id); pick.push(r); } if (pick.length === 2) break; }
+  return `<button class="fbn" id="exFest"><b>🏮 马来西亚游神节庆</b>${pick.map(r => `<div class="l"><span>${cdText(r)}</span><span>${esc(fdate(r.date))} ${esc(SLOT[r.s.slot] || '')} · ${esc(r.f.name)}${r.f.sessions.length > 1 ? ' · ' + esc(r.s.title) : ''}</span></div>`).join('')}<small>${FE.length} 个节庆：日期、白天还是晚上、地址和路线 ›</small></button>`;
+}
+function openFestivals() {
+  const ov = overlay('马来西亚游神');
+  const states = [...new Set(FE.map(f => f.state).filter(x => x !== '每年换地方'))];
+  const draw = () => {
+    const okF = f => FST.state === 'all' || f.state === FST.state;
+    const okS = s => FST.slot === 'all' || (FST.slot === 'day' ? s.slot === 'day' : s.slot !== 'day');
+    const up = festUpcoming().filter(r => okF(r.f) && okS(r.s));
+    const tba = FE.filter(f => okF(f) && f.tba);
+    let lastM = '';
+    ov.body.innerHTML = `<div class="dtl">
+      <p class="lead" style="margin-bottom:10px">按日期排好的游神日程。点一场看地址、路线、导航和资料来源。</p>
+      <div class="hscroll">${[['all', '全部'], ...states.map(x => [x, x])].map(([k, v]) => `<button class="chip${FST.state === k ? ' on' : ''}" data-st="${esc(k)}">${esc(v)}</button>`).join('')}</div>
+      <div class="hscroll" style="margin-bottom:6px">${[['all', '全部时段'], ['day', '☀️ 白天'], ['night', '🌙 晚上']].map(([k, v]) => `<button class="chip${FST.slot === k ? ' on' : ''}" data-sl="${k}">${v}</button>`).join('')}</div>
+      <div class="stack">${up.length ? up.map(r => {
+        const d = dOf(r.date), m = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+        const head = m !== lastM ? `<h2 style="margin:8px 0 0">${m}</h2>` : ''; lastM = m;
+        return head + `<button class="fi" data-f="${r.f.id}"><div class="dt"><small>${d.getMonth() + 1}月</small><b>${d.getDate()}</b><small>${WD[d.getDay()]}</small></div>
+          <div class="bd"><div class="row" style="gap:6px;flex-wrap:wrap">${slotTag(r.s)}<span class="cd">${cdText(r)}</span>${r.est ? '<span class="est">按农历推算</span>' : ''}</div>
+          <b>${esc(r.f.name)}${r.f.sessions.length > 1 ? ' · ' + esc(r.s.title) : ''}</b>
+          <div class="t">🕐 ${esc(r.s.time)}${r.to ? '（到 ' + esc(fdate(r.to)) + '）' : ''}</div><div class="t">📍 ${esc(r.f.town)} · ${esc(r.s.where)}</div></div></button>`;
+      }).join('') : '<div class="empty">这个筛选下没有即将举行的游神</div>'}</div>
+      ${tba.length ? `<h2>日期还没公布</h2><div class="stack">${tba.map(f => `<button class="fi" data-f="${f.id}"><div class="dt"><b>?</b><small>待公布</small></div><div class="bd"><b>${esc(f.name)}</b><div class="t">${esc(f.rule)}</div><div class="t">${esc(f.tba)}</div></div></button>`).join('')}</div>` : ''}
+      <p class="mini" style="margin-top:14px">资料整理于 ${esc((window.FEST || {}).asof || '')}。游神按农历举行，标「按农历推算」的日期是换算出来的，主办方通常活动前一两周才公布时间和封路，出发前请再看一下新闻或庙方公告。</p></div>`;
+  };
+  draw();
+  ov.body.onclick = e => {
+    const st = e.target.closest('[data-st]'); if (st) { FST.state = st.dataset.st; draw(); return; }
+    const sl = e.target.closest('[data-sl]'); if (sl) { FST.slot = sl.dataset.sl; draw(); return; }
+    const f = e.target.closest('[data-f]'); if (f) openFestival(f.dataset.f);
+  };
+}
+function festGmaps(pl) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(pl.q); }
+function openFestival(id) {
+  const f = FE.find(x => x.id === id); if (!f) return;
+  const ov = overlay(f.name);
+  const t = ymd(today0());
+  const ses = f.sessions.map((s, i) => {
+    const ys = Object.keys(s.d || {}).sort();
+    const next = ys.find(y => (s.to && s.to[y] || s.d[y]) >= t), past = ys.filter(y => (s.to && s.to[y] || s.d[y]) < t);
+    const nr = next ? {f, s, i, y: next, date: s.d[next], to: s.to && s.to[next], est: !!(s.est && s.est[next])} : null;
+    return `<div class="fses"><div class="row" style="gap:6px;flex-wrap:wrap">${s.lunar ? `<span class="mini" style="font-weight:800;color:var(--sub)">农历${esc(s.lunar)}</span>` : ''}${slotTag(s)}</div>
+      <b style="font-size:16px">${esc(s.title)}</b>
+      ${nr ? `<div class="when">📅 <b>${esc(fdate(nr.date, true))}</b>${nr.to ? ' 至 ' + esc(fdate(nr.to)) : ''} <span class="cd" style="color:var(--acc2);font-weight:800">${cdText(nr)}</span>${nr.est ? '<span class="est">按农历推算</span>' : ''}</div>` : `<div class="when">📅 下一次日期还没公布</div>`}
+      <div class="t note" style="margin-top:4px">🕐 ${esc(s.time)}<br>📍 ${esc(s.where)}</div>
+      ${s.note ? `<div class="note" style="margin-top:4px">${esc(s.note)}</div>` : ''}
+      ${past.length ? `<div class="old">往年：${past.map(y => esc(fdate(s.d[y], true)) + (s.to && s.to[y] ? ' 至 ' + esc(fdate(s.to[y])) : '')).join('；')}</div>` : ''}
+      ${nr ? `<div class="btnrow"><button data-cal="${i}|${nr.y}">📅 加入日历</button></div>` : ''}</div>`;
+  }).join('');
+  const pls = Object.values(f.places || {}).map(pl => `<div class="fpl"><b>${esc(pl.name)}</b><div class="note" style="margin-top:2px">${esc(pl.addr)}</div>
+    <div class="btnrow"><a href="${esc(festGmaps(pl))}" data-url="${esc(festGmaps(pl))}">🗺 谷歌地图</a>${pl.lat ? `<button data-fnav="${pl.lat},${pl.lng}" data-name="${esc(pl.name)}" data-en="${esc(pl.q)}">🧭 导航</button><button class="grab" data-grab="${pl.lat},${pl.lng}" data-name="${esc(pl.q)}">Grab</button>` : ''}</div></div>`).join('');
+  ov.body.innerHTML = `<div class="dtl">
+    <div class="mini" style="font-weight:700">${esc(f.state)} · ${esc(f.town)}</div>
+    <p style="margin:6px 0 8px">${esc(f.about)}</p>
+    <div class="card" style="padding:10px 12px"><b>📅 ${esc(f.rule)}</b>${f.tba ? `<div class="note warn" style="margin-top:6px">${esc(f.tba)}</div>` : ''}</div>
+    <h2>日程</h2><div class="card">${ses}</div>
+    <h2>地点</h2><div class="card">${pls || '<div class="mini">地点每年不同，以主办方公布为准</div>'}</div>
+    ${f.tips && f.tips.length ? `<h2>去看的小贴士</h2><div class="card"><ul style="margin:0;padding-left:18px">${f.tips.map(x => `<li class="note" style="margin:4px 0">${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    <h2>资料来源</h2><div class="card fsrc">${f.src.map(([n, u]) => `<a href="${esc(u)}" data-url="${esc(u)}">${esc(n)}</a>`).join('')}</div>
+    <p class="mini" style="margin-top:12px">「按农历推算」的日期是根据传统农历日子换算的；时间和封路以主办方、警方在活动前公布的为准。</p></div>`;
+  ov.body.onclick = e => {
+    const u = e.target.closest('[data-url]'); if (u) { e.preventDefault(); openUrl(u.dataset.url); return; }
+    const n = e.target.closest('[data-fnav]');
+    if (n) { const [lat, lng] = n.dataset.fnav.split(',').map(Number); openNav({lat, lng, name: n.dataset.name, en: n.dataset.en}); return; }
+    const c = e.target.closest('[data-cal]');
+    if (c) { const [i, y] = c.dataset.cal.split('|'); festCal(f, +i, y); }
+  };
+}
+/** one festival session as a calendar event (Malaysia time) */
+function festEvent(f, i, y) {
+  const s = f.sessions[i], date = s.d[y], to = s.to && s.to[y];
+  const m = /(\d{1,2}):(\d{2})/.exec(s.time);
+  const hh = m ? +m[1] : s.slot === 'day' ? 10 : s.slot === 'eve' ? 18 : 19, mm = m ? +m[2] : 0;
+  const [Y, M, D] = date.split('-').map(Number);
+  const start = Date.UTC(Y, M - 1, D, hh - 8, mm);
+  let end = start + (s.slot === 'day' ? 3 : 5) * 3600e3;
+  if (to) { const [y2, m2, d2] = to.split('-').map(Number); end = Date.UTC(y2, m2 - 1, d2, 23 - 8, 0); }
+  const pl = (f.places || {})[s.p] || Object.values(f.places || {})[0];
+  const desc = [`${s.lunar ? '农历' + s.lunar + ' · ' : ''}${s.time}`, s.where, s.note || '', s.est && s.est[y] ? '日期按农历推算，出发前请看主办方公布的时间和封路' : '', pl ? '谷歌地图：' + festGmaps(pl) : ''].filter(Boolean).join('\n');
+  return {uid: `fest-${f.id}-${i}-${y}@seatravel.zlc`, title: `${f.name}${f.sessions.length > 1 ? ' · ' + s.title : ''}`, tz: 'Asia/Kuala_Lumpur', start, end, loc: pl ? pl.name + ' ' + pl.addr : f.town, desc};
+}
+function festIcs(ev) {
+  const e2 = x => String(x).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const ut = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const enc = new TextEncoder();
+  const fold = line => { const out = []; let cur = '', n = 0; for (const ch of line) { const b = enc.encode(ch).length; if (n + b > 74) { out.push(cur); cur = ' '; n = 1; } cur += ch; n += b; } out.push(cur); return out.join('\r\n'); };
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//zlc//SEA Travel Guide//ZH', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'BEGIN:VEVENT', 'UID:' + ev.uid, 'DTSTAMP:' + ut(Date.now()), 'DTSTART:' + ut(ev.start), 'DTEND:' + ut(ev.end), 'SUMMARY:' + e2(ev.title), 'LOCATION:' + e2(ev.loc), 'DESCRIPTION:' + e2(ev.desc), 'END:VEVENT', 'END:VCALENDAR'];
+  return L.map(fold).join('\r\n') + '\r\n';
+}
+function festCal(f, i, y) {
+  const ev = festEvent(f, i, y), name = `${f.id}-${y}.ics`;
+  if (A && A.calendar) { toast('正在加入日历…'); A.calendar(JSON.stringify({tag: `fest-${f.id}-${i}-${y}`, events: [ev]})); return; }
+  const url = URL.createObjectURL(new Blob([festIcs(ev)], {type: 'text/calendar'}));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast('已下载日历文件，点开就能加入日历');
+}
+/** festivals on the days of a plan, in the towns the plan visits that day */
+function planFestivals(pl) {
+  const hits = [];
+  const runs = festRuns().filter(r => r.f.region);
+  // also when the trip starts near the festival town (people often go back there in the evening)
+  const home = reg => R[reg] && pl.input && pl.input.start && km(pl.input.start, R[reg]) < 50;
+  pl.days.forEach(d => {
+    const day = ymd(d.date), regs = d.regions && d.regions.length ? d.regions : d.region ? [d.region] : [];
+    runs.forEach(r => { if ((regs.includes(r.f.region) || home(r.f.region)) && day >= r.date && day <= (r.to || r.date) && !hits.some(h => h.r === r)) hits.push({r, day}); });
+  });
+  return hits;
 }
 
 /* ---------------- tabs & back ---------------- */
@@ -2792,6 +2960,7 @@ function runDemo(d) {
   if (k === 'near') { while (OV.length) closeOverlay(); EX.near = true; EX.cat = a || 'all'; showTab('pExplore'); }
   if (k === 'tab') { while (OV.length) closeOverlay(); showTab(a); }
   if (k === 'place') openPlace(a);
+  if (k === 'fest') { while (OV.length) closeOverlay(); showTab('pExplore'); if (a) openFestival(a); else openFestivals(); }
   if (k === 'route') { showTab('pRoutes'); openRoute(a); }
   if (k === 'locate') { while (OV.length) closeOverlay(); CUR_PLAN = null; showTab('pPlan'); renderPlanForm(); locate(); }
   if (k === 'go') { while (OV.length) closeOverlay(); if (F.start) { F.days = +a || F.days; F.fixed = null; go(); } }
