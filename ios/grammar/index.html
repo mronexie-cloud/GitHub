@@ -135,16 +135,38 @@ const VOWELS="AEIOU";
 const PRON_HEAD=["主格(做主语)","宾格(做宾语)","形容词性物主","名词性物主","反身代词"];
 const PRON=[["我","I","me","my","mine","myself"],["你","you","you","your","yours","yourself"],["他","he","him","his","his","himself"],["她","she","her","her","hers","herself"],["它","it","it","its","its","itself"],["我们","we","us","our","ours","ourselves"],["你们","you","you","your","yours","yourselves"],["他们","they","them","their","theirs","themselves"]];
 const PRON_Q=[["___ am a student.","我是学生。","I",1],["Please help ___.","请帮帮我。","me",2],["This is ___ book.","这是我的书。","my",3],["The book is ___.","这本书是我的。","mine",4],["I can do it ___.","我可以自己做。","myself",5],["___ is my brother.","他是我哥哥。","He",1],["I like ___.","我喜欢他。","him",2],["___ name is Lily.","她的名字叫莉莉。","Her",3],["The bag is ___.","这个包是她的。","hers",4],["___ are friends.","我们是朋友。","We",1],["Come with ___.","跟我们来。","us",2],["___ are playing.","他们在玩。","They",1],["I know ___.","我认识他们。","them",2],["This is ___ house.","这是他们的房子。","their",3],["The dog wags ___ tail.","小狗摇它的尾巴。","its",3],["Is this pen ___?","这支笔是你的吗？","yours",4],["Look at ___ in the mirror.","照镜子看看你自己。","yourself",5],["She made it ___.","她自己做的。","herself",5],["___ is a cat.","它是一只猫。","It",1],["The house is ___.","这房子是我们的。","ours",4]];
-const WH=[["who","问是谁","Who is he?","他是谁？"],["what","问什么","What is this?","这是什么？"],["why","问为什么","Why are you sad?","你为什么难过？"],["where","问在哪里","Where is my bag?","我的包在哪里？"],["which","问哪一个","Which one do you like?","你喜欢哪一个？"],["when","问什么时候","When is your birthday?","你的生日是什么时候？"],["how","问怎么样","How are you?","你好吗？"],["whose","问谁的","Whose pen is this?","这是谁的笔？"],["how old","问几岁","How old are you?","你几岁？"],["what color","问什么颜色","What color is it?","它是什么颜色？"],["how many","问多少(可数)","How many apples are there?","有多少个苹果？"],["how much","问多少钱","How much is it?","它多少钱？"],["how tall","问多高","How tall are you?","你多高？"],["how big","问多大","How big is it?","它有多大？"],["how far","问多远","How far is it?","有多远？"],["what day","问星期几","What day is it today?","今天星期几？"],["how often","问多久一次(频率)","How often do you run?","你多久跑一次步？"],["what time","问几点","What time is it?","现在几点？"],["how heavy","问多重","How heavy is it?","它有多重？"],["how long","问多长 / 多长时间","How long is the river?","这条河有多长？"]];
-const POS=[["n.","名词","人和事物的名称","apple pen book cat teacher water"],["v.","动词","动作或状态","run eat smile finish go read"],["adj.","形容词","修饰名词，说明特点","good short big happy red tall"],["adv.","副词","修饰动词/形容词","quickly now very slowly here well"],["pron.","代词","代替名词","he them it she they we"],["num.","数词","数量或顺序","one first ten third two hundred"],["prep.","介词","放在名词前，说明关系","in on at under with from"],["art.","冠词","放在名词前，只有3个","a an the"],["conj.","连词","连接词或句子","and but so or because"],["int.","感叹词","表达情绪","oh wow hey ouch hooray"]];
+const WH=[["who","问是谁","Who is he?","他是谁？"],["what","问什么","What is this?","这是什么？"],["why","问为什么","Why are you sad?","你为什么难过？"],["where","问在哪里","Where is my bag?","我的包在哪里？"],["which","问哪一个","Which one do you like?","你喜欢哪一个？"],["when","问什么时候","When is your birthday?","你的生日是什么时候？"],["how","问怎么样","How are you?","你好吗？"],["whose","问谁的","Whose pen is this?","这是谁的笔？"],["how old","问几岁","How old are you?","你几岁？"],["what color","问什么颜色","What color is it?","它是什么颜色？"],["how many","问多少(可数)","How many apples are there?","有多少个苹果？"],["how much","问多少钱","How much is it?","它多少钱？"],["how tall","问多高","How tall are you?","你多高？"],["how big","问多大","How big is it?","它有多大？"],["how far","问多远","How far is it?","有多远？"],["what day","问星期几","What day is it today?","今天星期几？"],["how often","问多久一次(频率)","How often do you run?","你多久跑一次步？"],["what time","问几点","What time is it?","现在几点？"],["how heavy","问多重","How heavy is it?","它有多重？"],["how long","问多长 / 多长时间","How long is the river?","这条河有多长？"],["how soon","问多久之后","How soon will he come?","他多久之后来？"]];
+const POS=[["n.","名词","人、物、地点、抽象概念的名称（是什么）","apple pen book hand paper mouse","单复数、名词所有格、集合名词、主谓一致"],["v.","动词","动作或状态（干什么）","run eat smile finish look build","be 动词、情态动词、助动词、系动词、实义动词、被动语态"],["adj.","形容词","修饰名词，说明人或事物的特点（什么样的）","good bad big small young short","比较级、最高级"],["adv.","副词","修饰动词/形容词，说明时间、地点、程度、方式","quickly now very slowly luckily truly","时间/频率/方式/程度副词"],["pron.","代词","代替人或事物","he them it myself herself ourselves","人称代词、物主代词、反身代词、指示代词"],["num.","数词","数量或顺序（数量多少）","one first ten sixth twenty-first hundred","基数词、序数词、年份、日期、分数"],["prep.","介词","放在名词/代词前，表示关系（方位）","in on at by to about","地点、方向、时间、方式介词，介词短语"],["art.","冠词","放在名词前，不单独用，只有3个","a an the","定冠词 the、不定冠词 a/an、零冠词"],["conj.","连词","连接词、短语、句子","and but so or because","并列连词（and/but/or）、从属连词（because/when/if）"],["int.","感叹词","表达情感，独立在句子之外","oh wow ah alas hooray","独立在句子之外"]];
 const CON=[["I am","I'm"],["you are","you're"],["he is","he's"],["she is","she's"],["it is","it's"],["we are","we're"],["they are","they're"],["that is","that's"],["there is","there's"],["what is","what's"],["who is","who's"],["when is","when's"],["is not","isn't"],["are not","aren't"],["was not","wasn't"],["were not","weren't"],["do not","don't"],["does not","doesn't"],["did not","didn't"],["cannot","can't"],["could not","couldn't"],["I will","I'll"],["we will","we'll"],["will not","won't"]];
 const PAT=[["主+谓","S + V","He walks.","他走路。"],["主+谓","S + V","Birds fly.","鸟会飞。"],["主+谓+宾","S + V + O","I like apples.","我喜欢苹果。"],["主+谓+宾","S + V + O","I love him.","我爱他。"],["主+系+表","S + V + C","The weather is good.","天气很好。"],["主+系+表","S + V + C","She is happy.","她很开心。"],["主+谓+双宾","S + V + O + O","She shows me a book.","她给我看一本书。"],["主+谓+双宾","S + V + O + O","I give him a pen.","我给他一支笔。"],["主+谓+宾+宾补","S + V + O + C","We call her Miss Li.","我们叫她李老师。"],["主+谓+宾+宾补","S + V + O + C","I made my brother cry.","我把弟弟弄哭了。"]];
 const PAT_NAMES=["主+谓","主+谓+宾","主+系+表","主+谓+双宾","主+谓+宾+宾补"];
 const CLAUSE=[["名词性从句","整个从句当一个名词用","That the earth is round is true.","地球是圆的，这是真的。"],["定语从句(形容词性从句)","从句修饰前面的名词","The girl who sings is my sister.","唱歌的那个女孩是我妹妹。"],["状语从句(副词性从句)","从句说明时间、原因、条件等","I will call you when I get home.","我到家时会给你打电话。"]];
-const ROLE=[["She made her brother sad.","She","主语","动作的发出者"],["She made her brother sad.","made","谓语","句子里的动作"],["I see my son.","son","宾语","动作的承受者"],["She felt guilty.","guilty","表语","说明主语的状态"],["I am happy.","happy","表语","说明主语的状态"],["I like apples.","like","谓语","句子里的动作"],["I like apples.","apples","宾语","动作的承受者"],["Tom runs fast.","Tom","主语","动作的发出者"]];
-const T5=[["一般现在时","do / does","经常、习惯、事实","I play football every day.","我每天踢足球。","always usually often sometimes|every day|once a week|in the morning|hardly ever"],["一般过去时","did","过去发生的事","I played football yesterday.","我昨天踢了足球。","yesterday|last night|last year|two days ago|just now|last Monday|in 2020"],["一般将来时","will do","将来要发生的事","I will play football tomorrow.","我明天会去踢足球。","tomorrow|next week|next time|soon|in two days|next Friday"],["现在进行时","am / is / are doing","此刻正在做","I am playing football now.","我现在正在踢足球。","now|right now|at the moment|Look!|Listen!|at present"],["现在完成时","have / has done","已经做完 / 一直到现在","I have already finished my homework.","我已经写完作业了。","already|yet|just|ever|so far|up to now"]];
-const T16=[["一般现在时","do / does"],["一般过去时","did"],["一般将来时","will do"],["过去将来时","would do"],["现在进行时","am / is / are doing"],["过去进行时","was / were doing"],["将来进行时","will be doing"],["过去将来进行时","would be doing"],["现在完成时","have / has done"],["过去完成时","had done"],["将来完成时","will have done"],["过去将来完成时","would have done"],["现在完成进行时","have / has been doing"],["过去完成进行时","had been doing"],["将来完成进行时","will have been doing"],["过去将来完成进行时","would have been doing"]];
-const PAST_PERF="by the time 到…的时候 · by then 到那时 · by the end of last year 到去年年底 · before + 过去时间";
+const ROLE=[["She made her brother sad.","She","主语","动作的发出者"],["She made her brother sad.","made","谓语","句子里的动作"],["I see my son.","son","宾语","动作的承受者"],["She felt guilty.","guilty","表语","说明主语的状态"],["I am happy.","happy","表语","说明主语的状态"],["I like apples.","like","谓语","句子里的动作"],["I like apples.","apples","宾语","动作的承受者"],["Tom runs fast.","Tom","主语","动作的发出者"],["I eat the yellow bananas.","yellow","定语","修饰名词，常是形容词"],["I eat the banana quickly.","quickly","状语","说明时间、地点、方式等"],["She sings in the morning.","in the morning","状语","说明时间、地点、方式等"],["The red apple is sweet.","red","定语","修饰名词，常是形容词"]];
+const ROLE11=[["主语","Subject","动作的发出者，句子说的是谁/什么","I eat bananas.","I","我吃香蕉。"],["谓语","Predicate","主语做的动作或状态","I eat bananas.","eat","我吃香蕉。"],["宾语","Object","动作的承受者","I eat bananas.","bananas","我吃香蕉。"],["表语","Predicative","跟在 be 等系动词后，说明主语怎么样","The banana is yellow.","yellow","香蕉是黄色的。"],["定语","Attribute","修饰名词，常是形容词","I eat the yellow bananas.","yellow","我吃黄色的香蕉。"],["状语","Adverbial","说明时间、地点、原因、方式等","I eat the banana quickly.","quickly","我很快地吃香蕉。"],["补足语","Complement","对宾语进一步说明（宾补）","I told him to eat the banana.","to eat the banana","我叫他去吃香蕉。"],["同位语","Appositive","对前面的词进一步解释","I like bananas, a kind of tropical fruit.","a kind of tropical fruit","我喜欢香蕉，一种热带水果。"],["称呼语","Address","直接称呼听话的人","Children, come here!","Children","孩子们，过来！"],["感叹词","Interjection","表示情绪，也能打招呼","Oh, it's so nice!","Oh","哦，太好了！"],["插入语","Parenthesis","插在句中的补充说明","It is, I think, a good idea.","I think","我觉得这是个好主意。"]];
+const STYPE=[["陈述句","叙述一件事","He went to the cinema the day before yesterday.","他前天去看了电影。"],["疑问句","提出问题","Where did you go yesterday?","你昨天去哪了？"],["祈使句","表达命令或请求","Open the door, please.","请开门。"],["感叹句","表达强烈的感情","How beautiful the park is!","这个公园真美啊！"],["陈述句","叙述一件事","I like apples.","我喜欢苹果。"],["疑问句","提出问题","Are you a student?","你是学生吗？"],["祈使句","表达命令或请求","Please sit down.","请坐。"],["感叹句","表达强烈的感情","What a big cat!","好大的一只猫！"]];
+const OPRON=[["不定代词","some 一些 · any 任何/一些 · many 许多 · both 两个都"],["相互代词","each other / one another 互相"],["指示代词","this 这个 · that 那个 · these 这些 · those 那些"],["关系代词","who 指人 · which 指物 · that 人或物都可以（引导定语从句）"],["疑问代词","who 谁 · what 什么 · which 哪个 · whose 谁的"],["替代词","one 代替单数 · ones 代替复数"]];
+const OPRON_Q=[["I have ___ apples.","我有一些苹果。","some",["some","any","both","ones"]],["Do you have ___ questions?","你有任何问题吗？","any",["any","some","each other","one"]],["___ of us like music.","我们两个都喜欢音乐。","Both",["Both","Any","Each other","These"]],["We help ___.","我们互相帮助。","each other",["each other","both","ones","which"]],["This is the girl ___ sings well.","这就是唱歌很好听的那个女孩。","who",["who","which","what","whose"]],["The book ___ I read is good.","我读的那本书很好。","which",["which","who","whose","ones"]],["I don't like the red shoes. I like the black ___.","我不喜欢红鞋，我喜欢黑的。","ones",["ones","one","some","these"]],["___ are my books.","这些是我的书。","These",["These","This","That","Any"]]];
+const T5=[["一般现在时","do / does","经常、习惯、事实","I play football every day.","我每天踢足球。","always|usually|often|sometimes|every day|once a week|every Sunday|at night|twice a month|hardly ever"],["一般过去时","did","过去发生的事","I played football yesterday.","我昨天踢了足球。","yesterday|last night|last year|two days ago|just now|last Monday|last term|once upon a time|at that time"],["一般将来时","will do","将来要发生的事","I will play football tomorrow.","我明天会去踢足球。","tomorrow|tomorrow night|the day after tomorrow|next week|next time|next Friday|in two days"],["现在进行时","am / is / are doing","此刻正在做","I am playing football now.","我现在正在踢足球。","now|right now|at the moment|at this time|Look!|Listen!|at present"],["现在完成时","have / has done","已经做完 / 一直到现在","I have already finished my homework.","我已经写完作业了。","already|yet|just|ever|before|so far|up to now"]];
+const T16=[["一般现在时","do / does","经常、习惯、客观事实","I do my homework every day.","do","我每天做作业。"],["一般过去时","did","过去发生的动作","I did my homework yesterday.","did","我昨天做了作业。"],["一般将来时","will do","将来要发生的动作","I will do my homework tomorrow.","will do","我明天会做作业。"],["过去将来时","would do","站在过去，说「将来」要做的事","I said I would do my homework the next day.","would do","我说过第二天会做作业。"],["现在进行时","am / is / are doing","现在正在做","I am doing my homework now.","am doing","我现在正在做作业。"],["过去进行时","was / were doing","过去某一刻正在做","I was doing my homework when you opened the door.","was doing","你开门的时候，我正在做作业。"],["将来进行时","will be doing","将来某一刻正在做","I will be doing my homework at 9:00 tomorrow.","will be doing","明天九点我会正在做作业。"],["过去将来进行时","would be doing","站在过去，说将来某一刻正在做","I said I would be doing my homework at 9:00 the next day.","would be doing","我说过第二天九点我会正在做作业。"],["现在完成时","have / has done","已经做完，对现在有影响","I have done my homework.","have done","我已经做完作业了。"],["过去完成时","had done","过去某个时间之前已经做完（过去的过去）","I had done my homework before you opened the door.","had done","在你开门之前，我已经做完作业了。"],["将来完成时","will have done","将来某个时间之前会做完","I will have done my homework by tomorrow.","will have done","明天之前我会做完作业。"],["过去将来完成时","would have done","站在过去，说将来某时之前会做完","I said I would have done my homework before you came back.","would have done","我说过在你回来之前我会做完作业。"],["现在完成进行时","have / has been doing","从过去一直做到现在，还在做","I have been doing my homework for 3 hours.","have been doing","我已经做了3个小时作业了（还在做）。"],["过去完成进行时","had been doing","到过去某个时间为止，一直在做","I had been doing my homework for 3 hours before you opened the door.","had been doing","在你开门之前，我已经连续做了3个小时作业。"],["将来完成进行时","will have been doing","到将来某个时间为止，会一直在做","I will have been teaching for 3 years by next week.","will have been teaching","到下周，我就已经教了3年书了（还在教）。"],["过去将来完成进行时","would have been doing","站在过去，说到将来某时会一直在做","I said I would have been teaching for 3 years by the next week.","would have been teaching","我说过，到下一周我就已经教了3年书了。"]];
+const PAST_PERF="by + 过去时间点 · by the time 到…的时候 · by then 到那时 · by the end of last week 到上周末为止 · before + 过去时间点 · up until then 直到那时";
+const VOW12=[["iː","前元音","see","看见"],["ɪ","前元音","sit","坐"],["e","前元音","bed","床"],["æ","前元音","cat","猫"],["ɜː","中元音","bird","鸟"],["ə","中元音","about","关于"],["ʌ","中元音","cup","杯子"],["ɑː","后元音","car","汽车"],["ɒ","后元音","hot","热的"],["ɔː","后元音","door","门"],["uː","后元音","food","食物"],["ʊ","后元音","book","书"]];
+/* 第8关：be 动词、介词、省略 to */
+const BE_RULE=[["我用 am，你用 are，is 跟着他、她、它","I am a student. / You are a student. / He is a student."],["单数名词用 is，复数名词全用 are","This is a book. / These are books."],["变疑问，往前提，句末问号莫丢弃","Are you a student?"],["变否定，更容易，be 后 not 莫忘记","I am not a student."],["句首字母要大写","Is he a student?"]];
+const BE_Q=[["I ___ a student.","我是学生。","am"],["You ___ my friend.","你是我的朋友。","are"],["He ___ a teacher.","他是老师。","is"],["They ___ students.","他们是学生。","are"],["This ___ a book.","这是一本书。","is"],["These ___ books.","这些是书。","are"],["She ___ not happy.","她不开心。","is"],["___ you a student?","你是学生吗？","Are"],["___ it a cat?","它是猫吗？","Is"],["We ___ friends.","我们是朋友。","are"],["My mother ___ at home.","我妈妈在家。","is"],["I ___ not tired.","我不累。","am"]];
+const PREP_RULE=[["年、月、周前用 in","in 2022 · in August · in a week"],["具体某一天用 on","on May 10th · on Monday"],["上午、下午、晚上用 in","in the morning · in the afternoon · in the evening"],["某一天的上午/下午用 on","on Monday morning"],["午夜、黎明、晚上用 at","at midnight · at dawn · at night"],["几点几分用 at","at six · at 7:30"],["差几分用 to，过几分用 past","ten to nine 八点五十 · half past two 两点半"]];
+const PREP_Q=[["I was born ___ 2010.","我出生于2010年。","in"],["See you ___ Monday.","星期一见。","on"],["I get up ___ six.","我六点起床。","at"],["My birthday is ___ May 10th.","我的生日是5月10日。","on"],["I read books ___ the morning.","我早上看书。","in"],["We go swimming ___ Sunday morning.","我们星期天上午去游泳。","on"],["School starts ___ September.","九月开学。","in"],["I go to bed ___ night.","我晚上睡觉。","at"],["The party is ___ 7:30.","派对在七点半。","at"],["It's half ___ two.","现在两点半。","past"],["It's ten ___ nine.","现在八点五十。","to"]];
+const BARE=["一感：feel","二听：hear, listen to","三让：have, let, make（使役动词）","四看：see, look at, watch, notice"];
+const BARE_EX=[["Mr. Wang has his son write a diary every day.","王先生让儿子每天写一篇日记。"],["My mother won't let me go to the park.","我妈妈不让我去公园。"],["I watched her get into the car.","我看着她上了车。"],["I saw the woman enter a bank.","我看见那个女人进了一家银行。"]];
+const BARE_Q=[["My mom lets me ___ TV.","妈妈让我看电视。","watch",["watch","to watch","watching","watched"]],["He made me ___.","他把我逗笑了。","laugh",["laugh","to laugh","laughing","laughed"]],["I saw him ___ the room.","我看见他进了房间。","enter",["enter","to enter","entered","enters"]],["She heard the baby ___.","她听见宝宝哭了。","cry",["cry","to cry","cried","cries"]],["I want ___ home.","我想回家。（want 后面要加 to）","to go",["go","to go","going","went"]],["Let's ___ to the park.","我们去公园吧。","go",["go","to go","going","went"]]];
+/* 第9关：复数、分数、比较级 */
+const PL_RULE=[["一般在词尾加 s","apple → apples · book → books"],["辅音字母 + y：变 y 为 i，再加 es","baby → babies · city → cities"],["以 s、x、sh、ch 结尾：加 es","box → boxes · brush → brushes · watch → watches"],["以 f / fe 结尾：变 f 为 v，再加 es","knife → knives · leaf → leaves"],["以 o 结尾：有生命的加 es，没生命的加 s","tomato → tomatoes · zoo → zoos"],["单复数同形","fish · sheep · deer · Chinese · Japanese"],["man / woman：a 变 e","man → men · woman → women"],["foot / tooth：oo 变 ee","foot → feet · tooth → teeth"]];
+const PL=[["apple","apples","苹果"],["book","books","书"],["boy","boys","男孩"],["baby","babies","婴儿"],["city","cities","城市"],["box","boxes","盒子"],["bus","buses","公交车"],["watch","watches","手表"],["brush","brushes","刷子"],["knife","knives","刀"],["wife","wives","妻子"],["leaf","leaves","树叶"],["wolf","wolves","狼"],["thief","thieves","小偷"],["tomato","tomatoes","西红柿"],["potato","potatoes","土豆"],["zoo","zoos","动物园"],["fish","fish","鱼"],["sheep","sheep","绵羊"],["deer","deer","鹿"],["man","men","男人"],["woman","women","女人"],["foot","feet","脚"],["tooth","teeth","牙齿"],["child","children","孩子"]];
+const FE_RHYME="妻子持刀去宰狼，小偷吓得发了慌；躲在架后保己命，半片树叶遮目光。";
+const FE_WORDS="wife 妻子 · knife 刀 · wolf 狼 · thief 小偷 · shelf 架子 · self 自己 · life 生命 · half 一半 · leaf 树叶";
+const FR=[["1/10","one tenth"],["1/3","one third"],["2/3","two thirds"],["1/2","a half"],["1/4","a quarter"],["3/4","three quarters"],["3/5","three fifths"],["1/5","one fifth"]];
+const CMP=[["原级：一样…","as … as","Tom is as tall as Jim.","汤姆和吉姆一样高。"],["原级否定：不如…","not as / so … as","His bedroom is not as neat as his sister's.","他的卧室没有他姐姐的整洁。"],["比较级：两者比较","-er / more … + than","Our teacher is taller than we are.","我们老师比我们高。"],["最高级：三者以上","the -est / the most …","She is the tallest in our class.","她是我们班最高的。"]];
+const CMP_FORM=[["tall","taller","tallest"],["big","bigger","biggest"],["happy","happier","happiest"],["good","better","best"],["bad","worse","worst"],["beautiful","more beautiful","most beautiful"]];
+const CMP_Q=[["Tom is ___ than me.","汤姆比我高。","taller",["tall","taller","tallest","more tall"]],["She is the ___ girl in our class.","她是我们班最漂亮的女孩。","most beautiful",["beautiful","more beautiful","most beautiful","beautifulest"]],["This apple is ___ than that one.","这个苹果比那个好。","better",["good","gooder","better","best"]],["He is as ___ as his father.","他和他爸爸一样高。","tall",["tall","taller","tallest","the tallest"]],["It is the ___ day of my life.","这是我一生中最开心的一天。","happiest",["happy","happier","happiest","happyest"]],["My bag is ___ than yours.","我的包比你的大。","bigger",["biger","bigger","biggest","big"]]];
 const VERB_Q=[["She ___ TV every day.","她每天看电视。","watches",["watches","watched","will watch","is watching"]],["I ___ my grandma yesterday.","我昨天去看了奶奶。","visited",["visit","visited","will visit","am visiting"]],["We ___ to Beijing next week.","我们下周去北京。","will go",["go","went","will go","have gone"]],["Look! The baby ___.","看！宝宝在睡觉。","is sleeping",["sleeps","slept","is sleeping","will sleep"]],["I have already ___ lunch.","我已经吃过午饭了。","eaten",["eat","ate","eaten","eating"]],["He usually ___ to school by bus.","他通常坐公交上学。","goes",["go","goes","went","going"]],["They ___ football two days ago.","他们两天前踢了足球。","played",["play","played","will play","are playing"]],["Listen! Someone ___.","听！有人在唱歌。","is singing",["sings","sang","is singing","has sung"]],["I ___ you tomorrow.","我明天给你打电话。","will call",["call","called","will call","am calling"]],["She has just ___ the door.","她刚刚关上了门。","closed",["close","closed","closing","closes"]],["My father ___ coffee in the morning.","我爸爸早上喝咖啡。","drinks",["drink","drinks","drank","drinking"]],["___ you finished your homework yet?","你写完作业了吗？","Have",["Do","Did","Have","Will"]]];
 
 const UNITS=[
@@ -154,7 +176,9 @@ const UNITS=[
  {id:"pos",n:"4",color:"#8a4dff",t:"10种词性",d:"名词 动词 形容词…"},
  {id:"con",n:"5",color:"#00a3c4",t:"缩略词",d:"I am = I'm"},
  {id:"sen",n:"6",color:"#d98a00",t:"句子结构",d:"主谓宾 · 5种基本句型"},
- {id:"tense",n:"7",color:"#ff3d8b",t:"时态与标志词",d:"先学5个最常用的时态"}];
+ {id:"tense",n:"7",color:"#ff3d8b",t:"时态与标志词",d:"16种时态 · 先学最常用的5个"},
+ {id:"be",n:"8",color:"#6b8f00",t:"be动词与介词口诀",d:"am/is/are · in/on/at · 省略to"},
+ {id:"plural",n:"9",color:"#b5487a",t:"复数·分数·比较级",d:"名词复数口诀 · 比较级最高级"}];
 
 /* ---------- 存档 ---------- */
 const KEY="yfcg_v1";
@@ -202,10 +226,12 @@ function gen(id){
   const v=VOWELS[Math.random()*5|0];
   Q.push({k:"choice",p:"下面哪个是元音字母？",z:"英语只有 5 个元音字母：A E I O U",o:shuf([v,...pick("BCDFGHJKLMNPRSTVWXYZ".split(""),3)]),a:v});
   for(const [L,w,z] of pick(LETTERS,2))Q.push({k:"listen",say:w,p:"听单词，选出正确的意思",o:opts(z,LETTERS.map(x=>x[2])),a:z,show:w});
+  for(const [v,c,w,z] of pick(VOW12,2))Q.push({k:"choice",p:`<span class="en">${w}</span>`,z:`${z} —— 这个单词里的元音是哪个音标？`,say:w,o:opts("["+v+"]",VOW12.map(x=>"["+x[0]+"]")),a:"["+v+"]"});
  }
  if(id==="pron"){
   for(const [s,z,a,c] of pick(PRON_Q,6)){const pool=PRON.map(r=>r[c]).map(x=>/^[A-Z]/.test(a)?x[0].toUpperCase()+x.slice(1):x);Q.push({k:"choice",p:blank(s),z,say:s.replace("___",a),o:opts(a,pool),a})}
   Q.push({k:"match",p:"把主格和宾格连起来",pairs:pick(PRON.filter(r=>r[1]!==r[2]),4).map(r=>[r[1],r[2]])});
+  for(const [s,z,a,o] of pick(OPRON_Q,2))Q.push({k:"choice",p:blank(s),z,say:s.replace("___",a),o:shuf(o),a});
   for(const r of pick(PRON,3)){const c=1+(Math.random()*5|0);Q.push({k:"choice",p:`「${r[0]}」的${PRON_HEAD[c-1]}`,z:"选出正确的英文",o:opts(r[c],r.slice(1)),a:r[c]})}
  }
  if(id==="wh"){
@@ -228,13 +254,26 @@ function gen(id){
  if(id==="sen"){
   for(const [, ,e,z] of pick(PAT,4))Q.push({k:"build",p:"把单词排成正确的句子",z,a:e,words:shuf(e.replace(/[.!?]$/,"").split(" "))});
   for(const [n, ,e,z] of pick(PAT,3))Q.push({k:"choice",p:`<span class="en">${e}</span>`,z:`${z} —— 这是哪种句型？`,say:e,o:opts(n,PAT_NAMES),a:n});
-  for(const [e,w,r,why] of pick(ROLE,3))Q.push({k:"choice",p:`<span class="en">${e.replace(w,`<u>${w}</u>`)}</span>`,z:"划线的词在句子里是？",say:e,o:opts(r,["主语","谓语","宾语","表语"]),a:r,ex:`${r}：${why}`});
+  for(const [e,w,r,why] of pick(ROLE,3))Q.push({k:"choice",p:`<span class="en">${e.replace(w,`<u>${w}</u>`)}</span>`,z:"划线的部分在句子里是？",say:e,o:opts(r,["主语","谓语","宾语","表语","定语","状语"]),a:r,ex:`${r}：${why}`});
+  for(const [n,d,e,z] of pick(STYPE,2))Q.push({k:"choice",p:`<span class="en">${e}</span>`,z:`${z} —— 这是哪种句子？`,say:e,o:shuf(["陈述句","疑问句","祈使句","感叹句"]),a:n,ex:`${n}：${d}`});
  }
  if(id==="tense"){
-  const sig=T5.flatMap(t=>t[5].split("|").flatMap(x=>x.includes(" ")&&t[0]==="一般现在时"&&!x.startsWith("every")&&!x.startsWith("once")&&!x.startsWith("in ")&&!x.startsWith("hardly")?x.split(" "):[x]).map(x=>[x,t[0]]));
+  const sig=T5.flatMap(t=>t[5].split("|").map(x=>[x,t[0]]));
   for(const [w,t] of pick(sig,4))Q.push({k:"choice",p:`<span class="en">${w}</span>`,z:"看到这个标志词，用什么时态？",say:w,o:opts(t,T5.map(x=>x[0])),a:t});
   for(const [s,z,a,o] of pick(VERB_Q,5))Q.push({k:"choice",p:blank(s),z,say:s.replace("___",a),o:shuf(o),a,two:true});
   const t=pick(T5,1)[0];Q.push({k:"choice",p:t[0],z:"它的结构是？",o:opts(t[1],T5.map(x=>x[1])),a:t[1]});
+  for(const [n,f,use,e,w,z] of pick(T16,2))Q.push({k:"choice",p:`<span class="en">${e.replace(w,`<u>${w}</u>`)}</span>`,z:`${z} —— 划线部分是什么时态？`,say:e,o:opts(n,T16.map(x=>x[0])),a:n,ex:`${n}：${use}`});
+ }
+ if(id==="be"){
+  for(const [s,z,a] of pick(BE_Q,4))Q.push({k:"choice",p:blank(s),z,say:s.replace("___",a),o:/^[A-Z]/.test(a)?["Am","Is","Are"]:["am","is","are"],a});
+  for(const [s,z,a] of pick(PREP_Q,4))Q.push({k:"choice",p:blank(s),z,say:s.replace("___",a),o:a==="to"||a==="past"?["at","to","past","in"]:["in","on","at"],a});
+  for(const [s,z,a,o] of pick(BARE_Q,2))Q.push({k:"choice",p:blank(s),z,say:s.replace("___",a),o:shuf(o),a,two:true});
+ }
+ if(id==="plural"){
+  const plo=(w,a)=>shuf([a,...[...new Set([w+"s",w+"es",w.replace(/y$/,"ies"),w.replace(/fe?$/,"ves"),w,w+"ies"])].filter(x=>x!==a).slice(0,3)]);
+  for(const [w,a,z] of pick(PL,6))Q.push({k:"choice",p:`<span class="en">${w}</span>`,z:`${z} —— 复数形式是？`,say:a,o:plo(w,a),a});
+  const f=pick(FR,1)[0];Q.push({k:"choice",p:`<span class="en">${f[0]}</span>`,z:"这个分数用英语怎么说？",say:f[1],o:opts(f[1],FR.map(x=>x[1])),a:f[1]});
+  for(const [s,z,a,o] of pick(CMP_Q,3))Q.push({k:"choice",p:blank(s),z,say:s.replace("___",a),o:shuf(o),a,two:true});
  }
  return shuf(Q).slice(0,10);
 }
@@ -280,20 +319,24 @@ function learnPage(i){
  if(u.id==="abc"){
   h=`<div class="sec"><h3>26 个字母</h3><div class="note">点任意字母听发音。红色的是 5 个元音字母 A E I O U，其余 21 个是辅音字母。</div>
   <div class="grid">${LETTERS.map(([L,w,z])=>`<button class="tile ${VOWELS.includes(L)?"v":""}" data-say="${L}"><div class="w">${L}${L.toLowerCase()}</div><div class="z en">${w}</div><div class="z">${z}</div></button>`).join("")}</div></div>
+  <div class="sec"><h3>12 个单元音（音标）</h3><div class="note">音标就是「发音的写法」。方括号里的是音标，后面是含这个音的单词，点喇叭听这个单词就能听到这个音。ː 表示长音。</div>
+  ${["前元音","中元音","后元音"].map(c=>`<div class="z" style="margin-top:6px;color:var(--soft)">${c}</div>${VOW12.filter(x=>x[1]===c).map(([v,,w,z])=>`<div class="row">${sb(w)}<div class="w" style="width:62px">[${v}]</div><div><div class="en"><b>${w}</b></div><div class="z">${z}</div></div></div>`).join("")}`).join("")}</div>
   <div class="sec"><h3>听单词</h3>${LETTERS.map(([L,w,z])=>`<div class="row">${sb(w)}<div><div class="w">${w}</div><div class="z">${z} · 以 ${L} 开头</div></div></div>`).join("")}</div>`;
  }
  if(u.id==="pron"){
   h=`<div class="sec"><h3>人称代词表</h3><div class="note">主格放在动词前（<b>I</b> like…），宾格放在动词/介词后（like <b>me</b>）。形容词性物主后面要跟名词（<b>my</b> book），名词性物主单独用（It's <b>mine</b>）。点英文可以听发音。</div>
   <div class="scroll"><table><tr><th></th>${PRON_HEAD.map(x=>`<th>${x}</th>`).join("")}</tr>${PRON.map(r=>`<tr><td>${r[0]}</td>${r.slice(1).map(w=>`<td class="e" data-say="${w}">${w}</td>`).join("")}</tr>`).join("")}</table></div></div>
+  <div class="sec"><h3>其他代词</h3>${OPRON.map(([n,d])=>`<div class="row" style="display:block"><b>${n}</b><div class="z en" style="font-size:15px">${d}</div></div>`).join("")}
+  ${OPRON_Q.map(([s,z,a])=>{const e=s.replace("___",a);return `<div class="row">${sb(e)}<div><div class="ex en">${esc(e)}</div><div class="z">${z}</div></div></div>`}).join("")}</div>
   <div class="sec"><h3>例句</h3>${PRON_Q.slice(0,10).map(([s,z,a])=>{const e=s.replace("___",a);return `<div class="row">${sb(e)}<div><div class="ex en">${esc(e)}</div><div class="z">${z}</div></div></div>`}).join("")}</div>`;
  }
  if(u.id==="wh"){
-  h=`<div class="sec"><h3>20 个疑问词</h3><div class="note">疑问词放在句子最前面。注意：how often 问「频率」（多久一次），how long 问「多长 / 多长时间」。</div>
+  h=`<div class="sec"><h3>21 个疑问词</h3><div class="note">疑问词放在句子最前面。注意：how often 问「频率」（多久一次），how long 问「多长 / 多长时间」，how soon 问「多久之后」。</div>
   ${WH.map(([w,z,e,ez])=>`<div class="row">${sb(e)}<div><div class="w">${w} <span class="z">${z}</span></div><div class="ex en">${e}</div><div class="z">${ez}</div></div></div>`).join("")}</div>`;
  }
  if(u.id==="pos"){
   h=`<div class="sec"><h3>10 种词性</h3><div class="note">词性就是单词的「身份」。名词是东西，动词是动作，形容词描述东西，副词描述动作。</div>
-  ${POS.map(([a,n,d,ex])=>`<div class="row" style="display:block"><div class="w">${n} <span class="z en">${a}</span></div><div class="z">${d}</div><div>${ex.split(" ").map(w=>`<span class="tag" data-say="${w}">${w}</span>`).join("")}</div></div>`).join("")}</div>`;
+  ${POS.map(([a,n,d,ex,g])=>`<div class="row" style="display:block"><div class="w">${n} <span class="z en">${a}</span></div><div class="z">${d}</div><div class="z">主要语法：${g}</div><div>${ex.split(" ").map(w=>`<span class="tag" data-say="${w}">${w}</span>`).join("")}</div></div>`).join("")}</div>`;
  }
  if(u.id==="con"){
   h=`<div class="sec"><h3>常用缩略词</h3><div class="note">口语和聊天里常用缩写，撇号 ' 代表省掉的字母。not 缩写成 n't；will 缩写成 'll。特别记：will not = won't，cannot = can't。</div>
@@ -302,16 +345,31 @@ function learnPage(i){
  if(u.id==="sen"){
   h=`<div class="sec"><h3>5 种基本句型</h3><div class="note">S=主语(谁) · V=谓语(做什么) · O=宾语(对谁/什么) · C=表语或补语(怎么样)。英语句子再长，主干都是这 5 种之一。</div>
   ${PAT.map(([n,f,e,z])=>`<div class="row">${sb(e)}<div><div class="w">${n} <span class="z en">${f}</span></div><div class="ex en">${e}</div><div class="z">${z}</div></div></div>`).join("")}</div>
-  <div class="sec"><h3>句子成分</h3>${ROLE.slice(0,5).map(([e,w,r,why])=>`<div class="row">${sb(e)}<div><div class="ex en">${e.replace(w,`<u><b>${w}</b></u>`)}</div><div class="z">${w} = ${r}（${why}）</div></div></div>`).join("")}</div>
+  <div class="sec"><h3>11 种句子成分</h3><div class="note">零基础先记前 6 个：主语、谓语、宾语、表语、定语、状语。下划线就是这个成分。</div>${ROLE11.map(([r,en,why,e,w,z])=>`<div class="row">${sb(e)}<div><div><b>${r}</b> <span class="z en">${en}</span></div><div class="z">${why}</div><div class="ex en">${e.replace(w,`<u><b>${w}</b></u>`)}</div><div class="z">${z}</div></div></div>`).join("")}</div>
+  <div class="sec"><h3>4 种句子（按用途分）</h3>${STYPE.slice(0,4).map(([n,d,e,z])=>`<div class="row">${sb(e)}<div><div><b>${n}</b> <span class="z">${d}</span></div><div class="ex en">${e}</div><div class="z">${z}</div></div></div>`).join("")}</div>
   <div class="sec"><h3>3 种从句（先认识，以后再深入）</h3>${CLAUSE.map(([n,d,e,z])=>`<div class="row">${sb(e)}<div><div><b>${n}</b></div><div class="z">${d}</div><div class="ex en">${e}</div><div class="z">${z}</div></div></div>`).join("")}</div>`;
  }
  if(u.id==="tense"){
-  h=`<div class="sec"><div class="note">英语有 16 种时态，但零基础先学会这 5 个就够日常用了。看到标志词，就知道该用哪个时态。</div></div>
+  h=`<div class="sec"><div class="note">英语有 16 种时态，零基础先学会下面这 5 个就够日常用了。看到标志词，就知道该用哪个时态。学完再点最下面看全部 16 种和例句。</div></div>
   ${T5.map(([n,f,use,e,z,sg])=>`<div class="sec"><h3>${n} <span class="en" style="color:var(--acc)">${f}</span></h3><div class="z" style="color:var(--soft)">${use}</div>
   <div class="row">${sb(e)}<div><div class="ex en">${e}</div><div class="z">${z}</div></div></div>
   <div>标志词：${sg.split("|").map(w=>`<span class="tag" data-say="${w}">${w}</span>`).join("")}</div></div>`).join("")}
   <div class="sec"><h3>进阶：过去完成时 <span class="en" style="color:var(--acc)">had done</span></h3><div class="z" style="color:var(--soft)">「过去的过去」：在过去某个时间之前已经完成。<br>标志词：${PAST_PERF}</div></div>
-  <button class="big b2 dk" id="goAll2">📋 查看全部 16 种时态</button>`;
+  <button class="big b2 dk" id="goAll2">📋 查看全部 16 种时态（带例句）</button>`;
+ }
+ if(u.id==="be"){
+  h=`<div class="sec"><h3>be 动词口诀</h3>${BE_RULE.map(([r,e])=>`<div class="row">${sb(e)}<div><div><b>${r}</b></div><div class="ex en">${e}</div></div></div>`).join("")}</div>
+  <div class="sec"><h3>时间介词 in / on / at</h3><div class="note">大范围（年、月、周）用 in，具体某一天用 on，具体的点（几点、午夜）用 at。</div>${PREP_RULE.map(([r,e])=>`<div class="row">${sb(e.replace(/[\u4e00-\u9fa5]+/g,""))}<div><div><b>${r}</b></div><div class="ex en">${e}</div></div></div>`).join("")}</div>
+  <div class="sec"><h3>这些动词后面不加 to</h3><div class="note">感官动词和使役动词后面的动作，直接用动词原形，不加 to。</div><div style="margin-bottom:6px">${BARE.map(x=>`<div class="en">${x}</div>`).join("")}</div>
+  ${BARE_EX.map(([e,z])=>`<div class="row">${sb(e)}<div><div class="ex en">${e}</div><div class="z">${z}</div></div></div>`).join("")}</div>`;
+ }
+ if(u.id==="plural"){
+  h=`<div class="sec"><h3>名词复数规律</h3>${PL_RULE.map(([r,e])=>`<div class="row">${sb(e.replace(/→/g,",").replace(/·/g,","))}<div><div><b>${r}</b></div><div class="ex en">${e}</div></div></div>`).join("")}
+  <div class="note"><b>f / fe 口诀：</b>${FE_RHYME}<br><span class="en">${FE_WORDS}</span><br>反身代词也一样：myself → ourselves，yourself → yourselves。</div></div>
+  <div class="sec"><h3>分数怎么说</h3><div class="note">分子用基数词（one, two…），分母用序数词（third, fifth…）；分子大于 1 时，分母加 s。1/2 说 a half，1/4 常说 a quarter。</div>
+  <div class="grid">${FR.map(([a,b])=>`<button class="tile" data-say="${b}"><div class="w">${a}</div><div class="z en">${b}</div></button>`).join("")}</div></div>
+  <div class="sec"><h3>形容词比较</h3>${CMP.map(([n,f,e,z])=>`<div class="row">${sb(e)}<div><div><b>${n}</b> <span class="en" style="color:var(--acc)">${f}</span></div><div class="ex en">${e}</div><div class="z">${z}</div></div></div>`).join("")}
+  <table style="margin-top:8px"><tr><th>原级</th><th>比较级</th><th>最高级</th></tr>${CMP_FORM.map(r=>`<tr>${r.map(w=>`<td class="e" data-say="${w}">${w}</td>`).join("")}</tr>`).join("")}</table></div>`;
  }
  return `<div class="top"><button class="back" id="back" aria-label="返回">‹</button><h1 style="font-size:22px">📖 ${u.t}</h1></div>
  <div class="card">${h}</div><div style="height:14px"></div><button class="big b1" id="play">学完了，去闯关 🎮</button>`;
@@ -319,8 +377,8 @@ function learnPage(i){
 
 function allTenses(){
  return `<div class="top"><button class="back" id="back" aria-label="返回">‹</button><h1 style="font-size:22px">📋 16 种时态</h1></div>
- <div class="card"><div class="note" style="margin-top:0">用 do 代表任何动词。done 是过去分词，doing 是现在分词。前 5 个最常用，建议先掌握。</div>
- <table>${T16.map(([n,f],i)=>`<tr><td class="num" style="color:var(--soft)">${i+1}</td><td>${n}</td><td class="e">${f}</td></tr>`).join("")}</table></div>`;
+ <div class="card"><div class="note" style="margin-top:0">用 do 代表任何动词：done 是过去分词，doing 是现在分词。每个时态都用「做作业」举例，方便对比。点喇叭听例句。</div>
+ ${T16.map(([n,f,use,e,w,z],i)=>`<div class="row">${sb(e)}<div><div><span class="num" style="color:var(--soft)">${i+1}.</span> <b>${n}</b> <span class="en" style="color:var(--acc)">${f}</span></div><div class="z">${use}</div><div class="ex en">${e.replace(w,`<u><b>${w}</b></u>`)}</div><div class="z">${z}</div></div></div>`).join("")}</div>`;
 }
 
 /* ---------- 游戏 ---------- */
